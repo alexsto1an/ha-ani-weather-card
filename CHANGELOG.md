@@ -31,7 +31,7 @@ The first public release: two cards for Home Assistant, the Animated Weather Car
 ### For everyone
 
 - **Readable in every sky.** Every built-in sky is tested to meet WCAG AA contrast where the card's text sits. Screen readers hear temperature and condition changes, and decorative layers are hidden from them. With reduced motion, the sky stays still.
-- **Speaks your language.** Conditions, labels and the moon phase come from Home Assistant's translations, the cards' own words are in nine languages, and times follow your profile's 12- or 24-hour setting.
+- **Speaks your language.** Conditions, the humidity, wind and pressure labels, and the moon phase come from Home Assistant's translations. The cards' own words, like "Feels like" and "Sunset", are in nine languages, and fall back to English in others. Times follow your profile's 12- or 24-hour setting.
 - **Set up visually.** Every weather card option is in the visual editor, and YAML is there when you want it.
 - **Light to load.** Five files: only `animated-weather-card.js` is a dashboard resource, about 49 KB gzipped, and it loads the editor, the note writer, the planes and the developer panel only when a card needs them. GSAP comes from a CDN; without it, the card shows the sky and every value, still.
 - **Try it first.** A [live demo](https://alexsto1an.github.io/ha-ani-weather-card/) runs the real card in your browser, on sample data or your own weather, and a [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step.

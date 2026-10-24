@@ -73,7 +73,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 
 ## The details.
 
-- **Speaks your language.** Conditions, metric labels and the moon phase come from Home Assistant's own translations. The card's few words of its own are translated into nine languages. Times follow your profile's 12- or 24-hour setting.
+- **Speaks your language.** Conditions, the humidity, wind and pressure labels, and the moon phase come from Home Assistant's own translations. The cards' own words, like "Feels like" and "Sunset", are in nine languages, and fall back to English in others. Times follow your profile's 12- or 24-hour setting.
 - **Your own sensors.** Point the card at your weather station and it shows what they measure: temperature, feels like, humidity, wind and pressure, indoors and out. The sky still follows the forecast.
 - **Updates in place.** New readings fade in without a re-render. When the condition changes, the old weather fades out as the new one arrives.
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
