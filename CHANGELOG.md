@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-25
+
+### Changed
+
+- The repository runs HACS's own validation on every change and daily, ahead of submitting the card to HACS's default store. Nothing in the cards changed.
+
 ## [1.0.1] - 2026-10-24
 
 ### Fixed
@@ -43,6 +49,7 @@ The first public release: two cards for Home Assistant, the Animated Weather Car
 - **Try it first.** A [live demo](https://alexsto1an.github.io/ha-ani-weather-card/) runs the real card in your browser, on sample data or your own weather, and a [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step.
 - **Developer mode.** `dev_mode: true` shows sample weather with a panel for every condition, time of day and layer, and a Fly a plane button. Only a card in dev mode logs to the console.
 
-[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/alexsto1an/ha-ani-weather-card/releases/tag/v1.0.0
