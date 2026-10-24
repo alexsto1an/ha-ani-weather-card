@@ -1,0 +1,25 @@
+name: Validate
+
+# HACS's own validation of the repository as a dashboard card: not archived,
+# a description, hacs.json, images and information in the README, issues on,
+# an OSI-approved license, topics. It has to pass, with no checks ignored,
+# for the card to be listed in HACS's default store, and it runs daily so a
+# change in HACS's rules shows up here first.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  validate-hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: plugin
