@@ -1,9 +1,12 @@
 name: Release
 
-# Triggered by pushing a `vX.Y.Z` tag. Builds the four bundles, packages
-# them into a release zip (the artifact HACS installs, with
-# `zip_release: true`), and publishes a GitHub Release with the zip plus the
-# loose .js files attached.
+# Triggered by pushing a `vX.Y.Z` tag. Builds the five bundles and publishes
+# a GitHub Release with them attached. HACS reads hacs.json at the tag, finds
+# its `filename` (animated-weather-card.js) among the release's files,
+# registers it as the dashboard resource and downloads every attached file,
+# so the release carries exactly the five bundles and nothing else. (With
+# `zip_release`, HACS would download the file `filename` names and unzip it,
+# which is what broke 1.0.0.)
 #
 # To cut a release:
 #   1. Set the version in package.json and in CARD_VERSION (src/constants.ts)
@@ -69,20 +72,6 @@ jobs:
           echo "Note bundle:   $(stat -c %s animated-weather-card-note.js) bytes"
           echo "Planes bundle: $(stat -c %s animated-weather-card-planes.js) bytes"
 
-      - name: Package release zip
-        # HACS with `zip_release: true` extracts the first .zip asset of
-        # the release into the user's `<config>/www/community/<repo>/`
-        # directory, so the zip's contents are exactly the files HACS
-        # users will receive.
-        run: |
-          zip -j animated-weather-card.zip \
-            animated-weather-card.js \
-            animated-weather-card-editor.js \
-            animated-weather-card-dev.js \
-            animated-weather-card-note.js \
-            animated-weather-card-planes.js
-          unzip -l animated-weather-card.zip
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -90,7 +79,6 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            animated-weather-card.zip
             animated-weather-card.js
             animated-weather-card-editor.js
             animated-weather-card-dev.js

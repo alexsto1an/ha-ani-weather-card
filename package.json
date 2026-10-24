@@ -1,6 +1,6 @@
 {
   "name": "animated-weather-card",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An animated weather card for Home Assistant: a sky that follows the condition and the sun, with a matching sun tracker card",
   "main": "animated-weather-card.js",
   "scripts": {
