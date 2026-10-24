@@ -110,7 +110,7 @@ src/
 - **Target:** open it against `main`.
 - **Description:** say what changed and why.
 - **Visual changes:** add a before-and-after screenshot and the card configuration you used.
-- **CI:** it runs the type-check, the build and the tests, and checks that the committed bundles are fresh.
+- **CI:** it runs the type-check, the build and the tests, and checks that the committed bundles are fresh. A second workflow, **Validate**, runs HACS's own validation of the repository; it has to keep passing for the card to stay listable in HACS's default store.
 
 ## Guidelines
 
