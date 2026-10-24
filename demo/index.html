@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Animated Weather Card · Live demo</title>
+    <meta name="description" content="The Animated Weather Card for Home Assistant, live in your browser. Change the weather and the hour, wire in your own sensors, and watch the sky follow.">
+    <meta name="theme-color" content="#16131c">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Animated Weather Card">
+    <meta property="og:description" content="Live weather, on your dashboard. A live demo of the Home Assistant card.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./demo.css">
+    <script>
+        document.documentElement.className = 'js';
+        // The mark's sky, by the clock, before the first paint (the hours of phaseForHour in scene.mjs)
+        (function (h) { document.documentElement.dataset.logo = h >= 6 && h < 8 ? 'dawn' : h >= 8 && h < 18.5 ? 'day' : h >= 18.5 && h < 20.5 ? 'dusk' : 'night'; })(new Date().getHours() + new Date().getMinutes() / 60);
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="wordmark" href="./" aria-label="Animated Weather Card">
+            %LOGO%
+            <span>Animated Weather Card</span>
+        </a>
+        <nav class="topnav" aria-label="Project">
+            <a href="./setup/">Set up</a>
+            <a href="https://github.com/alexsto1an/ha-ani-weather-card#examples">Examples</a>
+            <a href="https://github.com/alexsto1an/ha-ani-weather-card#options">Options</a>
+            <a href="https://github.com/alexsto1an/ha-ani-weather-card">GitHub</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero" aria-labelledby="title">
+            <h1 class="headline" id="title">
+                <span class="line"><span>Live weather,</span></span>
+                <span class="line line-quiet"><span>on your dashboard.</span></span>
+            </h1>
+            <div class="intro">
+                <p class="lede">A Home Assistant card that turns your forecast into a living sky. This is the real card, running in your browser: change the weather and the hour, and watch it follow.</p>
+                <div class="actions">
+                    <a class="button-primary" href="./setup/#quick-start">Install with HACS</a>
+                </div>
+            </div>
+
+            <div class="instrument">
+                <div class="stage room" id="stage" data-dashboard="dark" role="region" aria-label="Live preview">
+                    <div class="window">
+                        <div class="stage-light" id="stage-light" aria-hidden="true"></div>
+                        <div class="scenes" id="scenes"></div>
+                    </div>
+                </div>
+
+                <form class="console" id="controls" aria-label="Preview settings">
+                    <fieldset class="field">
+                        <legend>Weather</legend>
+                        <div class="weather-picker" id="weather"></div>
+                        <p class="visually-hidden" id="weather-status" aria-live="polite"></p>
+                        <p class="field-note live-note" id="live-note" aria-live="polite" hidden></p>
+                    </fieldset>
+
+                    <fieldset class="field">
+                        <legend>Time of day</legend>
+                        <div class="dial" id="dial">
+                            <svg class="dial-art" viewBox="0 0 320 82" aria-hidden="true">
+                                <defs>
+                                    <clipPath id="dial-above"><rect x="0" y="0" width="320" height="48"/></clipPath>
+                                    <clipPath id="dial-below"><rect x="0" y="48" width="320" height="34"/></clipPath>
+                                </defs>
+                                <path class="dial-fill" clip-path="url(#dial-above)"/>
+                                <path class="dial-day" clip-path="url(#dial-above)"/>
+                                <path class="dial-night" clip-path="url(#dial-below)"/>
+                                <line class="dial-horizon" x1="0" y1="48" x2="320" y2="48"/>
+                                <g class="dial-knob"><circle class="knob" r="6.5"/></g>
+                            </svg>
+                            <div class="dial-stops" id="phases"></div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="field">
+                        <legend>Palette</legend>
+                        <div class="segmented" style="--count: 3; --index: 0">
+                            <span class="segmented-thumb" aria-hidden="true"></span>
+                            <label><input type="radio" name="colors" value="sky" checked><span>Sky</span></label>
+                            <label><input type="radio" name="colors" value="light"><span>Light theme</span></label>
+                            <label><input type="radio" name="colors" value="dark"><span>Dark theme</span></label>
+                        </div>
+                        <p class="field-note">Light and dark follow your Home Assistant theme.</p>
+                    </fieldset>
+
+                    <div class="field-actions">
+                        <button type="button" class="plane-button" id="fly" aria-describedby="fly-note">
+                            <span class="plane-icon" aria-hidden="true"><span class="plane-glyph"></span></span>
+                            <span>Fly a plane</span>
+                        </button>
+                        <p class="field-note" id="fly-note">Needs the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a>, from HACS.</p>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="dash" id="dash" aria-labelledby="dash-title">
+            <h2 class="section-title dash-title" id="dash-title">
+                <span>At home on your dashboard.</span>
+                <span class="title-quiet">Full size, a compact strip, and the sun tracker to match.</span>
+            </h2>
+            <div class="dash-copy">
+                <p class="section-lede">A sections dashboard at its real size, the card among tile cards: full size in a section that spans two columns, and as a strip over the sun tracker. Each card measures the room it's given and lays itself out for it, on any screen.</p>
+                <fieldset class="field device-picker" id="device-picker">
+                    <legend class="visually-hidden">Screen</legend>
+                    <div class="segmented" style="--count: 3; --index: 2">
+                        <span class="segmented-thumb" aria-hidden="true"></span>
+                        <label><input type="radio" name="device" value="phone"><span>Phone</span></label>
+                        <label><input type="radio" name="device" value="tablet"><span>Tablet</span></label>
+                        <label><input type="radio" name="device" value="desktop" checked><span>Desktop</span></label>
+                    </div>
+                </fieldset>
+                <p class="dash-note" hidden>On a wider screen, see it on a tablet and a desktop too.</p>
+            </div>
+
+            <div class="frame-stage dash-stage room" id="dash-stage" data-dashboard="dark">
+                <div class="stage-light" aria-hidden="true"></div>
+                <div class="frame-figure" data-layout="desktop">
+                    <div class="frame-box">
+                        <div class="frame-shadow" aria-hidden="true"></div>
+                        <div class="frame" role="region" aria-label="Live preview of a dashboard, Desktop">
+                            <div class="frame-shell" aria-hidden="true"></div>
+                            <div class="frame-scenes"></div>
+                        </div>
+                    </div>
+                    <div class="frame-after">
+                        <p class="frame-caption"><span class="caption-text"></span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="dash-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></p>
+                        <div class="snippet-slot" id="dash-code">
+                            <div class="code-fold">
+                                <div class="code-fold-inner">
+                                <div class="snippet" id="dash-snippet">
+                                    <div class="snippet-bar">
+                                        <span class="code-name">dashboard.yaml</span>
+                                        <button type="button" class="copy" id="dash-copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                                    </div>
+                                    <pre><code id="dash-yaml"></code></pre>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="visually-hidden frame-status" aria-live="polite"></p>
+            </div>
+        </section>
+
+        <section class="lab note-lab" id="note" aria-labelledby="note-title">
+            <h2 class="section-title lab-title" id="note-title">
+                <span>Your AI writes the note.</span>
+                <span class="title-quiet">In the voice you pick.</span>
+            </h2>
+            <div class="lab-copy">
+                <p class="section-lede">Turn the note on and the card hands Home Assistant's AI the hours ahead: when the rain starts and stops, the high and the low, the gusts. It writes back a line and a longer note, and the card shows whichever fits. Every screen you sign in on shares that one note.</p>
+            </div>
+            <div class="lab-stage room" id="note-stage" data-dashboard="dark" role="region" aria-label="Live preview of the note">
+                <div class="window">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="scenes"></div>
+                </div>
+            </div>
+            <div class="lab-controls">
+                <fieldset class="field">
+                    <legend>Voice</legend>
+                    <div class="segmented" id="voices" style="--count: 4; --index: 0"></div>
+                    <p class="field-note" id="voice-note" aria-live="polite"></p>
+                </fieldset>
+                <fieldset class="field">
+                    <legend>Weather</legend>
+                    <div class="weather-picker note-weathers" id="note-weathers"></div>
+                    <p class="field-note">A storm gets plain advice, whatever the voice.</p>
+                </fieldset>
+                <p class="field-note note-needs">Needs an AI Task in Home Assistant 2025.8 or later: <a href="./setup/#note">set it up</a>. On this page, notes written by hand stand in for the AI.</p>
+                <div class="snippet-slot" id="note-code">
+                    <button type="button" class="code-toggle" aria-expanded="false" aria-controls="note-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button>
+                    <div class="code-fold">
+                        <div class="code-fold-inner">
+                        <div class="snippet" id="note-snippet">
+                            <div class="snippet-bar">
+                                <span class="code-name">note.yaml</span>
+                                <button type="button" class="copy" id="note-copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                            </div>
+                            <pre><code id="note-yaml"></code></pre>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="station" id="station" aria-labelledby="station-title">
+            <h2 class="section-title station-title" id="station-title">
+                <span>Your station sets the numbers.</span>
+                <span class="title-quiet">The forecast still paints the sky.</span>
+            </h2>
+            <div class="station-copy">
+                <p class="section-lede">Point the card at your own sensors and it shows what they measure: temperature, feels like, humidity, wind and pressure, indoors and out. Your wind also sets how fast the weather moves; the sky still comes from your weather entity.</p>
+                <label class="toggle station-switch">
+                    <input type="checkbox" id="use-sensors" role="switch">
+                    <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                    <span>Use my sensors</span>
+                </label>
+            </div>
+
+            <div class="readings" id="readings"></div>
+
+            <div class="station-stage room" id="station-stage" data-dashboard="dark" role="region" aria-label="Live preview with your sensors">
+                <div class="stage-light" id="station-light" aria-hidden="true"></div>
+                <div class="cards" id="station-cards"></div>
+                <div class="rings" id="rings" aria-hidden="true"></div>
+            </div>
+        </section>
+
+        <section class="lab tune" id="tune" aria-labelledby="tune-title">
+            <h2 class="section-title lab-title" id="tune-title">
+                <span>Tune the weather.</span>
+                <span class="title-quiet">More rain, bigger clouds, a higher splash.</span>
+            </h2>
+            <div class="lab-copy">
+                <p class="section-lede">Seven settings scale the engine. Take hold of one and the card shows the weather it changes; let go, and the new weather settles in. The editor's sliders cover the useful range, and YAML takes more.</p>
+            </div>
+            <div class="lab-stage room" id="tune-stage" data-dashboard="dark" role="region" aria-label="Live preview of the weather engine">
+                <div class="window">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="scenes"></div>
+                </div>
+            </div>
+            <div class="lab-controls">
+                <div class="sliders-head">
+                    <h3 id="sliders-title">Engine</h3>
+                    <button type="button" class="reset" id="tune-reset" hidden>Reset</button>
+                </div>
+                <div class="sliders" id="sliders" role="group" aria-labelledby="sliders-title"></div>
+                <div class="quiet" role="group" aria-labelledby="quiet-title">
+                    <h3 id="quiet-title">Or quiet it</h3>
+                    <div id="quiet-list"></div>
+                </div>
+                <div class="snippet-slot" id="tune-code">
+                    <button type="button" class="code-toggle" aria-expanded="false" aria-controls="tune-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button>
+                    <div class="code-fold">
+                        <div class="code-fold-inner">
+                        <div class="snippet" id="tune-snippet">
+                            <div class="snippet-bar">
+                                <span class="code-name">engine.yaml</span>
+                                <button type="button" class="copy" id="tune-copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                            </div>
+                            <pre><code id="tune-yaml"></code></pre>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="lab paint" id="paint" aria-labelledby="paint-title">
+            <h2 class="section-title lab-title" id="paint-title">
+                <span>Paint your own sky.</span>
+                <span class="title-quiet">A colour per condition, and the sun, rain and snow to match.</span>
+            </h2>
+            <div class="lab-stage room" id="paint-stage" data-dashboard="dark" role="region" aria-label="Live preview of your colours">
+                <div class="window">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="scenes"></div>
+                </div>
+            </div>
+            <div class="lab-copy">
+                <p class="section-lede">Each sky colour becomes a whole sky for that condition, lighter overhead and deeper at the horizon, with the same shading behind the metrics, at every hour. Start from a palette, or set each colour yourself. Sky palette only.</p>
+            </div>
+            <div class="lab-controls">
+                <div class="palettes" id="palettes" role="radiogroup" aria-label="Palette"></div>
+                <div class="paints" id="paints"></div>
+                <div class="snippet-slot" id="paint-code">
+                    <button type="button" class="code-toggle" aria-expanded="false" aria-controls="paint-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button>
+                    <div class="code-fold">
+                        <div class="code-fold-inner">
+                        <div class="snippet" id="paint-snippet">
+                            <div class="snippet-bar">
+                                <span class="code-name">colors.yaml</span>
+                                <button type="button" class="copy" id="paint-copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                            </div>
+                            <pre><code id="paint-yaml"></code></pre>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tracker" id="tracker" aria-labelledby="tracker-title">
+            <h2 class="section-title tracker-title" id="tracker-title">
+                <span>The day, drawn by the sun.</span>
+                <span class="title-quiet">Now, and the next sunrise or sunset.</span>
+            </h2>
+            <div class="tracker-copy">
+                <p class="section-lede">The sun tracker comes in the same download. It draws the sun's path through your day, counts down to the next sunrise or sunset, and, with Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a>, names the moon's phase.</p>
+                <fieldset class="field layout-picker" id="tracker-picker">
+                    <legend class="visually-hidden">Sun tracker size</legend>
+                    <div class="segmented" style="--count: 3; --index: 0">
+                        <span class="segmented-thumb" aria-hidden="true"></span>
+                        <label><input type="radio" name="tracker-layout" value="regular" checked><span>Card</span></label>
+                        <label><input type="radio" name="tracker-layout" value="compact"><span>Compact</span></label>
+                        <label><input type="radio" name="tracker-layout" value="wide"><span>Wide</span></label>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="frame-stage room tracker-stage" id="tracker-stage" data-dashboard="dark">
+                <div class="stage-light" aria-hidden="true"></div>
+                <div class="frame-figure" data-layout="regular">
+                    <div class="frame-box">
+                        <div class="frame-shadow" aria-hidden="true"></div>
+                        <div class="frame" role="region" aria-label="Live preview of the sun tracker, Card">
+                            <div class="frame-shell" aria-hidden="true"></div>
+                            <div class="frame-scenes"></div>
+                            <div class="frame-bar" aria-hidden="true">
+                                <span class="bar-start"></span>
+                                <span class="bar-end"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="frame-after">
+                        <div class="scrubber" id="scrubber">
+                            <div class="scrubber-head">
+                                <label for="scrub">Time of day</label>
+                                <output id="scrub-time" for="scrub"></output>
+                            </div>
+                            <div class="scrub-track" id="scrub-track">
+                                <span class="scrub-line" aria-hidden="true"></span>
+                                <span class="scrub-marks" id="scrub-marks" aria-hidden="true"></span>
+                                <span class="scrub-thumb" aria-hidden="true"></span>
+                                <input type="range" id="scrub" min="0" max="1435" step="5">
+                            </div>
+                        </div>
+                        <p class="frame-caption"><span class="caption-text">On a phone, at its real width.</span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="tracker-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></p>
+                        <div class="snippet-slot" id="tracker-code">
+                            <div class="code-fold">
+                                <div class="code-fold-inner">
+                                <div class="snippet" id="tracker-snippet">
+                                    <div class="snippet-bar">
+                                        <span class="code-name">tracker.yaml</span>
+                                        <button type="button" class="copy" id="tracker-copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                                    </div>
+                                    <pre><code id="tracker-yaml"></code></pre>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="visually-hidden frame-status" aria-live="polite"></p>
+            </div>
+        </section>
+
+        <section class="config" aria-labelledby="config-title">
+            <div class="config-copy">
+                <h2 class="section-title" id="config-title">Your card, in YAML.</h2>
+                <p class="section-lede">Every control on this page is a real option. Paste this into a Manual card on your dashboard and swap in your own entities.</p>
+            </div>
+            <div class="code">
+                <div class="code-bar">
+                    <span class="code-name">card.yaml</span>
+                    <button type="button" class="copy" id="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                </div>
+                <pre><code id="yaml"></code></pre>
+            </div>
+        </section>
+        <section class="needs" id="needs" aria-labelledby="needs-title">
+            <div class="needs-head">
+                <h2 class="needs-title" id="needs-title">What you need</h2>
+                <p class="needs-more"><a href="./setup/">The setup guide</a> has every step.</p>
+            </div>
+            <div class="needs-group">
+                <h3>Needs an integration added</h3>
+                <dl>
+                    <div><dt>Planes</dt><dd>The <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a>, a custom integration you install from HACS.</dd></div>
+                    <div><dt>Moon phase</dt><dd>Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a>. Add it in Settings, under Devices and services.</dd></div>
+                    <div><dt>Weather note</dt><dd>An AI integration with an AI Task, such as <a href="https://www.home-assistant.io/integrations/openai_conversation/">OpenAI</a> or <a href="https://www.home-assistant.io/integrations/anthropic/">Anthropic</a>, on Home Assistant 2025.8 or later. The notes on this page are samples, written by hand.</dd></div>
+                </dl>
+            </div>
+            <div class="needs-group">
+                <h3>Works with what you have</h3>
+                <dl>
+                    <div><dt>Weather</dt><dd>Any weather integration. A new Home Assistant install sets one up.</dd></div>
+                    <div><dt>The sun</dt><dd><code>sun.sun</code>, built in and on by default.</dd></div>
+                    <div><dt>Your sensors</dt><dd>Any sensor entities, from any integration.</dd></div>
+                </dl>
+            </div>
+        </section>
+    </main>
+
+    <footer class="colophon">
+        <p>Free and open source under the MIT license. A community card for <a href="https://www.home-assistant.io">Home Assistant</a>.</p>
+        <p>AI helped build this card. <a href="https://github.com/alexsto1an/ha-ani-weather-card#built-with-ai">The README says how.</a></p>
+    </footer>
+
+    <!-- Order matters. GSAP first, on the real clock: the demo's clock jumps
+         between times of day, and GSAP would stall after a jump back. Then the
+         demo clock, the stand-ins and the note writer, which must exist before
+         the card loads.
+         The build fills in the GSAP URL the card itself uses. -->
+    <script src="%GSAP_CDN_URL%"></script>
+    <script src="./clock.js"></script>
+    <script src="./icons.js"></script>
+    <script src="./ha-elements.js"></script>
+    <script src="./animated-weather-card-note.js"></script>
+    <script src="./animated-weather-card-planes.js"></script>
+    <script src="./animated-weather-card.js"></script>
+    <script type="module" src="./demo.js"></script>
+</body>
+</html>

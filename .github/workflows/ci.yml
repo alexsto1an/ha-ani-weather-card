@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+jobs:
+  build:
+    name: Build, type-check & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (strict)
+        # tsconfig has `strict: true` since the Vitest+strict-mode batch.
+        # Any new code that violates strict typing breaks the build here.
+        run: npm run type-check
+
+      - name: Build bundles
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify committed bundles match a fresh build
+        # The committed bundles (`animated-weather-card.js`, `-editor.js`,
+        # `-dev.js`, `-note.js` and `-planes.js`) are what HACS users consume from the
+        # default branch between releases (HACS pulls files directly). If
+        # a PR touches source but forgets to rebuild, or to add a new
+        # bundle, HACS users see stale behaviour. Fail the PR so the
+        # rebuild lands together with the source change.
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -n "$(git status --porcelain -- 'animated-weather-card*.js')" ]; then
+            echo "::error::Committed bundle is stale or missing — run 'npm run build' and commit the result."
+            git status --short -- 'animated-weather-card*.js'
+            exit 1
+          fi

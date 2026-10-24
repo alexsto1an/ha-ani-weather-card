@@ -1,0 +1,1731 @@
+/* The demo is a dim room, and the card is the window in it. The page's ink
+   takes the hero sky's tint, each room is lit by its own card, and the one
+   warm colour is the card's own sun, kept for what you move: the time of
+   day. Selection is white. The cards keep Home Assistant's own theme
+   variables and their real size, so they look exactly as they will on your
+   dashboard. */
+
+/* Registered, so the room's light eases between skies and dashboards */
+@property --page-sky {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #4a6d99;
+}
+@property --room-sky {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #4a6d99;
+}
+@property --room-screen {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #2c2833;
+}
+@property --room-mix {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+}
+@property --room-gain {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 1;
+}
+/* How far the layouts frame's outline sits in from the view's sides, and
+   up from its bottom */
+@property --inset {
+    syntax: '<length>';
+    inherits: true;
+    initial-value: 0px;
+}
+@property --inset-bottom {
+    syntax: '<length>';
+    inherits: true;
+    initial-value: 0px;
+}
+/* The width of the screen the dashboard shows on, so the code under it
+   can follow it between screens */
+@property --device-w {
+    syntax: '<length>';
+    inherits: true;
+    initial-value: 0px;
+}
+
+:root {
+    /* The room: near-black with the hero's sky in it (demo.js keeps
+       --page-sky on the hero card's sky) */
+    --sky: var(--page-sky);
+    --ink: color-mix(in oklch, oklch(0.135 0.012 290), var(--sky) 8%);
+    --raised: oklch(1 0 0 / 0.05);
+    --high: oklch(1 0 0 / 0.09);
+    --higher: oklch(1 0 0 / 0.14);
+    --hairline: oklch(1 0 0 / 0.08);
+    --hairline-strong: oklch(1 0 0 / 0.16);
+    --text: oklch(0.965 0.006 290);
+    --text-2: oklch(0.8 0.014 290);
+    --text-3: oklch(0.62 0.018 290);
+    --text-quiet: oklch(0.71 0.016 290);
+    /* The card's sun, for what you move, and its moon after dark */
+    --sun: oklch(0.88 0.12 86);
+    --sun-glow: oklch(0.88 0.12 86 / 0.5);
+    --moon: oklch(0.92 0.02 280);
+    --moon-glow: oklch(0.92 0.02 280 / 0.4);
+    /* White is for what's chosen */
+    --button: oklch(0.97 0.006 290);
+    --button-ink: oklch(0.17 0.012 290);
+    /* The sky, lifted to where text reads */
+    --sky-text: color-mix(in oklch, var(--sky), oklch(0.97 0.006 290) 50%);
+
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+    --gutter: clamp(20px, 4vw, 64px);
+    --page: 1360px;
+    --section: clamp(104px, 13vh, 168px);
+    color-scheme: dark;
+    transition: --page-sky 1.4s var(--ease-out-quint);
+}
+
+* { box-sizing: border-box; }
+
+html {
+    -webkit-text-size-adjust: 100%;
+    background: var(--ink);
+    /* The card's light spills past the page edges; never scroll sideways for it */
+    overflow-x: clip;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: clip;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* The sky's ambient light on the top of the wall, and grain so the dark
+       reads as a surface rather than a void */
+    background:
+        radial-gradient(100% 52% at 30% -8%, color-mix(in oklch, var(--sky), transparent 84%), transparent 70%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        var(--ink);
+}
+
+a { color: inherit; }
+::selection { background: color-mix(in oklch, var(--sky), transparent 40%); }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* One focus ring, white, visible on any sky */
+:where(a, button, input, [tabindex]):focus-visible,
+.weather-option input:focus-visible + .glyph,
+.dial-stop input:focus-visible + span,
+.segmented input:focus-visible + span,
+.toggle input:focus-visible + .toggle-track,
+.forecast-option input:focus-visible + .forecast-glyph {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+.weather-option input:focus-visible,
+.dial-stop input:focus-visible,
+.segmented input:focus-visible,
+.toggle input:focus-visible,
+.forecast-option input:focus-visible { outline: none; }
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+.topbar {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: 24px var(--gutter) 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+.wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    text-decoration: none;
+}
+.wordmark-glyph { width: 26px; height: 26px; flex: none; }
+/* The mark (logo.mjs) holds every sky; it shows the one <html data-logo> names, and
+   dissolves to the next on the card's own timing */
+.logo-mark .logo-sky,
+.logo-mark .logo-sun,
+.logo-mark .logo-moon { opacity: 0; transition: opacity 3.2s cubic-bezier(0.37, 0, 0.63, 1); }
+:root:not([data-logo]) .logo-mark .logo-sky[data-sky="day"],
+[data-logo="day"] .logo-mark .logo-sky[data-sky="day"],
+[data-logo="dawn"] .logo-mark .logo-sky[data-sky="dawn"],
+[data-logo="dusk"] .logo-mark .logo-sky[data-sky="dusk"],
+[data-logo="night"] .logo-mark .logo-sky[data-sky="night"],
+:root:not([data-logo="night"]) .logo-mark .logo-sun,
+[data-logo="night"] .logo-mark .logo-moon { opacity: 1; }
+/* Arriving, the sun rises into the pane's corner behind the glass, and the rim lights as it gets there */
+.js .logo-mark .logo-light { animation: logo-rise 1.2s var(--ease-out-expo) both; }
+.js .logo-mark .logo-rim { animation: logo-rim 1.2s var(--ease-out-expo) both; }
+@keyframes logo-rise { from { transform: translateY(22px); } }
+@keyframes logo-rim { 0%, 40% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+    .js .logo-mark .logo-light,
+    .js .logo-mark .logo-rim { animation: none; }
+}
+.topnav { display: flex; gap: clamp(18px, 2.4vw, 32px); }
+.topnav a {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.topnav a:hover { color: var(--text); }
+
+/* ── Hero ────────────────────────────────────────────────────────────── */
+/* Two tracks, shared with the instrument below: the lede and the console
+   stand on one edge, the headline and the card on the other */
+.hero {
+    --console: 352px;
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(40px, 6vh, 72px) var(--gutter) 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--console);
+    column-gap: 64px;
+}
+
+.headline {
+    grid-column: 1;
+    align-self: end;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 1rem + 3.6vw, 4rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.032em;
+}
+.line {
+    display: block;
+    overflow: hidden;
+    /* Room for descenders inside the reveal mask */
+    padding-bottom: 0.1em;
+    margin-bottom: -0.1em;
+}
+.line > span { display: inline-block; }
+.line-quiet { color: var(--text-quiet); }
+
+.intro {
+    grid-column: 2;
+    align-self: end;
+}
+.lede {
+    margin: 0;
+    max-width: 34ch;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    margin-top: 22px;
+}
+.button-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: var(--button);
+    color: var(--button-ink);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.2s var(--ease-out-quart);
+}
+.button-primary:hover { background: oklch(1 0 0); }
+.button-primary:active { transform: scale(0.97); transition-duration: 0.2s, 0.08s; }
+.button-quiet {
+    display: inline-flex;
+    gap: 6px;
+    padding: 11px 2px;
+    color: var(--text-2);
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.button-quiet span { display: inline-block; transition: transform 0.3s var(--ease-out-quart); }
+.button-quiet:hover { color: var(--text); }
+.button-quiet:hover span { transform: translateX(3px); }
+
+/* ── Instrument: the card and its console ───────────────────────────── */
+.instrument {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--console);
+    column-gap: 64px;
+    align-items: stretch;
+    margin-top: clamp(28px, 4vh, 56px);
+}
+
+/* A room is lit by the card in it: by its sky, or by the card itself when
+   it follows the theme */
+.room {
+    --room-light: color-mix(in oklch, var(--room-sky), var(--room-screen) calc(var(--room-mix) * 100%));
+    --room-screen: oklch(0.42 0.02 300);
+    transition:
+        --room-mix 0.6s var(--ease-out-quint),
+        --room-gain 0.6s var(--ease-out-quint),
+        --room-screen 0.6s var(--ease-out-quint);
+}
+.room[data-dashboard="light"] { --room-screen: oklch(0.93 0.008 300); }
+.room[data-colors="theme"] { --room-mix: 1; --room-gain: 0.7; }
+.room[data-colors="theme"][data-dashboard="light"] { --room-gain: 0.45; }
+
+/* The stage holds the card and the light it casts on the wall. The card is
+   the window: the width of its column, 17:10, its top level with the
+   console's first control. Past 640 px that is the card's wide layout, the
+   sky above the words. The window is the light's origin: demo.js places the
+   light from the scenes' top-left. Scenes stack in one cell, so a new setup
+   can dissolve over the old one. */
+.stage {
+    position: relative;
+    display: grid;
+    align-content: start;
+    /* The window's height comes from the stage's width (100cqw) */
+    container-type: inline-size;
+}
+.window { position: relative; }
+.scenes {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    align-items: start;
+    /* Wind carries snow sideways: keep it off the console and the margins.
+       Rain still falls below the card and clouds still rise above it. */
+    overflow-x: clip;
+    overflow-clip-margin: 12px;
+}
+.scene {
+    position: relative;
+    grid-area: 1 / 1;
+    width: 100%;
+}
+@media (min-width: 641px) {
+    /* An explicit height, not aspect-ratio: the card inside sizes itself
+       from its box's height, which has to be definite */
+    .stage .scene .cards { height: min(480px, 54vh, calc(100cqw * 10 / 17)); }
+    .stage .scene .cards > * { flex: 1; min-height: 0; }
+}
+
+/* The cards: a vertical stack, each lifted off the wall by a quiet shadow
+   on its host element, never inside the card */
+.cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cards > * {
+    display: block;
+    border-radius: 12px;
+    box-shadow:
+        0 1px 2px oklch(0 0 0 / 0.3),
+        0 24px 60px -24px oklch(0 0 0 / 0.75);
+}
+
+/* One light source: the card. demo.js keeps --room-sky on the card's
+   current sky, lays the light over the weather card, and sizes it to the
+   card. The core sits just past the card's edges and falls off slowly, so
+   it reads as light on a wall rather than a halo. */
+.stage-light {
+    position: absolute;
+    left: -100px;
+    top: -100px;
+    width: 200px;
+    height: 200px;
+    z-index: 0;
+    pointer-events: none;
+    transform-origin: 50% 50%;
+    transform: translate(var(--lx, 0px), var(--ly, 0px)) scale(var(--lsx, 4.4), var(--lsy, 3));
+    background:
+        radial-gradient(closest-side, oklch(0.97 0.02 300 / calc(var(--flash, 0) * 0.3)), transparent),
+        radial-gradient(closest-side,
+            color-mix(in oklch, var(--room-light) calc(46% * var(--room-gain)), transparent) 0%,
+            color-mix(in oklch, var(--room-light) calc(30% * var(--room-gain)), transparent) 30%,
+            color-mix(in oklch, var(--room-light) calc(12% * var(--room-gain)), transparent) 58%,
+            color-mix(in oklch, var(--room-light) calc(3% * var(--room-gain)), transparent) 82%,
+            transparent 100%);
+    transition: transform 0.52s var(--ease-out-quint);
+}
+.room .stage-light.is-placing { transition: none; }
+
+/* Home Assistant's default theme colours, never the page's */
+[data-dashboard] {
+    --ha-card-border-radius: 12px;
+    --primary-color: #009ac7;
+    --state-icon-color: #44739e;
+    --state-sun-above_horizon-color: #ffc107;
+    --state-sun-below_horizon-color: #3f51b5;
+}
+[data-dashboard="dark"] {
+    --primary-background-color: #111111;
+    --primary-text-color: #e1e1e1;
+    --secondary-text-color: #9b9b9b;
+    --card-background-color: #1c1c1c;
+    --divider-color: rgba(225, 225, 225, 0.12);
+    --sidebar-background-color: #1c1c1c;
+    --sidebar-text-color: #9b9b9b;
+    --sidebar-icon-color: #9b9b9b;
+}
+[data-dashboard="light"] {
+    --primary-background-color: #fafafa;
+    --primary-text-color: #212121;
+    --secondary-text-color: #727272;
+    --card-background-color: #ffffff;
+    --divider-color: rgba(0, 0, 0, 0.12);
+    --sidebar-background-color: #ffffff;
+    --sidebar-text-color: #727272;
+    --sidebar-icon-color: #727272;
+}
+
+/* ── Console ─────────────────────────────────────────────────────────── */
+.console {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+}
+.field {
+    position: relative;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+/* Floated, a legend leaves the fieldset's border alone */
+.field legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    color: var(--text-2);
+}
+.field > :not(legend) { clear: both; }
+
+/* Hidden inputs, keyboard-reachable through their labels */
+.weather-option input,
+.dial-stop input,
+.segmented input,
+.toggle input,
+.forecast-option input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* The weather: keys. The chosen one is white. */
+.weather-picker {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+}
+.weather-option { position: relative; display: block; }
+.glyph {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border-radius: 13px;
+    background: var(--raised);
+    color: var(--text-2);
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.2s var(--ease-out-quart);
+}
+.glyph svg { width: 23px; height: 23px; fill: currentColor; }
+.weather-option input:checked + .glyph,
+.weather-live[aria-pressed="true"] .glyph {
+    background: var(--button);
+    color: var(--button-ink);
+}
+.weather-option:active .glyph { transform: scale(0.95); transition-duration: 0.18s, 0.18s, 0.08s; }
+@media (hover: hover) and (pointer: fine) {
+    .weather-option:hover input:not(:checked) + .glyph,
+    .weather-live:not([aria-pressed="true"]):hover .glyph { background: var(--high); color: var(--text); }
+}
+/* The twelfth key is yours: a button, pressed while your weather shows,
+   whose pin breathes while the page finds you */
+.weather-live { display: block; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.weather-live.is-finding .glyph svg { animation: finding 1.1s ease-in-out infinite; }
+@keyframes finding { 50% { opacity: 0.35; } }
+.live-note { margin-top: 10px; }
+
+/* Time of day: the sun's path, as on the sun tracker. The knob is the sun,
+   and the moon once the path dips under the horizon. */
+.dial { position: relative; color: var(--sun); --glow: var(--sun-glow); }
+.dial.is-night { color: var(--moon); --glow: var(--moon-glow); }
+.dial-art { display: block; width: 100%; height: auto; overflow: visible; }
+.dial-day { fill: none; stroke: oklch(0.9 0.012 290); stroke-width: 1.5; stroke-linecap: round; }
+.dial-night { fill: none; stroke: oklch(0.6 0.02 290); stroke-width: 1.3; stroke-dasharray: 2 5; stroke-linecap: round; }
+.dial-fill { fill: oklch(0.88 0.12 86 / 0.07); }
+.dial-horizon { stroke: var(--hairline-strong); stroke-width: 1; }
+.dial-tick { fill: oklch(0.6 0.02 290); }
+.knob { fill: currentColor; filter: drop-shadow(0 0 5px var(--glow)); transition: fill 0.4s ease; }
+.dial-stops { position: relative; height: 30px; }
+.dial-stop {
+    position: absolute;
+    left: var(--x);
+    top: 0;
+    transform: translateX(-50%);
+}
+.dial-stop span {
+    display: block;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-3);
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+.dial-stop:hover span { color: var(--text-2); }
+.dial-stop input:checked + span { color: var(--text); }
+
+.segmented {
+    --count: 3;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    padding: 3px;
+    border-radius: 11px;
+    background: var(--raised);
+}
+.segmented-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / var(--count));
+    border-radius: 8px;
+    background: var(--higher);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3);
+    transform: translateX(calc(var(--index) * 100%));
+    transition: transform 0.36s var(--ease-out-quint);
+}
+.segmented label { position: relative; z-index: 1; }
+.segmented span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-3);
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+.segmented label:hover span { color: var(--text-2); }
+.segmented input:checked + span { color: var(--text); }
+
+/* What a control needs beyond Home Assistant itself, under or beside it */
+.field-note {
+    margin: 10px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-3);
+}
+.field-note a { color: var(--text-2); text-underline-offset: 3px; text-decoration-color: var(--hairline-strong); }
+.field-note a:hover { color: var(--text); }
+.field-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.field-actions .field-note { margin: 0; max-width: 22ch; }
+
+.toggle {
+    position: relative;
+    display: inline-flex;
+    white-space: nowrap;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+}
+.toggle-track {
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 27px;
+    border-radius: 999px;
+    background: var(--higher);
+    transition: background-color 0.25s ease;
+}
+.toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: oklch(0.98 0.004 290);
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+    transition: transform 0.3s var(--ease-out-quint);
+}
+.toggle input:checked + .toggle-track { background: var(--sun); }
+.toggle input:checked + .toggle-track .toggle-thumb { transform: translateX(17px); }
+.toggle input:checked ~ span:last-child { color: var(--text); }
+
+.plane-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 38px;
+    padding: 8px 15px 8px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.18s ease, transform 0.2s var(--ease-out-quart);
+}
+.plane-button:hover { background: var(--high); }
+.plane-button:active { transform: scale(0.97); transition-duration: 0.18s, 0.08s; }
+.plane-icon {
+    display: grid;
+    width: 18px;
+    height: 18px;
+    overflow: hidden;
+    color: var(--text-2);
+}
+.plane-glyph { display: grid; }
+.plane-icon svg { width: 18px; height: 18px; fill: currentColor; }
+
+/* ── Sections: one title, one quiet line, one lede ───────────────────── */
+.section-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 0.9rem + 2.2vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.06;
+    letter-spacing: -0.028em;
+    text-wrap: balance;
+}
+.section-title > span { display: block; }
+.title-quiet { font-weight: 400; color: var(--text-quiet); }
+.section-lede {
+    margin: 18px 0 0;
+    max-width: 38ch;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+.section-lede a { color: var(--text); text-underline-offset: 3px; text-decoration-color: var(--hairline-strong); }
+.section-lede a:hover { text-decoration-color: currentColor; }
+
+/* ── The dashboard: a sections view at 1:1, on the screen you pick ─────── */
+.dash {
+    --console: 352px;
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--console);
+    column-gap: 64px;
+    align-items: end;
+}
+.dash-title { grid-column: 1; }
+.dash-copy { grid-column: 2; }
+.dash-copy .section-lede { margin: 0 0 18px; }
+.dash-note { margin: 0; font-size: 13px; color: var(--text-3); }
+/* The frame is the page's width; the screen's outline sits in from it by
+   half the difference, on the same --inset curve the tracker's uses, and
+   the frame is as tall as the dashboard's two rows of sections. Each screen
+   brings its own chrome, so the frame has no toolbar of its own. */
+.dash-stage .frame-figure {
+    --frame-w: 100cqw;
+    --device-w: var(--frame-w);
+    transition:
+        --inset 0.52s var(--ease-drawer),
+        --inset-bottom 0.52s var(--ease-drawer),
+        --device-w 0.52s var(--ease-drawer);
+}
+.dash-stage .frame-figure[data-layout] { --inset: calc((var(--frame-w) - var(--device-w)) / 2); }
+.dash-stage .frame { aspect-ratio: auto; height: 800px; }
+.dash-stage .frame-scene { width: var(--scene-w, 100%); padding: 0; }
+/* The caption starts at the screen's left edge, whatever its width, and
+   the code hangs under that corner, no wider than the screen */
+.dash-stage .frame-caption { padding-left: calc(var(--inset) + 2px); transform: none; }
+.dash-stage .snippet-slot { justify-self: start; width: min(560px, var(--device-w)); margin-left: var(--inset); }
+
+/* Home Assistant's shell, in its default theme: the sidebar when the screen
+   is wide enough, the toolbar, and a sections view with the row height,
+   gaps and column widths Home Assistant uses (HA in scene.mjs) */
+.ha-app {
+    display: flex;
+    height: 100%;
+    overflow: clip;
+    background: var(--primary-background-color);
+    color: var(--primary-text-color);
+    font-family: Roboto, var(--font);
+    font-size: 14px;
+    line-height: 20px;
+}
+.ha-sidebar {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    width: 256px;
+    background: var(--sidebar-background-color);
+    border-right: 1px solid var(--divider-color);
+}
+.ha-sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding: 0 20px;
+    font-size: 20px;
+    white-space: nowrap;
+}
+.ha-sidebar-title svg { width: 32px; height: 32px; fill: #18bcf2; }
+.ha-nav { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; }
+.ha-nav-end { margin-top: auto; padding-bottom: 12px; border-top: 1px solid var(--divider-color); padding-top: 8px; }
+.ha-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-weight: 500;
+    color: var(--sidebar-text-color);
+    white-space: nowrap;
+}
+.ha-nav-item svg { flex: none; width: 24px; height: 24px; fill: var(--sidebar-icon-color); }
+.ha-nav-item.is-selected { color: var(--primary-color); background: color-mix(in srgb, var(--primary-color) 12%, transparent); }
+.ha-nav-item.is-selected svg { fill: var(--primary-color); }
+.ha-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ha-toolbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 56px;
+    padding: 0 8px;
+    font-size: 20px;
+    background: var(--primary-background-color);
+}
+.ha-title { padding: 0 12px; }
+.ha-tools { margin-left: auto; display: flex; }
+.ha-icon-button { display: grid; place-items: center; width: 48px; height: 48px; }
+.ha-icon-button svg { width: 24px; height: 24px; fill: currentColor; opacity: 0.8; }
+.ha-view {
+    flex: 1;
+    width: 100%;
+    max-width: calc(var(--columns) * 500px + (var(--columns) - 1) * 32px + 40px);
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    align-content: start;
+    gap: 8px 32px;
+}
+.ha-section { display: flex; flex-direction: column; min-width: 0; }
+.ha-heading { margin: 0; padding: 12px 8px 6px; font-size: 16px; font-weight: 500; }
+.ha-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: 56px;
+    gap: 8px;
+}
+.ha-slot { min-width: 0; min-height: 0; }
+.ha-slot > * { display: block; height: 100%; }
+.ha-slot animated-weather-card,
+.ha-slot animated-sun-tracker-card { box-shadow: none; }
+.ha-tile ha-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 9px 10px;
+}
+.tile-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 20%, transparent);
+}
+.tile-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.tile-text { display: flex; flex-direction: column; min-width: 0; }
+.tile-name { font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-state { font-size: 12px; line-height: 16px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.frame-stage {
+    grid-column: 1 / -1;
+    position: relative;
+    margin-top: 48px;
+    container-type: inline-size;
+    display: grid;
+    justify-items: center;
+    transition:
+        --room-mix 0.6s var(--ease-out-quint),
+        --room-gain 0.6s var(--ease-out-quint),
+        --room-screen 0.6s var(--ease-out-quint);
+}
+/* A Home Assistant view at 1:1: a phone's 393 px for the card and compact
+   layouts, hugging their cards, and a wall tablet's panel view for the
+   wall. The box keeps the wall's size, so nothing below it moves; the
+   outline (one clip over the view, its toolbar and its cards) follows
+   --inset and --inset-bottom on one curve, and the screen's edge and
+   shadow ride the same numbers. The cards' own boxes never change size
+   while they show. Inside the stage, 100cqw is the stage. */
+.frame-figure {
+    --phone: 393px;
+    --frame-w: min(960px, 100cqw);
+    --inset: 0px;
+    --inset-bottom: 0px;
+    --radius: 22px;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    width: 100%;
+    transition:
+        --inset 0.52s var(--ease-drawer),
+        --inset-bottom 0.52s var(--ease-drawer);
+}
+.frame-figure:not([data-layout="wide"]) { --inset: calc((var(--frame-w) - var(--phone)) / 2); }
+.frame-box { position: relative; width: var(--frame-w); }
+.frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    clip-path: inset(0 var(--inset) var(--inset-bottom) round var(--radius));
+}
+/* The screen's shadow on the wall, behind the clip, and its edge, over it */
+.frame-shadow {
+    position: absolute;
+    inset: 0 var(--inset) var(--inset-bottom);
+    z-index: 0;
+    border-radius: var(--radius);
+    box-shadow:
+        0 2px 6px oklch(0 0 0 / 0.45),
+        0 48px 110px -32px oklch(0 0 0 / 0.9);
+    pointer-events: none;
+}
+.frame::after {
+    content: '';
+    position: absolute;
+    inset: 0 var(--inset) var(--inset-bottom);
+    z-index: 4;
+    border-radius: var(--radius);
+    box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.09);
+    pointer-events: none;
+}
+.frame-shell {
+    position: absolute;
+    inset: 0;
+    background: var(--primary-background-color);
+    transition: background-color 0.3s ease-out;
+}
+/* Home Assistant's toolbar, over the cards: clouds rise under it */
+.frame-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 12px;
+    background: var(--primary-background-color);
+    color: var(--primary-text-color);
+    font-family: Roboto, var(--font);
+    font-size: 20px;
+    font-weight: 400;
+    pointer-events: none;
+    transition: background-color 0.3s ease-out, color 0.3s ease-out;
+}
+.bar-start,
+.bar-end { display: flex; align-items: center; }
+.bar-start { gap: 20px; transform: translateX(var(--inset)); }
+.bar-end { gap: 16px; transform: translateX(calc(-1 * var(--inset))); }
+.frame-bar svg { display: block; width: 24px; height: 24px; fill: currentColor; opacity: 0.8; }
+.frame-bar .bar-icon { display: grid; place-items: center; width: 40px; height: 40px; }
+
+.frame-scenes { position: absolute; inset: 0; display: grid; justify-items: center; }
+/* Each view is its final size from the start, and the weather it spills
+   ends at the view's edges */
+.frame-scene {
+    grid-area: 1 / 1;
+    width: var(--phone);
+    height: 100%;
+    padding: 64px 8px 8px;
+    overflow: clip;
+}
+.frame-scene .cards > * { box-shadow: none; }
+/* A layout measured before it's picked */
+.frame-scene.is-probe { visibility: hidden; pointer-events: none; }
+/* A panel view gives the card the whole screen. On a phone the tracker
+   takes its own height (it fills any frame it's given otherwise). */
+.frame-scene[data-layout="wide"] { width: 100%; }
+.frame-scene[data-layout="wide"] .cards { height: 100%; }
+.frame-scene[data-layout="wide"] .cards > * { flex: 1; min-height: 0; }
+.frame-scene animated-sun-tracker-card { height: auto; }
+
+.frame-stage .stage-light { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s, transform 0.52s var(--ease-drawer); }
+.js .frame-stage:not(.is-shown) .frame-box,
+.js .frame-stage:not(.is-shown) .stage-light,
+.js .frame-stage:not(.is-shown) .frame-after { opacity: 0; }
+/* Under the view, riding its bottom edge */
+.frame-after {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    width: 100%;
+    transform: translateY(calc(-1 * var(--inset-bottom)));
+    transition: opacity 0.6s var(--ease-out-quart);
+}
+/* The caption starts at the view's left edge, whatever its width */
+.frame-caption {
+    justify-self: center;
+    width: var(--frame-w);
+    margin: 18px 0 0;
+    padding-left: 2px;
+    transform: translateX(var(--inset));
+    font-size: 14px;
+    color: var(--text-3);
+}
+
+/* ── The sun tracker: its sizes, and the day under your finger ──────── */
+.tracker {
+    --console: 352px;
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--console);
+    column-gap: 64px;
+    align-items: end;
+}
+.tracker-title { grid-column: 1; }
+.tracker-copy { grid-column: 2; }
+.tracker-copy .section-lede { margin: 0 0 18px; }
+/* The group under the view waits for the card, then follows it in */
+.tracker-stage .frame-after { transition-delay: 0.35s; }
+/* The section ends where its content ends: the box keeps its size for the
+   outline, and the page under it comes up by the outline's inset, at
+   once. demo.js carries it there by transform on the outline's curve. */
+.tracker-stage .frame-box { margin-bottom: calc(-1 * var(--inset-bottom-to, 0px)); }
+.tracker-stage .frame-after { transform: none; }
+.tracker-stage .frame-caption { margin-top: 0; order: 2; }
+
+/* The scrubber: a native range for the hand, the keyboard and screen
+   readers, with its own thumb made invisible. The thumb you see is the sun
+   (the moon after dark), drawn where the card draws it, so it always sits
+   right under the one on screen. It spans the frame, laid over the chart of
+   the card on screen, and never reaches more than a thumb's width past the
+   outline. */
+.scrubber {
+    position: relative;
+    width: var(--frame-w);
+    margin-top: 16px;
+    clip-path: inset(-28px max(0px, calc(var(--inset) - 16px)));
+    --thumb: var(--sun);
+    --thumb-glow: var(--sun-glow);
+}
+.scrubber.is-night { --thumb: var(--moon); --thumb-glow: var(--moon-glow); }
+.scrubber-head {
+    margin-left: var(--chart-left, 0px);
+    width: var(--chart-w, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2px;
+}
+.scrubber-head label { font-size: 14px; font-weight: 500; color: var(--text-3); }
+.scrubber-head output {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+.scrub-track { position: relative; height: 54px; }
+.scrub-line,
+.scrub-marks,
+.scrub-thumb { position: absolute; pointer-events: none; }
+.scrub-line {
+    top: 14px;
+    left: var(--chart-left, 0px);
+    width: var(--chart-w, 100%);
+    height: 2px;
+    border-radius: 1px;
+    background: var(--hairline-strong);
+}
+.scrub-marks { inset: 0 auto auto var(--chart-left, 0px); width: var(--chart-w, 100%); height: 100%; }
+.scrub-tick {
+    position: absolute;
+    top: 10px;
+    width: 1px;
+    height: 10px;
+    background: var(--text-3);
+    opacity: 0.6;
+}
+.scrub-label {
+    position: absolute;
+    top: 28px;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+.scrub-label time { margin-left: 5px; font-variant-numeric: tabular-nums; color: var(--text-2); }
+/* Under a short path, the names alone */
+.scrubber.is-narrow .scrub-label time { display: none; }
+.scrub-thumb {
+    top: 6px;
+    left: var(--thumb-x, 50%);
+    width: 18px;
+    height: 18px;
+    margin-left: -9px;
+    border-radius: 50%;
+    background: var(--thumb);
+    box-shadow: 0 0 0 4px var(--ink), 0 0 14px 2px var(--thumb-glow);
+    transition: background-color 0.4s ease, box-shadow 0.4s ease;
+}
+#scrub {
+    position: absolute;
+    top: -6px;
+    left: var(--chart-left, 0px);
+    width: var(--input-w, 100%);
+    height: 44px;
+    margin: 0;
+    opacity: 0;
+    cursor: grab;
+    touch-action: pan-y;
+    -webkit-appearance: none;
+    appearance: none;
+}
+#scrub:active { cursor: grabbing; }
+#scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 1px; height: 44px; }
+#scrub::-moz-range-thumb { width: 1px; height: 44px; border: 0; }
+.scrub-track:has(#scrub:focus-visible) .scrub-thumb { outline: 2px solid var(--text); outline-offset: 4px; }
+
+/* ── YAML: one component, under the tracker and in its own section ───── */
+.snippet-slot { display: grid; grid-template-columns: minmax(0, 1fr); width: min(560px, 100%); order: 3; }
+/* The code waits folded under its button, and opens in place: the fold is
+   a grid row that goes from nothing to its content, so nothing is animated
+   but the row. A lab's button heads its slot; a frame's sits in its caption. */
+.code-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: inherit;
+    cursor: pointer;
+    transition: color 0.18s ease;
+}
+.code-toggle:hover { color: var(--text); }
+.code-toggle-icon { display: grid; width: 16px; height: 16px; }
+.code-toggle-icon svg { width: 16px; height: 16px; fill: currentColor; transition: transform 0.3s var(--ease-out-quint); }
+.snippet-slot[data-open] .code-toggle-icon svg,
+.frame-after:has(.snippet-slot[data-open]) .code-toggle-icon svg { transform: rotate(180deg); }
+.lab-controls .code-toggle { justify-self: start; margin-top: 18px; padding: 8px 0; }
+.frame-caption .code-toggle { margin-left: 6px; vertical-align: baseline; }
+.code-fold {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.42s var(--ease-drawer);
+}
+.code-fold-inner { min-height: 0; overflow: hidden; }
+.code-fold .snippet { margin-top: 14px; opacity: 0; transition: opacity 0.2s ease; }
+.snippet-slot[data-open] .code-fold { grid-template-rows: 1fr; }
+.snippet-slot[data-open] .code-fold .snippet { opacity: 1; transition: opacity 0.36s ease 0.1s; }
+.code,
+.snippet {
+    position: relative;
+    border-radius: 16px;
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    overflow: hidden;
+}
+.code-bar,
+.snippet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 8px 8px 18px;
+    border-bottom: 1px solid var(--hairline);
+}
+.code-name { font-family: var(--mono); font-size: 13px; color: var(--text-3); }
+.copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 6px 12px 6px 10px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--high);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.2s var(--ease-out-quart);
+}
+.copy:hover { background: var(--higher); }
+.copy:active { transform: scale(0.97); transition-duration: 0.18s, 0.18s, 0.08s; }
+.copy-icon { display: grid; width: 15px; height: 15px; }
+.copy-icon svg { width: 15px; height: 15px; fill: currentColor; }
+.copy.is-done { color: var(--sun); }
+.code pre,
+.snippet pre {
+    margin: 0;
+    padding: 16px 18px 18px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text-2);
+    tab-size: 2;
+}
+.y-line { position: relative; display: block; }
+/* A changed line glows once, in the sky's light, when you can see it */
+.y-line::before {
+    content: '';
+    position: absolute;
+    inset: 0 -10px;
+    border-radius: 6px;
+    background: color-mix(in oklch, var(--sky), transparent 72%);
+    opacity: 0;
+    pointer-events: none;
+}
+.y-line.is-new::before { animation: line-new 1.6s var(--ease-out-quint) 0.15s both; }
+@keyframes line-new {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+.y-line > span { position: relative; }
+.y-key { color: var(--sky-text); }
+.y-val { color: var(--text); }
+.y-punct, .y-dash { color: var(--text-3); }
+.y-comment { color: var(--text-3); font-style: italic; }
+
+/* ── Your station: the card stays, the readings run beside it ────────── */
+.station {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: start;
+}
+.station-title { grid-column: 1 / -1; grid-row: 1; }
+/* The card stays in view while you work down the readings */
+.station-stage {
+    grid-column: 1 / span 6;
+    grid-row: 2 / span 2;
+    position: sticky;
+    top: max(24px, calc(50vh - 260px));
+    margin-top: 44px;
+    display: grid;
+    justify-items: start;
+}
+.station-stage .stage-light { opacity: 1; }
+.station-stage .cards {
+    position: relative;
+    z-index: 1;
+    width: min(560px, 100%);
+    overflow-x: clip;
+    overflow-clip-margin: 12px;
+}
+.station-copy { grid-column: 8 / span 5; grid-row: 2; margin-top: 44px; }
+.station-copy .section-lede { margin: 0; }
+.station-switch { margin-top: 26px; }
+.readings { grid-column: 8 / span 5; grid-row: 3; margin-top: 36px; }
+
+.reading-group + .reading-group { margin-top: 26px; }
+.reading-group h3 {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    color: var(--text-3);
+}
+.reading {
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 14px;
+    min-height: 54px;
+    border-top: 1px solid var(--hairline);
+}
+.reading-group .reading:last-child { border-bottom: 1px solid var(--hairline); }
+/* The dot: hollow for a reading the card isn't using yet, white once it is,
+   and the sky's own colour for the forecast, which always paints the sky */
+.reading-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--text-3);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    transition-delay: var(--d, 0ms);
+}
+.reading.is-linked .reading-dot { background: var(--text); box-shadow: inset 0 0 0 1.5px var(--text); }
+.reading-forecast .reading-dot { background: var(--sky-text); box-shadow: none; }
+.reading-name { display: flex; flex-direction: column; min-width: 0; padding: 8px 0; }
+.reading-label { font-size: 15px; font-weight: 500; line-height: 20px; }
+.reading-entity {
+    overflow: hidden;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 18px;
+    color: var(--text-3);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.reading-value {
+    overflow: hidden;
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+    transition-delay: var(--d, 0ms);
+}
+.reading.is-linked .reading-value { color: var(--text); }
+.reading-number { display: inline-block; }
+.reading-unit { margin-left: 4px; font-size: 13px; color: var(--text-3); }
+/* Steppers: one joined control, or nothing */
+.steppers { display: flex; justify-content: flex-end; min-width: 72px; }
+.steppers:has(.stepper) { border-radius: 999px; background: var(--raised); }
+.stepper {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+.stepper:first-child { border-radius: 999px 0 0 999px; }
+.stepper:last-child { border-radius: 0 999px 999px 0; }
+.stepper:hover { background: var(--high); color: var(--text); }
+.stepper:active { background: var(--higher); }
+.stepper svg { width: 16px; height: 16px; fill: currentColor; }
+
+.forecast-picker { grid-column: 3 / 5; justify-self: end; display: flex; gap: 2px; }
+.forecast-option { position: relative; display: block; }
+.forecast-glyph {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 34px;
+    border-radius: 9px;
+    color: var(--text-3);
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+.forecast-glyph svg { width: 20px; height: 20px; fill: currentColor; }
+.forecast-option:hover .forecast-glyph { background: var(--raised); color: var(--text-2); }
+.forecast-option input:checked + .forecast-glyph { background: var(--button); color: var(--button-ink); }
+
+/* Where a reading lands on the card */
+.rings { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.ring {
+    position: absolute;
+    border-radius: 10px;
+    box-shadow: 0 0 0 1.5px var(--text), 0 0 0 5px oklch(0 0 0 / 0.25);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.ring.is-on { opacity: 1; }
+.ring.ring-icon { border-radius: 50%; box-shadow: 0 0 0 1.5px var(--text), 0 0 0 3px oklch(0 0 0 / 0.25); }
+
+/* A reading on its way to the card: fixed, and kept on the card while the
+   page scrolls under it */
+.flight { position: fixed; z-index: 20; pointer-events: none; white-space: nowrap; }
+.flight > div > div { transform-origin: 0 0; }
+
+/* ── Labs: a card of its own, beside the controls that set it up ──────
+   The note's card and the engine's sit on the right, the paints' on the
+   left, so the page alternates with the station between them. The card
+   stays in view while you work down its controls. */
+.lab {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: start;
+}
+.lab-title { grid-column: 1 / -1; grid-row: 1; }
+.lab-copy { grid-row: 2; margin-top: 44px; }
+.lab-copy .section-lede { margin: 0; }
+.lab-controls { grid-row: 3; margin-top: 32px; }
+.lab-stage {
+    grid-row: 2 / span 2;
+    position: sticky;
+    top: max(24px, calc(50vh - 260px));
+    margin-top: 44px;
+    display: grid;
+}
+.tune .lab-copy, .tune .lab-controls { grid-column: 1 / span 5; }
+.tune .lab-stage { grid-column: 7 / span 6; justify-items: end; }
+.paint .lab-stage { grid-column: 1 / span 6; justify-items: start; }
+.paint .lab-copy, .paint .lab-controls { grid-column: 8 / span 5; }
+.note-lab .lab-copy, .note-lab .lab-controls { grid-column: 1 / span 5; }
+.note-lab .lab-stage { grid-column: 7 / span 6; justify-items: end; }
+.note-lab .field + .field { margin-top: 26px; }
+/* The hero's weather keys, at the hero's size */
+.note-weathers { grid-template-columns: repeat(4, 52px); }
+.note-needs { margin-top: 26px; max-width: 46ch; }
+.lab-stage .window { width: min(560px, 100%); }
+.lab-stage .scenes {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    overflow-x: clip;
+    overflow-clip-margin: 12px;
+}
+.lab-stage .scene { width: 100%; }
+.js .lab-stage:not(.is-shown) .stage-light { opacity: 0; }
+.lab-stage.is-shown .stage-light { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s, transform 0.52s var(--ease-out-quint); }
+.lab-stage.is-shown .stage-light.is-placing { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s; }
+
+.sliders-head,
+.quiet h3,
+.paint-group h3 {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    color: var(--text-3);
+}
+.sliders-head { display: flex; justify-content: space-between; align-items: baseline; }
+.sliders-head h3 { margin: 0; font: inherit; color: inherit; }
+.reset {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--hairline-strong);
+    transition: color 0.18s ease;
+}
+.reset:hover { color: var(--text); }
+
+/* A slider: a native range for the hand and the keyboard, drawn as a rail
+   with a white thumb at --p (0 to 1, demo.js) */
+.slider { position: relative; display: block; padding: 9px 0 6px; border-top: 1px solid var(--hairline); }
+.slider:first-child { border-top: 0; padding-top: 2px; }
+.slider-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 500; }
+.slider-value { font-size: 14px; color: var(--text-3); font-variant-numeric: tabular-nums; transition: color 0.2s ease; }
+.slider.is-set .slider-value { color: var(--text); }
+.slider-track { position: relative; display: block; height: 28px; margin-top: 2px; }
+.slider-track::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 13px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--hairline-strong);
+}
+.slider-fill {
+    position: absolute;
+    left: 0;
+    top: 13px;
+    width: calc(var(--p) * (100% - 18px) + 9px);
+    height: 2px;
+    border-radius: 1px;
+    background: oklch(1 0 0 / 0.55);
+}
+.slider-thumb {
+    position: absolute;
+    top: 5px;
+    left: calc(var(--p) * (100% - 18px));
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--button);
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+    transition: transform 0.16s var(--ease-out-quart);
+}
+.slider-track:has(input:active) .slider-thumb { transform: scale(1.15); }
+.slider input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: grab;
+    touch-action: pan-y;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.slider input:active { cursor: grabbing; }
+.slider input::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 28px; }
+.slider input::-moz-range-thumb { width: 18px; height: 28px; border: 0; }
+.slider-track:has(input:focus-visible) .slider-thumb { outline: 2px solid var(--text); outline-offset: 3px; }
+
+.quiet { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--hairline); }
+.quiet-switch { display: flex; width: 100%; padding: 11px 0; white-space: normal; align-items: flex-start; }
+.quiet-switch .toggle-track { margin-top: 1px; }
+.quiet-text { display: flex; flex-direction: column; gap: 2px; }
+.quiet-note { font-size: 13px; line-height: 1.4; font-weight: 400; color: var(--text-3); }
+
+/* Palettes to start from: a chip with three of its skies */
+.palettes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+.chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 6px;
+    border-radius: 999px;
+    background: var(--raised);
+    color: var(--text-2);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.2s var(--ease-out-quart);
+}
+.chip input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.chip-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: conic-gradient(from -90deg, var(--a) 0 120deg, var(--b) 0 240deg, var(--c) 0);
+    box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.14);
+}
+.chip:hover { background: var(--high); color: var(--text); }
+.chip:active { transform: scale(0.97); }
+.chip:has(input:checked) { background: var(--button); color: var(--button-ink); }
+.chip:has(input:focus-visible) { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* The paints: a swatch over a native colour input, the name, the colour */
+.paints { display: grid; gap: 26px; }
+.paint-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 14px;
+    min-height: 50px;
+    border-top: 1px solid var(--hairline);
+    cursor: pointer;
+}
+.paint-group .paint-row:last-child { border-bottom: 1px solid var(--hairline); }
+.swatch {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--paint);
+    box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px oklch(0 0 0 / 0.3);
+    transition: transform 0.2s var(--ease-out-quart);
+}
+.paint-row:hover .swatch { transform: scale(1.08); }
+.swatch input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.paint-name { font-size: 15px; font-weight: 500; }
+.paint-hex { font-family: var(--mono); font-size: 12.5px; color: var(--text-3); transition: color 0.2s ease; }
+.paint-row.is-set .paint-hex { color: var(--text); }
+.paint-row:has(input:focus-visible) .swatch { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* ── Your card, in YAML ──────────────────────────────────────────────── */
+.config {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: start;
+}
+.config-copy { grid-column: 1 / span 4; }
+.code { grid-column: 6 / span 7; }
+.code .code-bar { padding: 10px 10px 10px 22px; }
+.code pre { padding: 20px 22px 24px; }
+
+/* ── What you need, and the colophon ─────────────────────────────────── */
+.needs {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 36px var(--gutter) 0;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    row-gap: 28px;
+    font-size: 14px;
+    line-height: 1.55;
+    border-top: 1px solid var(--hairline);
+}
+.needs-head { grid-column: 1 / span 2; }
+.needs-title { margin: 0; font-size: 15px; font-weight: 600; }
+.needs-more { margin: 6px 0 0; color: var(--text-3); }
+.needs-more a { color: var(--text-2); text-underline-offset: 3px; text-decoration-color: var(--hairline-strong); }
+.needs-more a:hover { color: var(--text); }
+.needs-group { grid-column: span 5; }
+.needs-group:first-of-type { grid-column: 3 / span 5; }
+.needs-group h3 { margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.needs dl { display: grid; gap: 10px; margin: 0; }
+.needs dl > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); column-gap: 12px; }
+.needs dt { color: var(--text-2); }
+.needs dd { margin: 0; color: var(--text-3); }
+.needs a { color: var(--text-2); text-underline-offset: 3px; text-decoration-color: var(--hairline-strong); }
+.needs a:hover { color: var(--text); }
+.needs code { font-family: var(--mono); font-size: 13px; }
+
+.colophon {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: 64px var(--gutter) 56px;
+    font-size: 14px;
+    color: var(--text-3);
+}
+.colophon p { margin: 0; }
+.colophon p + p { margin-top: 6px; }
+.colophon a { color: var(--text-2); text-underline-offset: 3px; text-decoration-color: var(--hairline-strong); }
+.colophon a:hover { color: var(--text); }
+
+/* ── First load ──────────────────────────────────────────────────────────
+   The words arrive first, then the console, then the card as soon as it
+   has drawn its sky (demo.js), and the room's light comes up behind it. */
+.js .stage:not(.is-ready) .stage-light { opacity: 0; }
+.stage.is-ready .stage-light { transition: opacity 1.8s var(--ease-in-out-sine) 0.2s, transform 0.52s var(--ease-out-quint); }
+.stage.is-ready .stage-light.is-placing { transition: opacity 1.8s var(--ease-in-out-sine) 0.2s; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .js .line > span { animation: line-in 1s var(--ease-out-expo) both; }
+    .js .line + .line > span { animation-delay: 0.08s; }
+    .js .intro { animation: rise-in 0.8s var(--ease-out-quint) 0.6s both; }
+    .js .console > * { animation: fade-in 0.6s var(--ease-out-quint) both; animation-delay: calc(0.9s + var(--i, 0) * 60ms); }
+    .console > :nth-child(2) { --i: 1; }
+    .console > :nth-child(3) { --i: 2; }
+    .console > :nth-child(4) { --i: 3; }
+    .console > :nth-child(5) { --i: 4; }
+}
+@keyframes line-in { from { transform: translateY(110%); } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* ── Narrower screens ────────────────────────────────────────────────── */
+@media (max-width: 1199px) {
+    .hero, .dash, .tracker { --console: 312px; column-gap: 48px; }
+    .instrument { column-gap: 48px; }
+}
+
+/* Below this the card no longer fits beside the console: the console
+   becomes a panel of two columns under it */
+@media (max-width: 1117px) {
+    .instrument { grid-template-columns: minmax(0, 1fr); }
+    .stage { padding-top: 8px; }
+    .console {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 28px 48px;
+        margin-top: 44px;
+        padding-top: 28px;
+        border-top: 1px solid var(--hairline);
+    }
+}
+
+@media (max-width: 900px) {
+    .hero, .dash, .tracker { grid-template-columns: minmax(0, 1fr); }
+    .dash-title, .dash-copy, .frame-stage,
+    .tracker-title, .tracker-copy { grid-column: 1 / -1; }
+    .dash-copy, .tracker-copy { margin-top: 22px; }
+    .station-title, .station-copy, .readings, .station-stage { grid-column: 1 / -1; grid-row: auto; }
+    .station-copy { margin-top: 22px; }
+    .station-stage { position: relative; top: auto; order: 1; margin-top: 36px; justify-items: center; }
+    .readings { order: 2; }
+    .lab-title, .lab-copy, .lab-controls, .lab-stage,
+    .tune .lab-copy, .tune .lab-controls, .tune .lab-stage,
+    .paint .lab-copy, .paint .lab-controls, .paint .lab-stage,
+    .note-lab .lab-copy, .note-lab .lab-controls, .note-lab .lab-stage { grid-column: 1 / -1; grid-row: auto; }
+    .lab-copy { margin-top: 22px; }
+    .lab-stage { position: relative; top: auto; order: 1; margin-top: 36px; justify-items: center; }
+    .lab-controls { order: 2; }
+    .headline { grid-column: 1 / -1; }
+    .intro { grid-column: 1 / -1; margin-top: 22px; }
+    .config-copy, .code { grid-column: 1 / -1; }
+    .code { margin-top: 28px; }
+    .needs-head, .needs-group, .needs-group:first-of-type { grid-column: 1 / -1; }
+    .needs { row-gap: 24px; }
+}
+@media (max-width: 479px) {
+    .needs dl { gap: 14px; }
+    .needs dl > div { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+}
+
+/* Phones: the card stays in view while you work the controls below it.
+   Once it sticks, a band of the room sits behind it, and the content
+   scrolls up under a soft edge (demo.js sets is-stuck). */
+@media (max-width: 640px) {
+    .topnav a:not(:last-child) { display: none; }
+    .hero { padding-top: 28px; }
+    .instrument { margin-top: 28px; }
+    .stage,
+    .station-stage,
+    .lab-stage {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        margin-inline: calc(var(--gutter) * -1);
+        padding: max(12px, env(safe-area-inset-top)) var(--gutter) 12px;
+        transition: background-color 0.2s ease;
+    }
+    .stage::after,
+    .station-stage::after,
+    .lab-stage::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        height: 24px;
+        background: linear-gradient(var(--ink), color-mix(in oklch, var(--ink), transparent 100%));
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+    .is-stuck { background-color: var(--ink); }
+    .is-stuck::after { opacity: 1; }
+    .station-stage, .lab-stage { margin-top: 28px; }
+    .code .code-bar { padding: 8px 8px 8px 18px; }
+    .code pre { padding: 16px 18px 18px; }
+    .scrub-label time { display: none; }
+    /* The frame is the phone: full width and square corners. Its box keeps
+       the card layout's height, so the page under it doesn't move; the
+       outline hugs Compact. What's under it keeps the page's gutters, and
+       the scrubber spans the phone. */
+    .frame-stage { margin-inline: calc(var(--gutter) * -1); margin-top: 28px; }
+    .frame-figure,
+    .frame-figure:not([data-layout="wide"]) { --frame-w: 100cqw; --inset: 0px; --radius: 0px; }
+    .frame {
+        aspect-ratio: auto;
+        height: var(--phone-frame-h, 440px);
+        clip-path: inset(0 0 var(--inset-bottom));
+    }
+    .frame-shadow { display: none; }
+    .frame::after { box-shadow: inset 0 -1px 0 oklch(1 0 0 / 0.08); }
+    /* A phone's dashboard, as tall as the frame on any screen */
+    .dash-stage .frame { height: 800px; }
+    .frame-after { padding-inline: var(--gutter); }
+    .frame-caption { justify-self: start; width: auto; padding-left: 0; transform: none; }
+    .dash-stage .snippet-slot { width: 100%; margin-left: 0; }
+    .scrubber { justify-self: stretch; width: auto; margin-inline: calc(var(--gutter) * -1); }
+    .frame-scene { width: 100%; }
+    .scene { width: 100%; }
+    .stepper { width: 40px; height: 36px; }
+    .reading { column-gap: 12px; }
+    /* The band is the backdrop: no light around the card */
+    .stage-light { display: none; }
+    .console { display: flex; flex-direction: column; gap: 24px; margin-top: 24px; padding-top: 0; border-top: 0; }
+}
+
+/* ── Reduced motion: still where it moved, quick dissolves where it fades ─ */
+@media (prefers-reduced-motion: reduce) {
+    :root { transition: none; }
+    .segmented-thumb,
+    .toggle-thumb,
+    .stage-light,
+    .slider-thumb,
+    .code-fold,
+    .code-fold .snippet,
+    .code-toggle-icon svg,
+    .button-quiet span { transition: none !important; }
+    .glyph, .plane-button, .button-primary, .copy, .chip, .swatch, .slider-thumb { transform: none !important; }
+    .lab-stage.is-shown .stage-light { transition: opacity 0.2s ease !important; }
+    .reading-dot, .reading-value { transition-delay: 0ms !important; }
+    .weather-live.is-finding .glyph svg { animation: none; opacity: 0.6; }
+    .stage.is-ready .stage-light { transition: opacity 0.2s ease !important; }
+    .frame-figure { transition: none; }
+    .frame-after { transition-duration: 0.2s; transition-delay: 0s; }
+    /* Planes never take off under reduced motion, and the plane button is
+       that row's only control */
+    .field-actions { display: none !important; }
+}

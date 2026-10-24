@@ -1,0 +1,9 @@
+{
+  "name": "Animated Weather Card",
+  "content_in_root": false,
+  "filename": "animated-weather-card.js",
+  "homeassistant": "2021.3.0",
+  "render_readme": true,
+  "zip_release": true,
+  "hide_default_branch": false
+}

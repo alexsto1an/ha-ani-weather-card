@@ -1,0 +1,9 @@
+.idea/
+node_modules/
+*.log
+.DS_Store
+.vscode/
+*.tsbuildinfo
+.claude/
+inspiration/
+_site/

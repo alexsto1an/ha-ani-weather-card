@@ -1,0 +1,271 @@
+/* The setup guide: the same dim room as the live demo, lit by one card at
+   the top, then a page to read. Its tokens, type, code blocks and Copy
+   buttons come from demo.css; this adds the guide's own layout. */
+
+/* The page you're on, in white: what's chosen */
+.topnav a[aria-current="page"] { color: var(--text); }
+
+/* ── The top: what you're setting up, lit ────────────────────────────── */
+.guide-hero {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(40px, 6vh, 72px) var(--gutter) 0;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: end;
+}
+.guide-intro { grid-column: 1 / span 6; padding-bottom: 8px; }
+.guide-title { margin-bottom: 26px; }
+.guide-card { grid-column: 8 / span 5; margin: 0; }
+.guide-window { position: relative; }
+/* The card's sky, spilling onto the wall behind it (setup.js keeps --sky
+   on the card's own) */
+.guide-light {
+    position: absolute;
+    inset: -30% -24%;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(closest-side, color-mix(in oklch, var(--sky), transparent 30%), color-mix(in oklch, var(--sky), transparent 72%) 50%, transparent);
+    filter: blur(28px);
+    opacity: 0;
+    transition: opacity 1.4s var(--ease-in-out-sine);
+}
+.guide-window.is-lit .guide-light { opacity: 1; }
+.guide-slot { position: relative; z-index: 1; min-height: 240px; }
+.guide-slot animated-weather-card {
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 1px 0 oklch(1 0 0 / 0.06) inset, 0 40px 90px -30px oklch(0.05 0.01 290 / 0.75);
+}
+.guide-card figcaption {
+    margin-top: 14px;
+    max-width: 46ch;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+/* ── Quick start: the title on one edge, the steps on the other ──────── */
+.quick {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: start;
+}
+.quick .section-title { grid-column: 1 / span 4; position: sticky; top: 32px; }
+.steps {
+    grid-column: 6 / span 7;
+    counter-reset: step;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.step {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 20px;
+    padding: 30px 0 34px;
+    border-top: 1px solid var(--hairline);
+}
+.step:first-child { border-top: 0; padding-top: 4px; }
+.step::before {
+    content: counter(step);
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 250;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    color: var(--text-quiet);
+    font-variant-numeric: tabular-nums;
+}
+.step > * { grid-column: 2; }
+.step h3 { margin: 4px 0 8px; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+.step p { margin: 0; color: var(--text-2); }
+.step p + p { margin-top: 12px; }
+.step .code { margin-top: 16px; }
+.step-action { padding-top: 6px; }
+.step-alt { font-size: 15px; }
+.step b, .guide-article b { color: var(--text); font-weight: 600; }
+.step a:not(.button-primary),
+.guide-article a {
+    color: var(--text);
+    text-underline-offset: 3px;
+    text-decoration-color: var(--hairline-strong);
+    transition: text-decoration-color 0.2s ease;
+}
+.step a:not(.button-primary):hover,
+.guide-article a:hover { text-decoration-color: currentColor; }
+
+/* A single line to copy: the address, its button beside it */
+.code-line { display: flex; align-items: center; gap: 8px; padding-right: 8px; }
+.code-line pre { flex: 1; min-width: 0; padding: 12px 0 12px 18px; }
+.code-line pre code { color: var(--text); }
+
+/* ── In detail: the contents on one edge, the page on the other ──────── */
+.guide-body {
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(24px, 3vw, 48px);
+    align-items: start;
+}
+.toc { grid-column: 1 / span 3; position: sticky; top: 32px; font-size: 14px; }
+.toc-title { margin: 0 0 12px; font-weight: 600; color: var(--text-2); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc a {
+    position: relative;
+    display: block;
+    padding: 5px 0 5px 16px;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+/* The section you're reading, in white: what's chosen */
+.toc a::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
+    border-radius: 50%;
+    background: var(--text);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s ease, transform 0.25s var(--ease-out-quart);
+}
+.toc a:hover { color: var(--text-2); }
+.toc a[aria-current] { color: var(--text); }
+.toc a[aria-current]::before { opacity: 1; transform: none; }
+
+.guide-article { grid-column: 4 / span 8; max-width: 70ch; }
+.chapter + .chapter { margin-top: clamp(80px, 10vh, 128px); }
+/* Headings stop clear of the top edge when a contents link jumps to them */
+.chapter, .guide-article h3 { scroll-margin-top: 32px; }
+.guide-article h2 {
+    margin: 0 0 8px;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 1rem + 1.5vw, 2.25rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.026em;
+}
+.guide-article h2 .anchor { text-decoration: none; color: inherit; }
+.guide-article h2 .anchor::after {
+    content: '#';
+    margin-left: 0.3em;
+    font-weight: 400;
+    color: var(--text-3);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+    .guide-article h2 .anchor:hover::after { opacity: 1; }
+}
+.guide-article h2 .anchor:focus-visible::after { opacity: 1; }
+.guide-article h3 {
+    margin: 44px 0 10px;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+}
+.guide-article h2 + h3 { margin-top: 28px; }
+.guide-article p,
+.guide-article li,
+.guide-article dd { color: var(--text-2); line-height: 1.65; }
+.guide-article p { margin: 0 0 14px; }
+.guide-article h2 + p { margin-top: 18px; }
+.guide-article ul,
+.guide-article ol { margin: 0 0 14px; padding-left: 1.3em; }
+.guide-article li + li { margin-top: 8px; }
+.guide-article li::marker { color: var(--text-3); }
+.guide-article i { font-style: italic; color: var(--text); }
+.guide-article :not(pre) > code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--raised);
+    font-family: var(--mono);
+    font-size: 0.86em;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.guide-article .code { margin: 18px 0 26px; }
+
+/* Tables: a quiet grid of hairlines, the first column in white */
+.table-scroll { margin: 18px 0 26px; overflow-x: auto; }
+.guide-article table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.guide-article caption { margin-bottom: 8px; text-align: left; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.guide-article th {
+    padding: 0 18px 10px 0;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--hairline-strong);
+}
+.guide-article td {
+    padding: 12px 18px 12px 0;
+    vertical-align: top;
+    color: var(--text-2);
+    line-height: 1.55;
+    border-bottom: 1px solid var(--hairline);
+}
+.guide-article td:first-child,
+.guide-article .sizes td:nth-child(2) { color: var(--text); white-space: nowrap; }
+.guide-article .settings td:first-child { width: 7.5rem; }
+
+/* A thing worth knowing, set apart by a tint, not a stripe */
+.aside {
+    margin: 22px 0 0;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: var(--raised);
+    font-size: 15px;
+}
+.guide-article .aside { color: var(--text-2); }
+
+/* Troubleshooting: the symptom, then what to do */
+.faq { margin: 22px 0 18px; }
+.faq > div { padding: 18px 0; border-top: 1px solid var(--hairline); }
+.faq > div:last-child { border-bottom: 1px solid var(--hairline); }
+.faq dt { font-weight: 600; color: var(--text); }
+.faq dd { margin: 6px 0 0; }
+
+/* ── Narrower screens ────────────────────────────────────────────────── */
+@media (max-width: 1099px) {
+    .guide-intro { grid-column: 1 / span 6; }
+    .guide-card { grid-column: 7 / span 6; }
+    .quick .section-title { grid-column: 1 / span 12; position: static; margin-bottom: 28px; }
+    .steps { grid-column: 1 / span 12; max-width: 760px; }
+    .toc { grid-column: 1 / span 3; }
+    .guide-article { grid-column: 4 / span 9; }
+}
+@media (max-width: 899px) {
+    .guide-hero { row-gap: 40px; }
+    .guide-intro, .guide-card { grid-column: 1 / -1; }
+    .guide-card { max-width: 560px; }
+    .toc {
+        grid-column: 1 / -1;
+        position: static;
+        margin-bottom: 56px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--hairline);
+    }
+    .toc ol { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .guide-article { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+    .step { grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; }
+    .step::before { font-size: 32px; }
+    .guide-article td:first-child { white-space: normal; }
+}

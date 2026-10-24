@@ -1,0 +1,44 @@
+{
+  "name": "animated-weather-card",
+  "version": "1.0.0",
+  "description": "An animated weather card for Home Assistant: a sky that follows the condition and the sun, with a matching sun tracker card",
+  "main": "animated-weather-card.js",
+  "scripts": {
+    "build": "node esbuild.config.js",
+    "dev": "node esbuild.config.js --watch",
+    "demo": "npm run build && node demo/build.mjs",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "weather",
+    "card",
+    "animation",
+    "gsap",
+    "typescript"
+  ],
+  "author": "alexsto1an",
+  "license": "MIT",
+  "devDependencies": {
+    "@mdi/js": "7.4.47",
+    "@types/jsdom": "^28.0.1",
+    "@types/node": "^20.19.40",
+    "@vitest/coverage-v8": "^4.1.5",
+    "esbuild": "^0.28.2",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexsto1an/ha-ani-weather-card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexsto1an/ha-ani-weather-card/issues"
+  },
+  "homepage": "https://github.com/alexsto1an/ha-ani-weather-card#readme"
+}

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Set up · Animated Weather Card</title>
+    <meta name="description" content="Put the Animated Weather Card on your Home Assistant dashboard in four steps, then set up the weather note, your own sensors, planes and the moon.">
+    <meta name="theme-color" content="#16131c">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Set up the Animated Weather Card">
+    <meta property="og:description" content="Four steps to your dashboard, then everything after.">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../demo.css">
+    <link rel="stylesheet" href="../setup.css">
+    <script>
+        document.documentElement.className = 'js';
+        // The mark's sky, by the clock, before the first paint (the hours of phaseForHour in scene.mjs)
+        (function (h) { document.documentElement.dataset.logo = h >= 6 && h < 8 ? 'dawn' : h >= 8 && h < 18.5 ? 'day' : h >= 18.5 && h < 20.5 ? 'dusk' : 'night'; })(new Date().getHours() + new Date().getMinutes() / 60);
+    </script>
+</head>
+<body class="guide">
+    <header class="topbar">
+        <a class="wordmark" href="../" aria-label="Animated Weather Card">
+            %LOGO%
+            <span>Animated Weather Card</span>
+        </a>
+        <nav class="topnav" aria-label="Project">
+            <a href="../">Live demo</a>
+            <a href="./" aria-current="page">Set up</a>
+            <a href="https://github.com/alexsto1an/ha-ani-weather-card#options">Options</a>
+            <a href="https://github.com/alexsto1an/ha-ani-weather-card">GitHub</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="guide-hero" aria-labelledby="title">
+            <div class="guide-intro">
+                <h1 class="headline guide-title" id="title">
+                    <span class="line"><span>Set it up.</span></span>
+                    <span class="line line-quiet"><span>Then make it yours.</span></span>
+                </h1>
+                <p class="lede">Four steps put the card on your dashboard. The rest of this page is everything after: your own sensors, the weather note, planes, the moon, and what to check when something doesn't show.</p>
+            </div>
+            <figure class="guide-card">
+                <div class="guide-window">
+                    <div class="guide-light" aria-hidden="true"></div>
+                    <div class="guide-slot" id="guide-card" data-dashboard="dark"></div>
+                </div>
+                <figcaption>Sample weather at your time of day. The note is one of the demo's hand-written samples; on your dashboard, your AI writes it from your forecast.</figcaption>
+            </figure>
+        </section>
+
+        <section class="quick" id="quick-start" aria-labelledby="quick-title">
+            <h2 class="section-title" id="quick-title">
+                <span>Quick start.</span>
+                <span class="title-quiet">Four steps, all in Home Assistant.</span>
+            </h2>
+            <ol class="steps">
+                <li class="step">
+                    <h3>Add it to HACS</h3>
+                    <p>Open the card in HACS, and add it when HACS asks.</p>
+                    <p class="step-action"><a class="button-primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=alexsto1an&amp;repository=ha-ani-weather-card&amp;category=plugin">Open in HACS</a></p>
+                    <p class="step-alt">Or add it yourself: in HACS, open ⋮ (top right), then <b>Custom repositories</b>. Paste the address below and choose the type <b>Dashboard</b>.</p>
+                    <div class="code code-line" data-lang="text">
+                        <pre><code>https://github.com/alexsto1an/ha-ani-weather-card</code></pre>
+                        <button type="button" class="copy" aria-label="Copy the repository address"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                    </div>
+                </li>
+                <li class="step">
+                    <h3>Download it</h3>
+                    <p>Search HACS for <b>Animated Weather Card</b> and select <b>Download</b>. Then reload your browser, or the Companion app, so the dashboard picks it up.</p>
+                </li>
+                <li class="step">
+                    <h3>Add the card</h3>
+                    <p>Edit your dashboard, select <b>Add card</b> and search for <b>Animated Weather Card</b>. Pick your weather entity. That's all it needs.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Or in YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home</code></pre>
+                    </div>
+                </li>
+                <li class="step">
+                    <h3>Make it yours</h3>
+                    <p>Have <a href="#note">your AI write a note</a> about the hours ahead, wire in <a href="#sensors">your own sensors</a>, pair it with <a href="#tracker">the sun tracker</a>, or watch <a href="#planes">real planes</a> cross it.</p>
+                </li>
+            </ol>
+        </section>
+
+        <div class="guide-body">
+            <nav class="toc" aria-label="On this page">
+                <p class="toc-title">On this page</p>
+                <ol>
+                    <li><a href="#install">Install</a></li>
+                    <li><a href="#first-card">Your first card</a></li>
+                    <li><a href="#note">The weather note</a></li>
+                    <li><a href="#extras">Extras</a></li>
+                    <li><a href="#troubleshooting">Troubleshooting</a></li>
+                </ol>
+            </nav>
+
+            <article class="guide-article">
+                <section class="chapter" id="install" aria-labelledby="install-title">
+                    <h2 id="install-title"><a class="anchor" href="#install">Install</a></h2>
+
+                    <h3 id="needs">What you need</h3>
+                    <ul>
+                        <li><b>A weather entity.</b> Any weather integration works: Met.no (a new Home Assistant sets it up), OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others.</li>
+                        <li><b>Internet on each screen that shows the dashboard.</b> The card loads GSAP, its animation library, from <code>cdnjs.cloudflare.com</code>. Without it, the card still shows the sky and every value, only without motion.</li>
+                        <li><b>For the weather note,</b> Home Assistant 2025.8 or later and an AI integration. <a href="#note">The note's section</a> has the details.</li>
+                    </ul>
+
+                    <h3 id="hacs">With HACS</h3>
+                    <p>The <a href="#quick-start">quick start</a> covers it. HACS adds the dashboard resource for you when your dashboards are managed in the UI. For a dashboard in YAML mode, add it yourself:</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Dashboard resources</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>resources:
+  - url: /hacsfiles/ha-ani-weather-card/animated-weather-card.js
+    type: module</code></pre>
+                    </div>
+                    <p>When a new version is out, HACS shows an update. Download it and reload your browser.</p>
+
+                    <h3 id="manual">By hand</h3>
+                    <p>The card is five files that sit in the same folder. Only the first is a dashboard resource; it loads the others when it needs them.</p>
+                    <p>It's split so each screen downloads only what it uses. Every phone and wall tablet that shows your dashboard loads the card, but few of them ever open the editor, and only some cards write a note, fly planes or run in developer mode. Those parts wait in files of their own until a card needs one. Each is fetched from the folder the first file came from, so keep all five together.</p>
+                    <div class="table-scroll">
+                        <table class="files">
+                            <thead><tr><th scope="col">File</th><th scope="col">What it is</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>animated-weather-card.js</code></td><td>Both cards. The only resource you add.</td></tr>
+                                <tr><td><code>animated-weather-card-editor.js</code></td><td>The visual editor, loaded the first time you open the card's settings.</td></tr>
+                                <tr><td><code>animated-weather-card-note.js</code></td><td>The note writer, loaded only by cards that write their own note.</td></tr>
+                                <tr><td><code>animated-weather-card-planes.js</code></td><td>The planes, loaded only by cards with a flights sensor.</td></tr>
+                                <tr><td><code>animated-weather-card-dev.js</code></td><td>The developer panel, loaded only with <code>dev_mode: true</code>. You can leave it out.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <ol class="numbered">
+                        <li>Download the files from the <a href="https://github.com/alexsto1an/ha-ani-weather-card/releases/latest">latest release</a>.</li>
+                        <li>Copy them to your <code>config/www/</code> folder. If you had to create <code>www/</code>, restart Home Assistant once so it serves <code>/local/</code>.</li>
+                        <li>Go to <b>Settings → Dashboards → ⋮ → Resources → Add resource</b>, and add <code>/local/animated-weather-card.js?v=1</code> as a <b>JavaScript module</b>. If Resources isn't there, turn on Advanced mode in your user profile.</li>
+                        <li>Reload your browser.</li>
+                    </ol>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Dashboard resources, YAML mode</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>resources:
+  - url: /local/animated-weather-card.js?v=1
+    type: module</code></pre>
+                    </div>
+                    <p>To update, overwrite the files and raise the <code>?v=</code> number, so browsers fetch the new version. The other files follow it.</p>
+                    <p class="aside"><b>Load the card from one place only.</b> If you move between HACS (<code>/hacsfiles/</code>) and a copy of your own (<code>/local/</code>), remove the old resource. The second copy can't register, and the first one keeps running.</p>
+                </section>
+
+                <section class="chapter" id="first-card" aria-labelledby="first-card-title">
+                    <h2 id="first-card-title"><a class="anchor" href="#first-card">Your first card</a></h2>
+
+                    <h3 id="editor">In the editor</h3>
+                    <p>Add the card and pick your weather entity, and it's working. Everything else is in the editor's sections: <b>Entities</b>, <b>Display</b>, <b>Weather note</b>, <b>Day and night</b>, <b>Advanced</b>, <b>Weather engine</b> and <b>Colors</b>.</p>
+
+                    <h3 id="yaml">In YAML</h3>
+                    <p>A weather entity is the one thing the card needs. The sun entity is optional: it adds the next sunset, or sunrise, to the metrics. The sky follows <code>sun.sun</code> either way.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+sun_entity: sun.sun</code></pre>
+                    </div>
+
+                    <h3 id="size">How big</h3>
+                    <p>In a sections view the card sizes itself, and you can resize it. It lays itself out for the room it gets, and gives up the least it can when the room is short.</p>
+                    <div class="table-scroll">
+                        <table class="sizes">
+                            <thead><tr><th scope="col">Card</th><th scope="col">Size</th><th scope="col">On a phone</th></tr></thead>
+                            <tbody>
+                                <tr><td>Default</td><td>12 × 4</td><td>The temperature, the condition and the metrics, with their labels. The location and the line under the condition give way.</td></tr>
+                                <tr><td>With a note</td><td>12 × 5</td><td>All of it, with a smaller temperature and the note on one line. Give it six rows for the whole note.</td></tr>
+                                <tr><td>Compact</td><td>12 × 2</td><td>One line: the temperature and the condition.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p>In a masonry view, the card grows to fit its content. On a wall tablet, a panel view gives it the whole screen, and from 640 px wide the metrics move beside a larger temperature.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">A panel view, for a wall tablet</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>title: Weather
+type: panel
+cards:
+  - type: custom:animated-weather-card
+    entity: weather.forecast_home
+    sun_entity: sun.sun</code></pre>
+                    </div>
+                </section>
+
+                <section class="chapter" id="note" aria-labelledby="note-title">
+                    <h2 id="note-title"><a class="anchor" href="#note">The weather note</a></h2>
+                    <p>A sentence under the conditions: a remark on the weather, what's coming in the next hours and what to wear. Home Assistant's AI Task writes it from your forecast, with whichever AI you've set up there. Your API key stays in Home Assistant; the card never sees it.</p>
+
+                    <h3 id="note-needs">What it needs</h3>
+                    <ul>
+                        <li>Home Assistant 2025.8 or later.</li>
+                        <li>An AI integration that provides an AI Task: OpenAI, Google, Ollama, OpenRouter, Anthropic (2025.12 or later) or Home Assistant Cloud.</li>
+                    </ul>
+
+                    <h3 id="note-ai">Set up the AI</h3>
+                    <ol class="numbered">
+                        <li><b>Add the integration.</b> Go to <b>Settings → Devices &amp; services → Add integration</b> and pick one, such as <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=anthropic">Anthropic</a> or <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=openai_conversation">OpenAI</a>, with your API key. A new setup creates an AI Task for you, named <b>Claude AI Task</b> or <b>OpenAI AI Task</b>.</li>
+                        <li><b>Choose its settings.</b> Open the AI Task's settings, not the conversation agent's. The card works out the facts itself, so the AI only writes two short sentences: a small, fast model does it best, with as little thinking as it allows.</li>
+                        <li><b>Make it the default.</b> Pick it under <a href="https://my.home-assistant.io/redirect/config_ai/">Settings → System → AI</a> (Settings → System → General before 2026.10). Or name it in the card, as <code>note_ai_task_entity</code>.</li>
+                    </ol>
+                    <div class="table-scroll">
+                        <table class="settings">
+                            <caption>Settings for the AI Task</caption>
+                            <thead><tr><th scope="col">Provider</th><th scope="col">Choose</th></tr></thead>
+                            <tbody>
+                                <tr><td>Anthropic</td><td>Turn <b>Recommended</b> off. Model <code>claude-haiku-5-5</code>, newer and about a tenth of Haiku 4.5's price. Maximum tokens 3000, the default: it's only a ceiling, and lower risks a note cut off. Thinking effort Low. Code execution, web search and web fetch off. On Haiku 4.5, set Thinking budget to 0 instead.</td></tr>
+                                <tr><td>OpenAI</td><td>Turn <b>Recommended</b> off; it would pick <code>gpt-4o-mini</code>, which OpenAI retires in January 2027. Choose <code>gpt-6-luna</code>, with Reasoning effort set to None. Web search and the code interpreter off. The image model doesn't matter for the note.</td></tr>
+                                <tr><td>Others</td><td>Google, Ollama, OpenRouter, Home Assistant Cloud: their smallest current model, with thinking or reasoning turned down as far as it goes. A local model through Ollama costs nothing per note, but has to follow a JSON schema: the card asks for structured output.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 id="note-on">Turn it on</h3>
+                    <p>In the editor's <b>Weather note</b> section, switch on <b>Write it with your AI</b>. It's snarky by default; pick another voice if you like, and your calendar, so it can say what to wear when you're out.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+sun_entity: sun.sun
+show_note: true
+# Optional
+note_tone: calm                 # snarky, calm, friendly or dry
+note_calendar: calendar.family  # when you're out, for what to wear</code></pre>
+                    </div>
+
+                    <h3 id="note-see">What you'll see</h3>
+                    <ul>
+                        <li><b>A status, then the note.</b> While a new note is written, its place says what's happening: <i>Reading the forecast</i>, then <i>Writing the note</i>. The note then types itself in. With reduced motion, it's simply there.</li>
+                        <li><b>Facts first.</b> The card works out what the forecast says (when it rains and stops, the warmest and coldest hours, gusts, UV) and the AI only puts that into words. Storms, hail, heavy rain, gale-force gusts and dangerous cold or heat get plain advice, whatever the voice.</li>
+                        <li><b>Your calendar.</b> With one, the note says what to wear for each stretch you're out in the next 12 hours. Timed events count; all-day, cancelled and online ones (a location that's a link) don't. Only the times reach the AI, never an event's name, place or description.</li>
+                        <li><b>One note for all your screens.</b> It's shared through your Home Assistant user, rewritten after an hour or when the forecast changes, and only while a screen is showing the card.</li>
+                        <li><b>Five rows.</b> With a note the card asks the sections view for a fifth row. In a shorter frame the note gives way before anything else does.</li>
+                    </ul>
+                    <p class="aside"><b>The AI can slip.</b> The card hands it the facts and tells it never to invent a time or a temperature, but now and then a model still gets one wrong: a time that isn't in the forecast, or the rain mixed up with your hours out. The note is a nudge, not the forecast. When the two disagree, trust your weather integration's forecast.</p>
+
+                    <h3 id="note-cost">What it costs</h3>
+                    <p>Each note is one small request, about 1,000 tokens in and 60 out. With the settings above, a card on screen all day comes to about $0.20 a month.</p>
+
+                    <h3 id="note-entity">From an entity instead</h3>
+                    <p>The card can also show a sentence from any entity whose state is text: a text helper, a template sensor, or a summary sensor from your weather integration, such as Pirate Weather's. Its state is the one-line version, a <code>note</code> attribute the longer one, and a <code>generated_at</code> attribute lets the card hide it three hours after it was written (<code>note_max_age</code>). An entity is used instead of the AI.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+note_entity: input_text.weather_note</code></pre>
+                    </div>
+                </section>
+
+                <section class="chapter" id="extras" aria-labelledby="extras-title">
+                    <h2 id="extras-title"><a class="anchor" href="#extras">Extras</a></h2>
+
+                    <h3 id="sensors">Your own sensors</h3>
+                    <p>Your sensors take the place of the weather entity's values; indoor readings sit under the condition. A wind speed sensor also sets how fast the weather moves, and a wind direction sensor can report degrees or a compass point like NW. Without a feels-like sensor, the card uses the weather entity's apparent temperature if it has one.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+name: Garden
+sun_entity: sun.sun
+outdoor_sensor_entity: sensor.garden_temperature
+feels_like_entity: sensor.garden_apparent_temperature
+humidity_sensor_entity: sensor.garden_humidity
+wind_speed_sensor_entity: sensor.garden_wind_speed
+wind_direction_sensor_entity: sensor.garden_wind_direction
+pressure_sensor_entity: sensor.barometer
+indoor_temperature_entity: sensor.living_room_temperature
+indoor_humidity_entity: sensor.living_room_humidity</code></pre>
+                    </div>
+
+                    <h3 id="tracker">The sun tracker</h3>
+                    <p>It comes in the same download: the sun's path through your day, and the next sunrise or sunset as its headline. Stacked under the weather card it takes the card's sky, and the weather card can leave the sunset to it.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">A vertical stack</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: vertical-stack
+cards:
+  - type: custom:animated-weather-card
+    entity: weather.forecast_home
+    sun_entity: sun.sun
+    show_sun: false
+  - type: custom:animated-sun-tracker-card
+    sun_entity: sun.sun
+    moon_entity: sensor.moon_phase
+    weather_entity: weather.forecast_home
+    compact: true</code></pre>
+                    </div>
+
+                    <h3 id="moon">The moon</h3>
+                    <p>The tracker names the moon's phase among its details. Add Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a> under <b>Settings → Devices &amp; services</b>, and give the tracker its sensor as <code>moon_entity</code>, as above.</p>
+
+                    <h3 id="planes">Planes</h3>
+                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Set <code>show_flight_labels: false</code> to fly them without their tags.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+sun_entity: sun.sun
+flights_entity: sensor.flightradar24_current_in_area</code></pre>
+                    </div>
+
+                    <h3 id="theme">Your theme</h3>
+                    <p>The theme palette drops the sky and draws the weather in your dashboard's own colours, light or dark.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+color_palette: theme</code></pre>
+                    </div>
+                    <p>Every option, with its default, is in the <a href="https://github.com/alexsto1an/ha-ani-weather-card#options">README's options tables</a>.</p>
+                </section>
+
+                <section class="chapter" id="troubleshooting" aria-labelledby="troubleshooting-title">
+                    <h2 id="troubleshooting-title"><a class="anchor" href="#troubleshooting">Troubleshooting</a></h2>
+                    <dl class="faq">
+                        <div>
+                            <dt>“Custom element doesn't exist: animated-weather-card”</dt>
+                            <dd>The resource isn't loaded. Check <b>Settings → Dashboards → Resources</b>, then reload the page. In the Companion app, reset the frontend cache from the app's settings.</dd>
+                        </div>
+                        <div>
+                            <dt>Still the old version after an update</dt>
+                            <dd>Your browser has a cached copy. For a copy of your own, raise the <code>?v=</code> number in the resource. Either way, reload the page.</dd>
+                        </div>
+                        <div>
+                            <dt>“name has already been used” in the browser console</dt>
+                            <dd>The card is loaded twice, usually from both <code>/hacsfiles/</code> and <code>/local/</code>. Remove one of the resources.</dd>
+                        </div>
+                        <div>
+                            <dt>No note</dt>
+                            <dd>The editor's <b>Weather note</b> section says what's missing: a Home Assistant older than 2025.8, or no default AI Task. The browser console says it too, once, starting <i>Animated Weather Card: no note</i>. The card only writes while it's on screen, and after a failure it tries again ten minutes later.</dd>
+                        </div>
+                        <div>
+                            <dt>The note takes a while</dt>
+                            <dd><i>Reading the forecast</i> waits up to ten seconds for your weather integration's forecast, then writes from the current conditions alone. <i>Writing the note</i> waits up to thirty seconds for the AI, then gives up until the next try. A small model with thinking turned down answers in a second or two.</dd>
+                        </div>
+                        <div>
+                            <dt>The sky shows, but nothing moves</dt>
+                            <dd>Reduced motion is on in your system settings, <code>animate</code> is <code>false</code>, or the screen couldn't load GSAP from <code>cdnjs.cloudflare.com</code>. The console says <i>GSAP unavailable</i> for the last.</dd>
+                        </div>
+                        <div>
+                            <dt>The settings panel stays empty</dt>
+                            <dd><code>animated-weather-card-editor.js</code> has to be in the same folder as <code>animated-weather-card.js</code>.</dd>
+                        </div>
+                        <div>
+                            <dt>No sunset in the metrics</dt>
+                            <dd>Add <code>sun_entity: sun.sun</code>.</dd>
+                        </div>
+                        <div>
+                            <dt>Planes don't appear</dt>
+                            <dd>Only flights that enter your area after the dashboard loads fly, planes on the ground wait until they take off, flights that arrive while the card is paused are skipped, and at most three cross at once. In <code>dev_mode</code>, the developer panel's <b>Fly a plane</b> button sends one across to check the setup.</dd>
+                        </div>
+                    </dl>
+                    <p>Something else? <a href="https://github.com/alexsto1an/ha-ani-weather-card/issues">Open an issue</a> with what you see and your card's YAML.</p>
+                </section>
+            </article>
+        </div>
+    </main>
+
+    <footer class="colophon">
+        <p>Free and open source under the MIT license. A community card for <a href="https://www.home-assistant.io">Home Assistant</a>.</p>
+        <p>AI helped build this card. <a href="https://github.com/alexsto1an/ha-ani-weather-card#built-with-ai">The README says how.</a></p>
+    </footer>
+
+    <!-- GSAP on the real clock, then the stand-ins and the note writer,
+         which must exist before the card loads. The build fills in the GSAP
+         URL the card itself uses. -->
+    <script src="%GSAP_CDN_URL%"></script>
+    <script src="../icons.js"></script>
+    <script src="../ha-elements.js"></script>
+    <script src="../animated-weather-card-note.js"></script>
+    <script src="../animated-weather-card.js"></script>
+    <script type="module" src="../setup.js"></script>
+</body>
+</html>

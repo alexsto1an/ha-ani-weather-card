@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Animated Weather Card icon</title>
+<style>
+    body { margin: 0; padding: 32px; background: oklch(0.14 0.012 285); display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
+    svg { flex: none; }
+</style>
+</head>
+<body>
+<!-- Serve this folder (python3 -m http.server) and open icon.html: the icon at 1024 and in every sky.
+     docs/images/icon.webp is a 192 px render of the day sky. -->
+<script type="module">
+    import { behind as icon } from './icon.js';
+    document.body.innerHTML = icon({ size: 1024 }) + ['day', 'dusk', 'night', 'dark', 'tinted'].map(sky => icon({ sky, size: 180 })).join('');
+</script>
+</body>
+</html>
