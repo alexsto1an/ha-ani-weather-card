@@ -117,7 +117,7 @@ export const DEV_MODE_SAMPLE_DATA = {
 
 export const GSAP_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
 
-export const CARD_VERSION = '1.0.0';
+export const CARD_VERSION = '1.0.1';
 
 // Day/Night color schemes for animations
 export const DAY_NIGHT_ANIMATION_COLORS = {

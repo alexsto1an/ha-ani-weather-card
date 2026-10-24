@@ -148,10 +148,9 @@ The workflow then:
 
 1. Checks that the tag, `package.json` and `CARD_VERSION` agree.
 2. Builds the five bundles.
-3. Packages them into `animated-weather-card.zip`.
-4. Publishes a GitHub release with the zip and the loose `.js` files.
+3. Publishes a GitHub release with the five `.js` files attached.
 
-HACS installs from the zip, because `hacs.json` sets `zip_release: true`, and shows the tag as the version. It extracts the bundles into `<config>/www/community/ha-ani-weather-card/`. The workflow's `unzip -l` step prints exactly what HACS will receive.
+HACS reads `hacs.json` at the tag and shows the tag as the version. It finds `animated-weather-card.js` (the `filename`) among the release's files, registers it as the dashboard resource, and downloads every attached file into `<config>/www/community/ha-ani-weather-card/`. So a release carries the five bundles and nothing else. Don't set `zip_release`: HACS would then download the file `filename` names and try to unzip it.
 
 ## License
 
