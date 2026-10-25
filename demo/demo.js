@@ -187,11 +187,8 @@ function setClock() {
 }
 
 // ── Scenes: the cards at their real size ───────────────────────────────
-// On a phone the weather stays inside the card: spilled rain would fall
-// across the controls under it
 const phoneQuery = window.matchMedia?.('(max-width: 640px)');
 const onPhone = () => phoneQuery?.matches ?? false;
-const spill = () => (onPhone() ? { spill_particles: false } : {});
 
 function buildScene(layout = 'regular', extra = {}) {
     const palette = state.colors === 'sky' ? 'default' : 'theme';
@@ -209,7 +206,6 @@ function buildScene(layout = 'regular', extra = {}) {
         flights_entity: ENTITIES.flights,
         compact: layout === 'compact',
         color_palette: palette,
-        ...spill(),
         ...extra,
     });
     cards.append(weather);
@@ -307,7 +303,7 @@ function revealFirst(scene) {
 }
 
 /**
- * A new setup (new colours, or spill on or off across the phone width)
+ * A new setup (the sky or the theme, or your own weather arriving)
  * takes over without showing two cards at once: the new scene fades in on
  * top, and the old one goes only once it's covered.
  */
@@ -491,18 +487,13 @@ function nameForecastOptions() {
 // The card reads every sensor option; hass has only the sensors that are on,
 // so the rest fall back to the forecast, as they do in Home Assistant
 const stationCards = $('#station-cards');
-function makeStationCard() {
-    const card = document.createElement('animated-weather-card');
-    card.setConfig({
-        type: 'custom:animated-weather-card',
-        entity: ENTITIES.weather,
-        sun_entity: ENTITIES.sun,
-        ...Object.fromEntries(STATION.map(row => [row.option, row.entity])),
-        ...spill(),
-    });
-    return card;
-}
-let stationCard = makeStationCard();
+const stationCard = document.createElement('animated-weather-card');
+stationCard.setConfig({
+    type: 'custom:animated-weather-card',
+    entity: ENTITIES.weather,
+    sun_entity: ENTITIES.sun,
+    ...Object.fromEntries(STATION.map(row => [row.option, row.entity])),
+});
 
 function stationHass() {
     const readings = Object.fromEntries([...station.linked].map(id => [id, station.readings[id]]));
@@ -1200,7 +1191,7 @@ const dash = (() => {
             cards.push(card);
             return card;
         };
-        const base = { entity: ENTITIES.weather, sun_entity: ENTITIES.sun, color_palette: palette, ...spill() };
+        const base = { entity: ENTITIES.weather, sun_entity: ENTITIES.sun, color_palette: palette };
         const weather = make('animated-weather-card', { type: 'custom:animated-weather-card', ...base, flights_entity: ENTITIES.flights, show_note: true });
         const compact = make('animated-weather-card', { type: 'custom:animated-weather-card', ...base, compact: true, show_sun: false });
         const tracker = make('animated-sun-tracker-card', {
@@ -1414,7 +1405,6 @@ function buildTrackerScene(layout) {
             // The tracker shows the next sunset, as in the README's pairing
             show_sun: false,
             color_palette: palette,
-            ...spill(),
         });
         cards.append(weather);
     }
@@ -2297,29 +2287,6 @@ renderYaml();
 drawTune();
 drawPaint();
 drawNote();
-
-// Crossing the phone width turns the cards' spill off or on again. The
-// station's new card waits, hidden over the old one, until it's ready.
-let stationSwap = 0;
-phoneQuery?.addEventListener?.('change', () => {
-    mountScene();
-    dash.mount();
-    sunFrame.mount();
-    tuneLab.mount();
-    paintLab.mount();
-    noteLab.mount();
-    const swap = ++stationSwap;
-    const card = makeStationCard();
-    card.hass = stationHass();
-    card.style.cssText = 'position: absolute; inset: 0; opacity: 0; pointer-events: none;';
-    stationCards.append(card);
-    whenReady({ el: card }, () => swap !== stationSwap).then(() => {
-        card.style.cssText = '';
-        stationCard.remove();
-        stationCard = card;
-        placeStationLight();
-    });
-});
 
 // The page opens on your weather, with your leave; the sample's partly
 // cloudy sky shows meanwhile, and stays if your location doesn't arrive

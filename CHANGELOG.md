@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - GSAP, the animation library, is bundled into `animated-weather-card.js` instead of loaded from cdnjs.cloudflare.com: the card fetches no code from anywhere else, and moves on screens without internet access. The main file grows to about 76 KB gzipped. The card always uses its own GSAP, and leaves alone any other card's on the same dashboard.
+- The live demo's cards let their weather spill on phones too, as they do on a dashboard. Before, every card kept its weather inside on screens 640 px wide or less, even with the tuning section's Keep the weather inside switch off; now that switch is what keeps it in.
 
 ### Fixed
 
