@@ -22,7 +22,7 @@ export interface FakeTimeline {
     kill: () => void;
 }
 
-/** Build a stand-in `window.gsap` that records calls without doing real work. */
+/** Build a stand-in `window.AnimatedWeatherCardGsap` that records calls without doing real work. */
 export function installGsapStub(): void {
     const timelineFactory = (vars: Record<string, any> = {}): FakeTimeline => {
         const tl: FakeTimeline = {
@@ -39,7 +39,7 @@ export function installGsapStub(): void {
         return tl;
     };
 
-    (window as unknown as { gsap: unknown }).gsap = {
+    (window as unknown as { AnimatedWeatherCardGsap: unknown }).AnimatedWeatherCardGsap = {
         to: vi.fn((_target: unknown, vars?: Record<string, any>) => timelineFactory(vars)),
         fromTo: vi.fn((_target: unknown, _from: unknown, vars?: Record<string, any>) => timelineFactory(vars)),
         set: vi.fn(),
@@ -58,7 +58,7 @@ beforeEach(() => {
 
 /** Tear down anything that leaks across tests. */
 afterEach(() => {
-    delete (window as unknown as { gsap?: unknown }).gsap;
+    delete (window as unknown as { AnimatedWeatherCardGsap?: unknown }).AnimatedWeatherCardGsap;
 });
 
 // matchMedia is missing in jsdom; many of our code paths consult it to

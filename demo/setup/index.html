@@ -105,7 +105,6 @@ entity: weather.forecast_home</code></pre>
                     <h3 id="needs">What you need</h3>
                     <ul>
                         <li><b>A weather entity.</b> Any weather integration works: Met.no (a new Home Assistant sets it up), OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others.</li>
-                        <li><b>Internet on each screen that shows the dashboard.</b> The card loads GSAP, its animation library, from <code>cdnjs.cloudflare.com</code>. Without it, the card still shows the sky and every value, only without motion.</li>
                         <li><b>For the weather note,</b> Home Assistant 2025.8 or later and an AI integration. <a href="#note">The note's section</a> has the details.</li>
                     </ul>
 
@@ -340,7 +339,7 @@ color_palette: theme</code></pre>
                         </div>
                         <div>
                             <dt>The sky shows, but nothing moves</dt>
-                            <dd>Reduced motion is on in your system settings, <code>animate</code> is <code>false</code>, or the screen couldn't load GSAP from <code>cdnjs.cloudflare.com</code>. The console says <i>GSAP unavailable</i> for the last.</dd>
+                            <dd>Reduced motion is on in your system settings, or <code>animate</code> is <code>false</code>.</dd>
                         </div>
                         <div>
                             <dt>The settings panel stays empty</dt>
@@ -366,10 +365,7 @@ color_palette: theme</code></pre>
         <p>AI helped build this card. <a href="https://github.com/alexsto1an/ha-ani-weather-card#built-with-ai">The README says how.</a></p>
     </footer>
 
-    <!-- GSAP on the real clock, then the stand-ins and the note writer,
-         which must exist before the card loads. The build fills in the GSAP
-         URL the card itself uses. -->
-    <script src="%GSAP_CDN_URL%"></script>
+    <!-- The stand-ins and the note writer, then the card, with its own GSAP -->
     <script src="../icons.js"></script>
     <script src="../ha-elements.js"></script>
     <script src="../animated-weather-card-note.js"></script>

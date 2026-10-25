@@ -37,7 +37,7 @@ export class StarsAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start stars animation');
         }
 
@@ -51,7 +51,7 @@ export class StarsAnimation extends BaseAnimation {
 
         // Clear existing stars
         card?.querySelectorAll('.stars-field, .star-gsap, .moon-gsap').forEach(s => {
-            if (window.gsap) window.gsap.killTweensOf(s);
+            if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(s);
             s.remove();
         });
 
@@ -89,7 +89,7 @@ export class StarsAnimation extends BaseAnimation {
         this.addParticle(field);
 
         // The field fades in as one, rather than star by star
-        window.gsap.fromTo(field, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: 'power1.out' });
+        window.AnimatedWeatherCardGsap.fromTo(field, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: 'power1.out' });
 
         // The moon takes the sun's place in the top-right, clear of the
         // temperature. Its disc stays steady; only its halo breathes (CSS).
@@ -98,7 +98,7 @@ export class StarsAnimation extends BaseAnimation {
             moon.className = 'moon-gsap';
             animationLayer.appendChild(moon);
             this.addParticle(moon);
-            window.gsap.fromTo(moon, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: 'power1.out' });
+            window.AnimatedWeatherCardGsap.fromTo(moon, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: 'power1.out' });
         }
 
         devLog(this.config.devMode, `Stars animation started with ${starCount} stars`);
@@ -109,7 +109,7 @@ export class StarsAnimation extends BaseAnimation {
         if (animationLayer) {
             const elements = animationLayer.querySelectorAll('.stars-field, .star-gsap, .moon-gsap');
             elements.forEach(el => {
-                if (window.gsap) window.gsap.killTweensOf(el);
+                if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(el);
                 if (el.parentNode) el.parentNode.removeChild(el);
             });
         }

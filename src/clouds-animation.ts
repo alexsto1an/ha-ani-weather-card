@@ -39,7 +39,7 @@ export class CloudsAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start clouds animation');
         }
 
@@ -69,7 +69,7 @@ export class CloudsAnimation extends BaseAnimation {
     protected async onStop(): Promise<void> {
         // Kill all cloud timelines, and any change of speed still easing in
         this.cloudTimelines.forEach(tl => {
-            window.gsap?.killTweensOf(tl);
+            window.AnimatedWeatherCardGsap?.killTweensOf(tl);
             if (tl && typeof tl.kill === 'function') tl.kill();
         });
         this.cloudTimelines = [];
@@ -100,11 +100,11 @@ export class CloudsAnimation extends BaseAnimation {
      * over the same few seconds the sky takes to change.
      */
     protected onWindSpeedChange(): void {
-        if (!window.gsap) return;
+        if (!window.AnimatedWeatherCardGsap) return;
         const settings = getWeatherSettings(this.cardConfig, this.realWindSpeed);
         const timeScale = driftWindFactor(settings.windSpeed) / this.startWindFactor;
         this.cloudTimelines.forEach(tl => {
-            window.gsap!.to(tl, { timeScale, duration: SKY_DISSOLVE_SEC, ease: 'sine.inOut', overwrite: true });
+            window.AnimatedWeatherCardGsap!.to(tl, { timeScale, duration: SKY_DISSOLVE_SEC, ease: 'sine.inOut', overwrite: true });
         });
     }
 }

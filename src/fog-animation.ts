@@ -33,7 +33,7 @@ export class FogAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start fog animation');
         }
 
@@ -70,7 +70,7 @@ export class FogAnimation extends BaseAnimation {
         const card = this.element.querySelector('.animated-weather-card') as HTMLElement;
         const fogLayers = card?.querySelectorAll('.fog-layer');
         fogLayers?.forEach(layer => {
-            if (window.gsap) window.gsap.killTweensOf(layer);
+            if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(layer);
             if (layer.parentNode) layer.parentNode.removeChild(layer);
         });
 

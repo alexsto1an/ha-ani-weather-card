@@ -115,9 +115,8 @@ export const DEV_MODE_SAMPLE_DATA = {
     indoorHumidity: "45%"
 };
 
-export const GSAP_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
 
-export const CARD_VERSION = '1.0.2';
+export const CARD_VERSION = '1.1.0';
 
 // Day/Night color schemes for animations
 export const DAY_NIGHT_ANIMATION_COLORS = {

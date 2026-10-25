@@ -452,7 +452,8 @@ export interface CustomCardDefinition {
  */
 declare global {
     interface Window {
-        gsap: GSAP;
+        /** The card's own GSAP, bundled into animated-weather-card.js and set there; the planes bundle reads it too */
+        AnimatedWeatherCardGsap: GSAP;
         customCards: CustomCardDefinition[];
         /** Set by the dev panel bundle (animated-weather-card-dev.js) when it loads */
         AnimatedWeatherCardDevPanel?: new (card: import('./dev-panel').DevPanelHost) => import('./dev-panel').DevPanel;

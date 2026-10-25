@@ -68,7 +68,7 @@ export class ParticlePool {
         this.running = false;
         this.items.forEach(item => {
             item.anim?.kill();
-            window.gsap?.killTweensOf(item.el);
+            window.AnimatedWeatherCardGsap?.killTweensOf(item.el);
             item.el.remove();
         });
         this.items = [];

@@ -79,7 +79,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
 - **Respects reduced motion.** If reduced motion is on in your system settings, the sky stays still: the same colour and light, with no moving weather.
 - **Readable in every sky.** Text sits above the weather, and every built-in sky is tested to meet WCAG AA contrast for the card's text. Screen readers hear temperature and condition changes, and decorative layers are hidden from them.
-- **Light to load.** The card is about 49 KB gzipped, plus GSAP from a CDN. The visual editor, the note writer, the planes and the developer panel load only when they're needed.
+- **Light to load.** The card is about 76 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the note writer, the planes and the developer panel load only when they're needed.
 - **Set up visually.** Every weather card option is in the visual editor. YAML is there when you want it.
 
 ## Built with AI.
@@ -95,7 +95,6 @@ The [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks
 ### What you need
 
 - **A weather entity.** Any weather integration works: Met.no, OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others.
-- **Internet access for each device that shows the dashboard.** The card loads [GSAP](https://gsap.com), its animation library, from `cdnjs.cloudflare.com`. If a device can't reach it, the card still shows the sky and every value, just without motion.
 - **Optional:** an AI integration with an AI Task (Home Assistant 2025.8 or later) for the weather note, the [Moon](https://www.home-assistant.io/integrations/moon/) integration for the tracker's moon phase, and the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for planes.
 
 The card ships as five files that sit in the same folder:
@@ -620,7 +619,6 @@ Check these, in order:
 
 1. Reduced motion is on in your system settings.
 2. `animate` is `false`.
-3. The device couldn't load GSAP from `cdnjs.cloudflare.com`. The browser console says "GSAP unavailable — animations disabled".
 
 **The settings panel stays empty**
 `animated-weather-card-editor.js` must be in the same folder as `animated-weather-card.js`.
@@ -695,7 +693,7 @@ src/
 
 ## Credits
 
-- [GSAP](https://gsap.com) moves the weather.
+- [GSAP](https://gsap.com) moves the weather. It's bundled into the card under its [standard license](https://gsap.com/standard-license).
 - [Material Design Icons](https://pictogrammers.com/library/mdi/), through Home Assistant, draw the metric icons.
 - The [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) by AlexandrErohin supplies the planes.
 - The Home Assistant community gave feedback along the way. Thank you.

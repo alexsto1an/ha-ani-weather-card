@@ -79,7 +79,7 @@ export class SnowAnimation extends BaseAnimation {
      * Start the snow animation
      */
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start snow animation');
         }
 
@@ -132,8 +132,8 @@ export class SnowAnimation extends BaseAnimation {
         `;
         flake.dataset.opacity = (0.45 + 0.45 * depth).toFixed(2);
 
-        window.gsap.set(flake, { transformOrigin: '50% -500%', rotation: -SNOW_SWAY_DEG });
-        const swing = window.gsap.to(flake, {
+        window.AnimatedWeatherCardGsap.set(flake, { transformOrigin: '50% -500%', rotation: -SNOW_SWAY_DEG });
+        const swing = window.AnimatedWeatherCardGsap.to(flake, {
             rotation: SNOW_SWAY_DEG,
             duration: between(1.4, 2.2),
             ease: 'sine.inOut',
@@ -169,8 +169,8 @@ export class SnowAnimation extends BaseAnimation {
         const drift = distance * between(0.04, 0.13) * wind;
         const x = between(-drift, Math.max(1, width - size));
 
-        window.gsap.set(flake, { x, opacity: parseFloat(flake.dataset.opacity || '0.7') });
-        const tl = window.gsap.timeline({ onComplete: next });
+        window.AnimatedWeatherCardGsap.set(flake, { x, opacity: parseFloat(flake.dataset.opacity || '0.7') });
+        const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(flake, { y: startY }, { y: endY, x: x + drift, duration: fallSec, ease: 'none' });
         if (settles) {
             tl.call(() => this.addToAccumulation(), [], fallSec);
@@ -193,7 +193,7 @@ export class SnowAnimation extends BaseAnimation {
 
         // Remove snow accumulation
         if (this.accumulationElement && this.accumulationElement.parentNode) {
-            window.gsap?.killTweensOf(this.accumulationElement);
+            window.AnimatedWeatherCardGsap?.killTweensOf(this.accumulationElement);
             this.accumulationElement.parentNode.removeChild(this.accumulationElement);
             this.accumulationElement = undefined;
         }
@@ -270,7 +270,7 @@ export class SnowAnimation extends BaseAnimation {
         if (current >= maxHeight) return;
         const target = Math.min(maxHeight, current + 0.8);
         pile.setAttribute('data-target-height', String(target));
-        window.gsap.to(pile, {
+        window.AnimatedWeatherCardGsap.to(pile, {
             scaleY: target / maxHeight,
             opacity: Math.min(0.9, target / maxHeight),
             duration: 0.3,

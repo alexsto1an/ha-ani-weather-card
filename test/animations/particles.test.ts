@@ -9,7 +9,7 @@ import { LightningAnimation, LIGHTNING_FIRST_FLASH_MS, LIGHTNING_INTERVAL_MS, LI
 import type { FakeTimeline } from '../setup';
 
 type GsapMock = { timeline: ReturnType<typeof vi.fn> };
-const gsap = (): GsapMock => (window as unknown as { gsap: GsapMock }).gsap;
+const gsap = (): GsapMock => (window as unknown as { AnimatedWeatherCardGsap: GsapMock }).AnimatedWeatherCardGsap;
 
 /** Timelines created so far, oldest first. */
 const timelines = (): FakeTimeline[] => gsap().timeline.mock.results.map(r => r.value as FakeTimeline);
@@ -39,7 +39,7 @@ function makeCard(width = 420, height = 230): HTMLElement {
 
 describe('ParticlePool', () => {
     let layer: HTMLElement;
-    const cycle = (_el: HTMLElement, next: () => void) => window.gsap.timeline({ onComplete: next }) as never;
+    const cycle = (_el: HTMLElement, next: () => void) => window.AnimatedWeatherCardGsap.timeline({ onComplete: next }) as never;
 
     beforeEach(() => {
         layer = document.createElement('div');
@@ -82,7 +82,7 @@ describe('ParticlePool', () => {
     });
 
     it('prewarms only the first cycle', () => {
-        const tl = window.gsap.timeline() as unknown as FakeTimeline;
+        const tl = window.AnimatedWeatherCardGsap.timeline() as unknown as FakeTimeline;
         prewarm(tl as never, false);
         expect(tl.progress).not.toHaveBeenCalled();
         prewarm(tl as never, true);
@@ -242,7 +242,7 @@ describe('snow and sleet', () => {
             expect(speed).toBeGreaterThanOrEqual(SNOW_SPEED[0] * 0.9 - 0.01);
             expect(speed).toBeLessThanOrEqual(SNOW_SPEED[1] * 1.1 + 0.01);
         }
-        const swings = (window.gsap.to as unknown as ReturnType<typeof vi.fn>).mock.calls
+        const swings = (window.AnimatedWeatherCardGsap.to as unknown as ReturnType<typeof vi.fn>).mock.calls
             .filter(([target]) => (target as HTMLElement).classList?.contains('snowflake'));
         expect(swings.length).toBeGreaterThan(0);
         for (const [, vars] of swings) {
@@ -257,7 +257,7 @@ describe('snow and sleet', () => {
         const host = makeCard();
         const snow = new SnowAnimation(host, { intensity: 1, scale: 1 }, { entity: 'weather.home' });
         await snow.start();
-        const sets = (window.gsap.set as unknown as ReturnType<typeof vi.fn>).mock.calls;
+        const sets = (window.AnimatedWeatherCardGsap.set as unknown as ReturnType<typeof vi.fn>).mock.calls;
         const falls = timelines().flatMap(tl => (tl.fromTo as ReturnType<typeof vi.fn>).mock.calls);
         for (const [flake, , to] of falls) {
             const start = [...sets].reverse().find(([target, vars]) => target === flake && 'x' in vars)?.[1].x;

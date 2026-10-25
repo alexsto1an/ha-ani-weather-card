@@ -123,8 +123,8 @@ src/
   - Everything that moves is real.
 - **Readability.** Text must stay readable on every sky. `test/styles/sky.test.ts` checks WCAG AA contrast for every condition at every time of day, and has to keep passing.
 - **Motion and accessibility.** Respect reduced motion: no moving weather when it's on. Keep decorative layers hidden from screen readers.
-- **Dependencies.** Add no new runtime dependencies. GSAP, loaded from a CDN, is the only one.
-- **Bundle size.** Keep the main bundle lean. Code that only the editor, the note writer, the planes or the developer panel needs belongs in its own bundle. Never share `_`-prefixed names between bundles: each bundle mangles them differently.
+- **Dependencies.** Add no new runtime dependencies. GSAP, bundled into the main file, is the only one.
+- **Bundle size.** Keep the main bundle lean. Code that only the editor, the note writer, the planes or the developer panel needs belongs in its own bundle. Keep names the bundles share plain, without a leading `_`. The build doesn't rename properties, because the bundled GSAP relies on its own names.
 - **Safety.** Escape text that comes from entities, and validate colours before they reach CSS.
 - **Writing.** In comments, the CHANGELOG and the docs, say plainly what the code does and why.
 

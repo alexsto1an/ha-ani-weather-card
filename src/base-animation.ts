@@ -263,9 +263,9 @@ export abstract class BaseAnimation {
         this.timeouts = [];
         
         // Kill GSAP animations
-        if (window.gsap) {
+        if (window.AnimatedWeatherCardGsap) {
             this.particles.forEach(particle => {
-                window.gsap.killTweensOf(particle);
+                window.AnimatedWeatherCardGsap.killTweensOf(particle);
             });
         }
         
