@@ -2,6 +2,7 @@
 
 import type { GSAPTimeline } from './types';
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
+import { isValidColor } from './utils';
 
 /** Leaf speed range in px/s at the default wind. */
 export const LEAF_SPEED: [number, number] = [90, 160];
@@ -340,10 +341,12 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
 
     const layer = layerConfig[layerIndex] || layerConfig[2];
 
-    // Set fog layer styling
-    const fogColor = config.color_palette === 'default' ? 
-        (config.custom_colors?.fog_color || '#e0e0e0') : 
-        'var(--secondary-text-color)';
+    // Set fog layer styling. A custom fog colour goes into cssText, so it
+    // must be a colour and nothing that could end the declaration.
+    const customFog = config.custom_colors?.fog_color;
+    const fogColor = config.color_palette === 'default'
+        ? (isValidColor(customFog) ? customFog : '#e0e0e0')
+        : 'var(--secondary-text-color)';
 
     // Create more organic fog shape with multiple cloud-like segments
     const segmentCount = 3 + Math.floor(Math.random() * 3); // 3-5 segments per layer

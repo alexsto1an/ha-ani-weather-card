@@ -4,6 +4,9 @@ import '../../src/animated-weather-card-editor';
 import '../../src/sun-tracker-card';
 import { isValidColor } from '../../src/utils';
 import { DEFAULT_ENGINE_SETTINGS } from '../../src/constants';
+import { generateCustomColorStyles } from '../../src/color-utils';
+import { createGSAPFogLayer } from '../../src/gsap-effects';
+import { conditionName } from '../../src/weather-data';
 
 // Values that would break out of an HTML attribute, or out of a CSS
 // declaration, if they reached the markup as they are
@@ -57,6 +60,19 @@ describe('the sun tracker\'s moon', () => {
         expect(root.querySelector('img')).toBeNull();
         // The phase is still shown, as text
         expect(root.querySelector('.st-metric[data-kind="moon"] .st-metric-value')!.textContent).toMatch(/<img src=x/i);
+
+        // A state named like something every object inherits isn't a phase either
+        tracker.hass = hass('constructor');
+        expect(icon()).toBe('mdi:weather-night');
+        expect(root.querySelector('.st-metric[data-kind="moon"] .st-metric-value')!.textContent).toBe('Constructor');
+    });
+});
+
+describe('condition names', () => {
+    it('come only from the table\'s own entries', () => {
+        const entity = (state: string) => ({ entity_id: 'weather.home', state, attributes: {} }) as never;
+        expect(conditionName({} as never, entity('constructor'))).toBe('constructor');
+        expect(conditionName({} as never, entity('toString'))).toBe('toString');
     });
 });
 
@@ -105,6 +121,30 @@ describe('colors', () => {
         ]) {
             expect(isValidColor(color), color).toBe(false);
         }
+    });
+
+    it('fill every variable a color sets', () => {
+        const styles = generateCustomColorStyles({ type: 'custom:animated-weather-card', entity: 'weather.home', custom_colors: { sun_color: '#ff8800' } });
+        expect(styles).toContain('--weather-sun-primary: #ff8800');
+        expect(styles).toContain('--weather-sun-secondary: #ff8800');
+        expect(styles).not.toContain('${value}');
+    });
+
+    it('keep a hostile fog color out of the fog\'s style', () => {
+        const fog = document.createElement('div');
+        const card = document.createElement('div');
+        const config = { color_palette: 'default', custom_colors: { fog_color: 'red); position: fixed; inset: 0; background-image: url(https://example.invalid/p.png); --x: (' } };
+        createGSAPFogLayer(fog, { windSpeed: 1 }, 0, card, config);
+        const segments = [...fog.querySelectorAll<HTMLElement>('.fog-layer > div')];
+        expect(segments.length).toBeGreaterThan(0);
+        for (const segment of segments) {
+            expect(segment.style.cssText).not.toContain('example.invalid');
+            expect(segment.style.position).toBe('absolute');
+        }
+        // A real colour still paints the fog
+        const painted = document.createElement('div');
+        createGSAPFogLayer(painted, { windSpeed: 1 }, 0, card, { color_palette: 'default', custom_colors: { fog_color: 'rgb(200, 210, 220)' } });
+        expect(painted.querySelector<HTMLElement>('.fog-layer > div')!.style.background).toContain('rgb(200, 210, 220)');
     });
 
     it('keep a hostile color out of the card\'s markup', async () => {

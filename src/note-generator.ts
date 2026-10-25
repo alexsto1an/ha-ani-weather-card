@@ -9,7 +9,7 @@
 
 import { AnimatedWeatherCardConfig, HassEntity, HomeAssistant } from './types';
 import { HA_CONDITION_NAMES, WeatherNote } from './weather-data';
-import { convertWindSpeedToKmh } from './utils';
+import { convertWindSpeedToKmh, lookup } from './utils';
 import { cardLanguage, formatTime } from './localize';
 
 /** One forecast entry, as weather/subscribe_forecast sends it. Every field but the time is optional. */
@@ -227,7 +227,7 @@ export function computeFacts({ weather, forecast, forecastType, windows = [], no
         missing: [],
         table: [],
     };
-    const name = (condition?: string) => condition ? (HA_CONDITION_NAMES[condition] ?? condition).toLowerCase() : undefined;
+    const name = (condition?: string) => condition ? (lookup(HA_CONDITION_NAMES, condition) ?? condition).toLowerCase() : undefined;
     const degrees = (value?: number) => value === undefined ? undefined : `${Math.round(value)}${units.temperature}`;
 
     const entries = (forecast ?? []).filter(e => !isNaN(Date.parse(e.datetime)));
@@ -482,7 +482,7 @@ export function buildInstructions(facts: NoteFacts, options: { tone: NoteTone; l
         ].filter((line): line is string => line !== undefined);
 
     const now = [
-        HA_CONDITION_NAMES[facts.condition]?.toLowerCase() ?? facts.condition,
+        lookup(HA_CONDITION_NAMES, facts.condition)?.toLowerCase() ?? facts.condition,
         deg(facts.temperature),
         facts.feelsLike !== undefined ? `feels like ${deg(facts.feelsLike)}` : undefined,
         facts.windSpeed !== undefined ? `wind ${Math.round(facts.windSpeed)} ${units.wind}` : undefined,

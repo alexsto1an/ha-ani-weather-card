@@ -90,7 +90,7 @@ export function generateCustomColorStyles(config: AnimatedWeatherCardConfig): st
     // These can be applied regardless of color palette. Validate first to
     // avoid injecting arbitrary user-controlled CSS into the inline style.
     const setIfValid = (value: string | undefined, declaration: string) => {
-        if (value && isValidColor(value)) customColorStyles += declaration.replace('${value}', value);
+        if (value && isValidColor(value)) customColorStyles += declaration.replace(/\$\{value\}/g, value);
     };
     setIfValid(customColors.text_color, '--weather-text-color: ${value} !important; ');
     setIfValid(customColors.sun_color, '--weather-sun-primary: ${value} !important; --weather-sun-secondary: ${value} !important; ');

@@ -87,6 +87,15 @@ export function escapeHtml(str: string | number | undefined | null): string {
         .replace(/'/g, '&#39;');
 }
 
+/**
+ * A table's own entry for a key from outside the code (an entity state), or
+ * undefined. Indexing or `in` would also find what every object inherits:
+ * a state of "constructor" would read as a function.
+ */
+export function lookup<T>(table: Record<string, T>, key: string): T | undefined {
+    return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
 export interface TextFieldOptions {
     id: string;
     label: string;

@@ -2,7 +2,7 @@
 
 import { HomeAssistant, HassEntity, AnimatedWeatherCardConfig } from './types';
 import { DEV_MODE_TEMPERATURES, DEV_MODE_CONDITION_NAMES, DEV_MODE_SAMPLE_DATA } from './constants';
-import { convertWindSpeedToKmh, formatLocalizedNumber } from './utils';
+import { convertWindSpeedToKmh, formatLocalizedNumber, lookup } from './utils';
 
 /** Home Assistant's English names for weather states, used when HA can't translate. */
 export const HA_CONDITION_NAMES: Record<string, string> = {
@@ -32,7 +32,7 @@ export function conditionName(hass: HomeAssistant, entity: HassEntity): string {
         const localized = hass.formatEntityState?.(entity);
         if (localized && localized !== entity.state) return localized;
     } catch { /* older HA */ }
-    return HA_CONDITION_NAMES[entity.state] || entity.state;
+    return lookup(HA_CONDITION_NAMES, entity.state) || entity.state;
 }
 
 export interface SunData {

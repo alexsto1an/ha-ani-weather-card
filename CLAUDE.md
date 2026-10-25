@@ -106,7 +106,7 @@ demo/
   - Storm beats fog, fog beats heavy rain, and so on.
   - `hail` becomes `sleety`.
   - Anything unknown becomes `sunny`.
-- **Escaping.** Entity and config text goes through `escapeHtml` wherever it reaches markup, attributes included: the editors' values, the cards' labels and icons. An icon name is built only from a known value (the tracker's eight moon phases), never from a state. Colours are validated before they reach CSS (`isValidColor`: hex, names, and `rgb()`/`rgba()` of numbers only), and the style attribute they land in is escaped too. `test/cards/escaping.test.ts` feeds hostile values through each.
+- **Escaping.** Entity and config text goes through `escapeHtml` wherever it reaches markup, attributes included: the editors' values, the cards' labels and icons. An icon name is built only from a known value (the tracker's eight moon phases), never from a state, and a state is looked up in a table with `lookup` (`utils.ts`), which reads only the table's own entries, never what every object inherits (`constructor`). Colours are validated before they reach CSS (`isValidColor`: hex, names, and `rgb()`/`rgba()` of numbers only), the fog's `custom_colors.fog_color` included, and the style attribute they land in is escaped too. `test/cards/escaping.test.ts` feeds hostile values through each.
 
 ### The sky
 

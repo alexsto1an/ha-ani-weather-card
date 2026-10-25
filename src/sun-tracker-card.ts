@@ -12,7 +12,7 @@ import { SunData } from './weather-data';
 import { iconBoxCss } from './styles/icon-box';
 import { localizeString, localeKey, formatTime, formatDuration, timeHtml as splitTimeHtml } from './localize';
 import { HomeAssistant } from './types';
-import { escapeHtml, getWeatherClass, textField } from './utils';
+import { escapeHtml, getWeatherClass, lookup, textField } from './utils';
 import {
     skyColors, skyPhaseFromSun, oklchToSrgb, toHex, registerSkyProperties, SKY_CONDITIONS,
     type SkyCondition, type SkyPhase,
@@ -59,7 +59,7 @@ const MOON_PHASE_NAMES: Record<string, string> = {
  * gets a plain moon rather than an icon name built from it.
  */
 function moonPhaseToIcon(phase: string): string {
-    if (!(phase in MOON_PHASE_NAMES)) return 'mdi:weather-night';
+    if (lookup(MOON_PHASE_NAMES, phase) === undefined) return 'mdi:weather-night';
     return `mdi:moon-${phase.replace(/_moon$/, '').replace(/_/g, '-')}`;
 }
 
@@ -661,7 +661,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
         return {
             phase,
             phaseName: (localized && localized !== phase ? localized : undefined)
-                || MOON_PHASE_NAMES[phase] || phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                || lookup(MOON_PHASE_NAMES, phase) || phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             icon: moonPhaseToIcon(phase)
         };
     }
