@@ -36,7 +36,7 @@ type GsapMock = {
     set: ReturnType<typeof vi.fn>;
     timeline: ReturnType<typeof vi.fn>;
 };
-const gsap = (): GsapMock => (window as unknown as { gsap: GsapMock }).gsap;
+const gsap = (): GsapMock => (window as unknown as { AnimatedWeatherCardGsap: GsapMock }).AnimatedWeatherCardGsap;
 
 /** Finish the n-th plane's timeline as if GSAP completed it. */
 function completeTimeline(n: number): void {

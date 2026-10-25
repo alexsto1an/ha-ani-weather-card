@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-25
+
+### Changed
+
+- GSAP, the animation library, is bundled into `animated-weather-card.js` instead of loaded from cdnjs.cloudflare.com: the card fetches no code from anywhere else, and moves on screens without internet access. The main file grows to about 76 KB gzipped. The card always uses its own GSAP, and leaves alone any other card's on the same dashboard.
+- The live demo's cards let their weather spill on phones too, as they do on a dashboard. Before, every card kept its weather inside on screens 640 px wide or less, even with the tuning section's Keep the weather inside switch off; now that switch is what keeps it in.
+
+### Fixed
+
+- Text from an entity or the config could break out of the HTML it was written into: a moon sensor whose state held a quote, any value in the visual editor, and a `rgb()` or `rgba()` colour with quotes or a semicolon in it. The sun tracker now builds a moon icon only from Home Assistant's eight phases, the editor escapes every value, and colours take only numbers inside `rgb()` and `rgba()`.
+- The visual editor stopped drawing when an engine setting in YAML wasn't a number. It now shows the default the card falls back to.
+- A fog colour set in YAML (`custom_colors.fog_color`) wasn't checked, and could add CSS of its own to the fog. It now has to be a colour, like the others.
+- A moon sensor whose state matched a name every JavaScript object has, such as `constructor`, was taken for a phase. Only Home Assistant's eight phases count now, and the same goes for condition names.
+- `custom_colors.sun_color` now colours the whole sun. Its rim kept the default orange, and on browsers without registered CSS properties the sun's disc wasn't drawn at all.
+
 ## [1.0.2] - 2026-10-25
 
 ### Changed
@@ -49,7 +64,8 @@ The first public release: two cards for Home Assistant, the Animated Weather Car
 - **Try it first.** A [live demo](https://alexsto1an.github.io/ha-ani-weather-card/) runs the real card in your browser, on sample data or your own weather, and a [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step.
 - **Developer mode.** `dev_mode: true` shows sample weather with a panel for every condition, time of day and layer, and a Fly a plane button. Only a card in dev mode logs to the console.
 
-[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/alexsto1an/ha-ani-weather-card/releases/tag/v1.0.0

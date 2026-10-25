@@ -45,7 +45,7 @@ export class SleetAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start sleet animation');
         }
 
@@ -102,8 +102,8 @@ export class SleetAnimation extends BaseAnimation {
         const drift = distance * between(0.03, 0.08) * wind;
         const x = between(-drift, Math.max(1, width - size));
 
-        window.gsap.set(pellet, { x, opacity: between(0.8, 1), rotation: between(0, 360) });
-        const tl = window.gsap.timeline({ onComplete: next });
+        window.AnimatedWeatherCardGsap.set(pellet, { x, opacity: between(0.8, 1), rotation: between(0, 360) });
+        const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(pellet, { y: startY }, { y: endY, x: x + drift, duration: fallSec, ease: 'none' });
         if (settles) {
             tl.call(() => this.addToPile(card), [], fallSec);
@@ -141,7 +141,7 @@ export class SleetAnimation extends BaseAnimation {
         if (current >= SLEET_PILE_MAX) return;
         const target = Math.min(SLEET_PILE_MAX, current + 0.4);
         pile.setAttribute('data-target-height', String(target));
-        window.gsap.to(pile, { scaleY: target / SLEET_PILE_MAX, duration: 0.3, ease: 'power2.out' });
+        window.AnimatedWeatherCardGsap.to(pile, { scaleY: target / SLEET_PILE_MAX, duration: 0.3, ease: 'power2.out' });
     }
 
     protected async onStop(): Promise<void> {
@@ -152,7 +152,7 @@ export class SleetAnimation extends BaseAnimation {
         const card = this.element.querySelector('.animated-weather-card');
         if (card) {
             card.querySelectorAll('.sleet-accumulation').forEach(pile => {
-                if (window.gsap) window.gsap.killTweensOf(pile);
+                if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(pile);
                 pile.remove();
             });
         }

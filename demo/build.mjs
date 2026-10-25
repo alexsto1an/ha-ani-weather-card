@@ -18,7 +18,7 @@ export const PAGE_FILES = [
     'index.html', 'demo.css', 'demo.js', 'scene.mjs', 'code.mjs', 'clock.js', 'ha-elements.js',
     'setup/index.html', 'setup.css', 'setup.js',
 ];
-/** The pages: each loads GSAP from the card's own URL and wears the mark in its top bar. */
+/** The pages: each wears the mark in its top bar. */
 const PAGES = ['index.html', 'setup/index.html'];
 
 /** The tracker builds these names at runtime from the moon sensor's state. */
@@ -61,14 +61,11 @@ export function build(out = join(root, '_site')) {
         mkdirSync(dirname(join(out, file)), { recursive: true });
         copyFileSync(join(here, file), join(out, file));
     }
-    // The pages load GSAP themselves, from the card's own URL (see index.html), and get the mark,
-    // drawn into the markup so it's there on the first paint
-    const gsapUrl = readFileSync(join(root, 'src/constants.ts'), 'utf8').match(/GSAP_CDN_URL = '([^']+)'/)?.[1];
-    if (!gsapUrl) throw new Error('GSAP_CDN_URL not found in src/constants.ts');
+    // The pages get the mark, drawn into the markup so it's there on the first paint
     const mark = logoSvg({ className: 'wordmark-glyph logo-mark' });
     for (const file of PAGES) {
         const page = join(out, file);
-        writeFileSync(page, readFileSync(page, 'utf8').replace('%GSAP_CDN_URL%', gsapUrl).replace('%LOGO%', mark));
+        writeFileSync(page, readFileSync(page, 'utf8').replace('%LOGO%', mark));
     }
     // The favicon: the mark by day, standing alone (browsers don't animate favicons)
     writeFileSync(join(out, 'favicon.svg'), logoSvg({ only: 'day', id: 'favicon' }));

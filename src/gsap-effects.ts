@@ -2,6 +2,7 @@
 
 import type { GSAPTimeline } from './types';
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
+import { isValidColor } from './utils';
 
 /** Leaf speed range in px/s at the default wind. */
 export const LEAF_SPEED: [number, number] = [90, 160];
@@ -45,10 +46,10 @@ export function createGSAPLeaf(windLayer: Element, settings: any, scale: number,
     const edgeSec = Math.min(duration, (cardWidth - startX) / speed);
     const rise = isUpdraft ? -(60 + Math.random() * 80) : isWeak ? 80 + Math.random() * 80 : (Math.random() - 0.5) * 80;
 
-    window.gsap.set(leaf, { x: startX, y: startY, rotation: Math.random() * 360, opacity: 0 });
+    window.AnimatedWeatherCardGsap.set(leaf, { x: startX, y: startY, rotation: Math.random() * 360, opacity: 0 });
     windLayer.appendChild(leaf);
 
-    const tl = window.gsap.timeline({
+    const tl = window.AnimatedWeatherCardGsap.timeline({
         onComplete: () => {
             if (leaf.parentNode) leaf.parentNode.removeChild(leaf);
             if (onRemove) onRemove(leaf);
@@ -91,7 +92,7 @@ export function createGSAPSwoosh(windLayer: Element, settings: any, scale: numbe
     const cardHeight = cardElement.offsetHeight;
     const startY = (cardHeight * 0.15) + Math.random() * (cardHeight * 0.7);
 
-    window.gsap.set(swoosh, {
+    window.AnimatedWeatherCardGsap.set(swoosh, {
         x: -swooshWidth,
         y: startY,
         rotation: isCurved ? -5 + Math.random() * 10 : 0,
@@ -104,7 +105,7 @@ export function createGSAPSwoosh(windLayer: Element, settings: any, scale: numbe
 
     const distance = cardWidth + swooshWidth * 2;
     const duration = distance / (SWOOSH_SPEED * driftWindFactor(settings.windSpeed));
-    const tl = window.gsap.timeline({
+    const tl = window.AnimatedWeatherCardGsap.timeline({
         onComplete: () => {
             if (swoosh.parentNode) swoosh.parentNode.removeChild(swoosh);
             if (onRemove) onRemove(swoosh);
@@ -151,7 +152,7 @@ const CLOUD_BLUR_PAD_PX = 12;
 /** Remove every cloud and its track, and stop them moving. */
 export function removeClouds(root: ParentNode): void {
     root.querySelectorAll('.cloud-track, .cloud-gsap').forEach(el => {
-        window.gsap?.killTweensOf(el);
+        window.AnimatedWeatherCardGsap?.killTweensOf(el);
         el.remove();
     });
 }
@@ -272,8 +273,8 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             const track = document.createElement('div');
             track.className = 'cloud-track';
             track.appendChild(cloud);
-            window.gsap.set(cloud, { opacity: layer.opacity });
-            window.gsap.set(track, {
+            window.AnimatedWeatherCardGsap.set(cloud, { opacity: layer.opacity });
+            window.AnimatedWeatherCardGsap.set(track, {
                 xPercent: 0,
                 x: -margin,
                 y: (cardHeight * topPosition) / 100,
@@ -283,7 +284,7 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
 
             // Drift across at constant speed, forever. Each cloud starts
             // somewhere along its path, so the sky is already populated.
-            const tl = window.gsap.timeline({
+            const tl = window.AnimatedWeatherCardGsap.timeline({
                 repeat: -1,
                 repeatDelay: Math.random() * 1.5,
             });
@@ -303,8 +304,8 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
 export function clearSnowAccumulation(cardElement: HTMLElement) {
     const snowAccumulation = cardElement.querySelector('.snow-accumulation');
     if (snowAccumulation) {
-        if (window.gsap) {
-            window.gsap.to(snowAccumulation, {
+        if (window.AnimatedWeatherCardGsap) {
+            window.AnimatedWeatherCardGsap.to(snowAccumulation, {
                 height: '0px',
                 duration: 2.0,
                 ease: "power2.out",
@@ -340,10 +341,12 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
 
     const layer = layerConfig[layerIndex] || layerConfig[2];
 
-    // Set fog layer styling
-    const fogColor = config.color_palette === 'default' ? 
-        (config.custom_colors?.fog_color || '#e0e0e0') : 
-        'var(--secondary-text-color)';
+    // Set fog layer styling. A custom fog colour goes into cssText, so it
+    // must be a colour and nothing that could end the declaration.
+    const customFog = config.custom_colors?.fog_color;
+    const fogColor = config.color_palette === 'default'
+        ? (isValidColor(customFog) ? customFog : '#e0e0e0')
+        : 'var(--secondary-text-color)';
 
     // Create more organic fog shape with multiple cloud-like segments
     const segmentCount = 3 + Math.floor(Math.random() * 3); // 3-5 segments per layer
@@ -400,13 +403,13 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
     const endX = cardWidth + fogLayerWidth; // End completely off-screen right
     
     // Set initial position
-    window.gsap.set(fogLayer, {
+    window.AnimatedWeatherCardGsap.set(fogLayer, {
         x: startX,
         opacity: layer.opacity
     });
 
     // Create infinite horizontal drift animation
-    const tl = window.gsap.timeline({
+    const tl = window.AnimatedWeatherCardGsap.timeline({
         repeat: -1,
         delay: layerIndex * 2 + Math.random() * 3 // Stagger start times
     });
@@ -418,12 +421,12 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
         ease: "none",
         onComplete: () => {
             // Reset position for seamless loop
-            window.gsap.set(fogLayer, { x: startX });
+            window.AnimatedWeatherCardGsap.set(fogLayer, { x: startX });
         }
     });
 
     // Add subtle opacity variation to simulate fog density changes
-    const opacityTl = window.gsap.timeline({ repeat: -1, yoyo: true });
+    const opacityTl = window.AnimatedWeatherCardGsap.timeline({ repeat: -1, yoyo: true });
     opacityTl.to(fogLayer, {
         opacity: layer.opacity * 0.6,
         duration: 3 + Math.random() * 4,

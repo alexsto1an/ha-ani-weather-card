@@ -12,7 +12,7 @@ import { SunData } from './weather-data';
 import { iconBoxCss } from './styles/icon-box';
 import { localizeString, localeKey, formatTime, formatDuration, timeHtml as splitTimeHtml } from './localize';
 import { HomeAssistant } from './types';
-import { escapeHtml, getWeatherClass, textField } from './utils';
+import { escapeHtml, getWeatherClass, lookup, textField } from './utils';
 import {
     skyColors, skyPhaseFromSun, oklchToSrgb, toHex, registerSkyProperties, SKY_CONDITIONS,
     type SkyCondition, type SkyPhase,
@@ -52,11 +52,15 @@ const MOON_PHASE_NAMES: Record<string, string> = {
     waning_crescent:  'Waning Crescent',
 };
 
+/**
+ * The icon for one of Home Assistant's eight moon phases: mdi:moon-{phase}
+ * with hyphens, except that new_moon and full_moon are mdi:moon-new and
+ * mdi:moon-full. The moon entity can be any sensor, so any other state
+ * gets a plain moon rather than an icon name built from it.
+ */
 function moonPhaseToIcon(phase: string): string {
-    // mdi icon follows the pattern mdi:moon-{phase_with_hyphens}, except
-    // that HA's new_moon and full_moon are mdi:moon-new and mdi:moon-full
-    const key = phase.replace(/_moon$/, '').replace(/_/g, '-');
-    return `mdi:moon-${key}`;
+    if (lookup(MOON_PHASE_NAMES, phase) === undefined) return 'mdi:weather-night';
+    return `mdi:moon-${phase.replace(/_moon$/, '').replace(/_/g, '-')}`;
 }
 
 // ── Sun path geometry (SVG user units; the SVG stretches to the card) ──
@@ -657,7 +661,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
         return {
             phase,
             phaseName: (localized && localized !== phase ? localized : undefined)
-                || MOON_PHASE_NAMES[phase] || phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                || lookup(MOON_PHASE_NAMES, phase) || phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             icon: moonPhaseToIcon(phase)
         };
     }
@@ -727,8 +731,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
             </div>` : (this.config.title && !compact ? `<div class="st-hero"><div class="st-title">${escapeHtml(this.config.title)}</div></div>` : '');
 
         const metric = (kind: string, icon: string, label: string, valueHtml: string, wrap = false) => `
-                <div class="st-metric" data-kind="${kind}">
-                    <div class="st-metric-label"><ha-icon icon="${icon}"></ha-icon><span title="${label}">${label}</span></div>
+                <div class="st-metric" data-kind="${escapeHtml(kind)}">
+                    <div class="st-metric-label"><ha-icon icon="${escapeHtml(icon)}"></ha-icon><span title="${escapeHtml(label)}">${escapeHtml(label)}</span></div>
                     <div class="st-metric-value${wrap ? ' wrap' : ''}">${valueHtml}</div>
                 </div>`;
         const showDetails = !compact && this.config.show_details !== false;

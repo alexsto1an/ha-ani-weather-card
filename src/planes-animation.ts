@@ -89,7 +89,7 @@ export class PlanesAnimation extends BaseAnimation {
 
         const layer = this.element.querySelector(this.layerSelector);
         layer?.querySelectorAll('.plane-gsap').forEach(p => {
-            if (window.gsap) window.gsap.killTweensOf(p);
+            if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(p);
             p.remove();
         });
     }
@@ -123,7 +123,7 @@ export class PlanesAnimation extends BaseAnimation {
 
     private launch(flight: FlightInfo, options: FlyoverOptions): boolean {
         // Staggered launches can land after a pause or stop; drop them.
-        if (this.state !== AnimationLifecycleState.ACTIVE || !window.gsap) return false;
+        if (this.state !== AnimationLifecycleState.ACTIVE || !window.AnimatedWeatherCardGsap) return false;
         if (this.particles.length >= MAX_CONCURRENT_PLANES) {
             devLog(this.config.devMode, `Skipping fly-over for ${flight.id}: ${MAX_CONCURRENT_PLANES} planes already on the card`);
             return false;
@@ -175,8 +175,8 @@ export class PlanesAnimation extends BaseAnimation {
         // Flip only the silhouette so the label never reads mirrored. A
         // helicopter flies with its nose down.
         const pitch = (FORWARD_PITCH_DEG[family] ?? 0) * plan.direction;
-        window.gsap.set(body, { scaleX: plan.direction, rotation: plan.tiltDeg + pitch });
-        window.gsap.set(plane, {
+        window.AnimatedWeatherCardGsap.set(body, { scaleX: plan.direction, rotation: plan.tiltDeg + pitch });
+        window.AnimatedWeatherCardGsap.set(plane, {
             x: startX,
             y: (plan.startYPercent / 100) * layerHeight,
             opacity: 0,
@@ -186,7 +186,7 @@ export class PlanesAnimation extends BaseAnimation {
         this.addParticle(plane);
 
         const fade = Math.min(FADE_SEC, plan.durationSec / 4);
-        const tl = window.gsap.timeline({
+        const tl = window.AnimatedWeatherCardGsap.timeline({
             onComplete: () => {
                 this.timelines.delete(plane);
                 plane.remove();
@@ -207,7 +207,7 @@ export class PlanesAnimation extends BaseAnimation {
             const clearAt = Math.min(plan.durationSec, Math.max(0, ((textEndX - startX) / (endX - startX)) * plan.durationSec));
             const half = PLANE_DIM_SEC / 2;
             if (plan.direction === 1) {
-                window.gsap.set(body, { opacity: PLANE_BEHIND_TEXT_OPACITY });
+                window.AnimatedWeatherCardGsap.set(body, { opacity: PLANE_BEHIND_TEXT_OPACITY });
                 tl.to(body, { opacity: 1, duration: PLANE_DIM_SEC, ease: 'sine.inOut' }, Math.max(0, clearAt - half));
             } else {
                 tl.to(body, { opacity: PLANE_BEHIND_TEXT_OPACITY, duration: PLANE_DIM_SEC, ease: 'sine.inOut' }, Math.max(0, clearAt - half));
@@ -234,7 +234,7 @@ export class PlanesAnimation extends BaseAnimation {
                 ((planeXWhenClear - startX) / (endX - startX)) * plan.durationSec));
             const labelOpacity = 0.72;
             if (plan.direction === 1) {
-                window.gsap.set(label, { opacity: 0 });
+                window.AnimatedWeatherCardGsap.set(label, { opacity: 0 });
                 tl.to(label, { opacity: labelOpacity, duration: LABEL_FADE_SEC, ease: 'power1.out' }, crossAt);
             } else {
                 tl.to(label, { opacity: 0, duration: LABEL_FADE_SEC, ease: 'power1.in' }, Math.max(0, crossAt - LABEL_FADE_SEC));

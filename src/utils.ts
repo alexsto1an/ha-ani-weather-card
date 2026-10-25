@@ -38,8 +38,10 @@ export function isValidColor(color: unknown): color is string {
     // Check hex colors
     if (/^#([0-9A-Fa-f]{3}){1,2}$/.test(color)) return true;
     
-    // Check rgb/rgba colors
-    if (/^rgba?\([^)]+\)$/.test(color)) return true;
+    // rgb()/rgba(): digits, commas, dots, percent signs and spaces, and the
+    // slash of the modern `rgb(255 0 0 / 50%)`. Nothing that could end the
+    // declaration or the style attribute the color is written into.
+    if (/^rgba?\(\s*[\d.,%\s/]+\)$/.test(color)) return true;
     
     // Check CSS color names (comprehensive validation)
     const cssColorNames = [
@@ -83,6 +85,15 @@ export function escapeHtml(str: string | number | undefined | null): string {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+/**
+ * A table's own entry for a key from outside the code (an entity state), or
+ * undefined. Indexing or `in` would also find what every object inherits:
+ * a state of "constructor" would read as a function.
+ */
+export function lookup<T>(table: Record<string, T>, key: string): T | undefined {
+    return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 }
 
 export interface TextFieldOptions {
@@ -270,53 +281,6 @@ export function updateDevModeWeatherInfo(element: HTMLElement | null, condition:
 }
 
 /**
- * Load GSAP library if not already loaded with proper error handling
- * @param cdnUrl - The CDN URL for GSAP library
- * @param timeoutMs - Maximum time to wait for GSAP to load (default: 10000ms)
- * @returns Promise that resolves when GSAP is loaded
- * @throws {Error} If GSAP fails to load, times out, or URL is invalid
- */
-export function loadGSAP(cdnUrl: string, timeoutMs = 10000): Promise<void> {
-    if (typeof cdnUrl !== 'string' || !cdnUrl.trim()) {
-        return Promise.reject(new Error('Invalid CDN URL provided'));
-    }
-    return new Promise((resolve, reject) => {
-        if (window.gsap) {
-            resolve();
-            return;
-        }
-
-        let settled = false;
-        const timer = setTimeout(() => {
-            if (!settled) {
-                settled = true;
-                console.error(`GSAP CDN loading timed out after ${timeoutMs}ms`);
-                reject(new Error(`GSAP failed to load within ${timeoutMs}ms`));
-            }
-        }, timeoutMs);
-
-        const script = document.createElement('script');
-        script.src = cdnUrl;
-        script.onload = () => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                resolve();
-            }
-        };
-        script.onerror = () => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                console.error('Failed to load GSAP from CDN');
-                reject(new Error('Failed to load GSAP'));
-            }
-        };
-        document.head.appendChild(script);
-    });
-}
-
-/**
  * Clear all pending timeouts with type safety
  * @param timeouts - Array of timeout handles
  */
@@ -334,9 +298,9 @@ export function clearPendingTimeouts(timeouts: (NodeJS.Timeout | number | null |
  * Scoped to the container's descendants so other card instances are unaffected.
  */
 export function pauseCardGSAPAnimations(container: HTMLElement): void {
-    if (!window.gsap) return;
+    if (!window.AnimatedWeatherCardGsap) return;
     container.querySelectorAll('*').forEach(el => {
-        window.gsap.getTweensOf(el).forEach((t: any) => t.pause());
+        window.AnimatedWeatherCardGsap.getTweensOf(el).forEach((t: any) => t.pause());
     });
 }
 
@@ -345,9 +309,9 @@ export function pauseCardGSAPAnimations(container: HTMLElement): void {
  * Scoped to the container's descendants so other card instances are unaffected.
  */
 export function resumeCardGSAPAnimations(container: HTMLElement): void {
-    if (!window.gsap) return;
+    if (!window.AnimatedWeatherCardGsap) return;
     container.querySelectorAll('*').forEach(el => {
-        window.gsap.getTweensOf(el).forEach((t: any) => t.resume());
+        window.AnimatedWeatherCardGsap.getTweensOf(el).forEach((t: any) => t.resume());
     });
 }
 
@@ -356,9 +320,9 @@ export function resumeCardGSAPAnimations(container: HTMLElement): void {
  * Scoped to the container's descendants so other card instances are unaffected.
  */
 export function killCardGSAPAnimations(container: HTMLElement): void {
-    if (!window.gsap) return;
+    if (!window.AnimatedWeatherCardGsap) return;
     container.querySelectorAll('*').forEach(el => {
-        window.gsap.killTweensOf(el);
+        window.AnimatedWeatherCardGsap.killTweensOf(el);
     });
 }
 

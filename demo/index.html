@@ -398,18 +398,17 @@
         <p>AI helped build this card. <a href="https://github.com/alexsto1an/ha-ani-weather-card#built-with-ai">The README says how.</a></p>
     </footer>
 
-    <!-- Order matters. GSAP first, on the real clock: the demo's clock jumps
-         between times of day, and GSAP would stall after a jump back. Then the
-         demo clock, the stand-ins and the note writer, which must exist before
-         the card loads.
-         The build fills in the GSAP URL the card itself uses. -->
-    <script src="%GSAP_CDN_URL%"></script>
-    <script src="./clock.js"></script>
+    <!-- Order matters. The stand-ins and the note and planes bundles first,
+         then the card, which brings its own GSAP: GSAP reads the clock as it
+         loads, so the card comes before the demo's settable clock. The demo's
+         clock jumps between times of day, and GSAP would stall after a jump
+         back. The card reads the time as it draws, so it follows the demo's. -->
     <script src="./icons.js"></script>
     <script src="./ha-elements.js"></script>
     <script src="./animated-weather-card-note.js"></script>
     <script src="./animated-weather-card-planes.js"></script>
     <script src="./animated-weather-card.js"></script>
+    <script src="./clock.js"></script>
     <script type="module" src="./demo.js"></script>
 </body>
 </html>

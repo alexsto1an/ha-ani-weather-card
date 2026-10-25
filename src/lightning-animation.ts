@@ -48,7 +48,7 @@ export class LightningAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start lightning animation');
         }
 
@@ -74,7 +74,7 @@ export class LightningAnimation extends BaseAnimation {
     }
 
     private flash(): void {
-        if (!window.gsap || this.state !== AnimationLifecycleState.ACTIVE) return;
+        if (!window.AnimatedWeatherCardGsap || this.state !== AnimationLifecycleState.ACTIVE) return;
 
         const lightning = this.element.querySelector(this.layerSelector);
         const card = this.element.querySelector('.animated-weather-card') as HTMLElement;
@@ -115,7 +115,7 @@ export class LightningAnimation extends BaseAnimation {
         // the overlay) has a return stroke, like the real thing: bright,
         // dip, bright again, then a long fall-off. Two strokes in ~100ms
         // stays well under three flashes a second.
-        const tl = window.gsap.timeline({
+        const tl = window.AnimatedWeatherCardGsap.timeline({
             onComplete: () => {
                 if (svg.parentNode) svg.parentNode.removeChild(svg);
             }
@@ -161,13 +161,13 @@ export class LightningAnimation extends BaseAnimation {
         this.flashTimeline?.kill();
         this.flashTimeline = undefined;
         const card = this.element.querySelector('.animated-weather-card');
-        if (card && window.gsap) window.gsap.set(card, { clearProps: 'transform' });
+        if (card && window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.set(card, { clearProps: 'transform' });
 
         const lightning = this.element.querySelector(this.layerSelector);
         if (lightning) {
             const svgs = lightning.querySelectorAll('svg');
             svgs.forEach(svg => {
-                if (window.gsap) window.gsap.killTweensOf(svg.querySelector('path'));
+                if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(svg.querySelector('path'));
                 if (svg.parentNode) svg.parentNode.removeChild(svg);
             });
             (lightning as HTMLElement).style.opacity = '0';

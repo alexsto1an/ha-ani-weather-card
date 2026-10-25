@@ -4,7 +4,7 @@ import { HomeAssistant, LovelaceCardEditor, AnimatedWeatherCardConfig } from './
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { getConfigEditorStyles } from './styles/editor';
 import { skyColors, oklchToSrgb, toHex, SKY_TEXT } from './sky';
-import { textField } from './utils';
+import { escapeHtml, textField } from './utils';
 
 /** note_calendar as a list: YAML takes one calendar or several, the editor's picker shows the first */
 function noteCalendarList(value: unknown): string[] {
@@ -93,7 +93,10 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
 
         // Set defaults
         const colorPalette = this._config.color_palette || 'default';
-        const engineSettings = this._config.engine_settings || {};
+        // Only numbers: YAML can hold anything, and the card treats anything
+        // else as unset, so the sliders show the default it falls back to
+        const engineSettings = Object.fromEntries(Object.entries(this._config.engine_settings || {})
+            .filter(([, value]) => typeof value === 'number' && isFinite(value))) as NonNullable<AnimatedWeatherCardConfig['engine_settings']>;
         const customColors = this._config.custom_colors || {};
 
         this.innerHTML = `
@@ -110,7 +113,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="entity"
                 label="Weather entity"
-                value="${this._config.entity || ''}"
+                value="${escapeHtml(this._config.entity || '')}"
                 helper="Required unless developer mode is on"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -122,7 +125,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="outdoor_sensor_entity"
                 label="Outdoor temperature sensor"
-                value="${this._config.outdoor_sensor_entity || ''}"
+                value="${escapeHtml(this._config.outdoor_sensor_entity || '')}"
                 helper="Shown instead of the weather entity's temperature"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -131,7 +134,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="feels_like_entity"
                 label="Feels-like sensor"
-                value="${this._config.feels_like_entity || ''}"
+                value="${escapeHtml(this._config.feels_like_entity || '')}"
                 helper="Adds a 'Feels like' line under the temperature"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -140,7 +143,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="humidity_sensor_entity"
                 label="Humidity sensor"
-                value="${this._config.humidity_sensor_entity || ''}"
+                value="${escapeHtml(this._config.humidity_sensor_entity || '')}"
                 helper="Falls back to the weather entity"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -149,7 +152,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="wind_speed_sensor_entity"
                 label="Wind speed sensor"
-                value="${this._config.wind_speed_sensor_entity || ''}"
+                value="${escapeHtml(this._config.wind_speed_sensor_entity || '')}"
                 helper="Also sets how fast the weather moves. Falls back to the weather entity"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -158,7 +161,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="wind_direction_sensor_entity"
                 label="Wind direction sensor"
-                value="${this._config.wind_direction_sensor_entity || ''}"
+                value="${escapeHtml(this._config.wind_direction_sensor_entity || '')}"
                 helper="Points the wind arrow: degrees, or a compass point like NW. Falls back to the weather entity"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -167,7 +170,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="pressure_sensor_entity"
                 label="Pressure sensor"
-                value="${this._config.pressure_sensor_entity || ''}"
+                value="${escapeHtml(this._config.pressure_sensor_entity || '')}"
                 helper="Falls back to the weather entity"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -176,7 +179,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="indoor_temperature_entity"
                 label="Indoor temperature sensor"
-                value="${this._config.indoor_temperature_entity || ''}"
+                value="${escapeHtml(this._config.indoor_temperature_entity || '')}"
                 helper="Adds an indoor line under the condition"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -185,7 +188,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="indoor_humidity_entity"
                 label="Indoor humidity sensor"
-                value="${this._config.indoor_humidity_entity || ''}"
+                value="${escapeHtml(this._config.indoor_humidity_entity || '')}"
                 allow-custom-entity
               ></ha-entity-picker>
             </div>
@@ -193,7 +196,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="sun_entity"
                 label="Sun entity"
-                value="${this._config.sun_entity || ''}"
+                value="${escapeHtml(this._config.sun_entity || '')}"
                 helper="Usually sun.sun. Drives the sky's time of day and sunset time"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -202,7 +205,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="flights_entity"
                 label="Flights sensor"
-                value="${this._config.flights_entity || ''}"
+                value="${escapeHtml(this._config.flights_entity || '')}"
                 helper="Flightradar24 'Current in area' sensor. Each new flight crosses the card once"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -315,7 +318,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="note_ai_task_entity"
                 label="AI Task"
-                value="${this._config.note_ai_task_entity || ''}"
+                value="${escapeHtml(this._config.note_ai_task_entity || '')}"
                 helper="Empty: the default in Settings → System → AI"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -324,7 +327,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="note_calendar"
                 label="Your calendar, for when you're out"
-                value="${noteCalendarList(this._config.note_calendar)[0] || ''}"
+                value="${escapeHtml(noteCalendarList(this._config.note_calendar)[0] || '')}"
                 helper="Timed events count as time out; all-day and online ones don't. Only the times reach the AI"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -334,7 +337,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker
                 id="note_entity"
                 label="Note entity"
-                value="${this._config.note_entity || ''}"
+                value="${escapeHtml(this._config.note_entity || '')}"
                 helper="Its state is the one-line version. Used instead of the AI"
                 allow-custom-entity
               ></ha-entity-picker>
@@ -410,37 +413,37 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           <div class="engine-grid">
             <div class="engine-option">
               <label>Wind effect</label>
-              <input type="range" id="windSpeed" min="0.5" max="5" step="0.1" value="${engineSettings.windSpeed || DEFAULT_ENGINE_SETTINGS.windSpeed}" />
+              <input type="range" id="windSpeed" min="0.5" max="5" step="0.1" value="${escapeHtml(engineSettings.windSpeed || DEFAULT_ENGINE_SETTINGS.windSpeed)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('windSpeed', engineSettings.windSpeed || DEFAULT_ENGINE_SETTINGS.windSpeed)}</span>
             </div>
             <div class="engine-option">
               <label>Rain amount</label>
-              <input type="range" id="rainCount" min="0.5" max="3" step="0.1" value="${engineSettings.rainCount || DEFAULT_ENGINE_SETTINGS.rainCount}" />
+              <input type="range" id="rainCount" min="0.5" max="3" step="0.1" value="${escapeHtml(engineSettings.rainCount || DEFAULT_ENGINE_SETTINGS.rainCount)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('rainCount', engineSettings.rainCount || DEFAULT_ENGINE_SETTINGS.rainCount)}</span>
             </div>
             <div class="engine-option">
               <label>Leaf amount</label>
-              <input type="range" id="leafCount" min="0.5" max="3" step="0.1" value="${engineSettings.leafCount || DEFAULT_ENGINE_SETTINGS.leafCount}" />
+              <input type="range" id="leafCount" min="0.5" max="3" step="0.1" value="${escapeHtml(engineSettings.leafCount || DEFAULT_ENGINE_SETTINGS.leafCount)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('leafCount', engineSettings.leafCount || DEFAULT_ENGINE_SETTINGS.leafCount)}</span>
             </div>
             <div class="engine-option">
               <label>Snow amount</label>
-              <input type="range" id="snowCount" min="0.5" max="3" step="0.1" value="${engineSettings.snowCount || DEFAULT_ENGINE_SETTINGS.snowCount}" />
+              <input type="range" id="snowCount" min="0.5" max="3" step="0.1" value="${escapeHtml(engineSettings.snowCount || DEFAULT_ENGINE_SETTINGS.snowCount)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('snowCount', engineSettings.snowCount || DEFAULT_ENGINE_SETTINGS.snowCount)}</span>
             </div>
             <div class="engine-option">
               <label>Cloud size</label>
-              <input type="range" id="cloudBaseSize" min="0.5" max="2" step="0.1" value="${engineSettings.cloudBaseSize || DEFAULT_ENGINE_SETTINGS.cloudBaseSize}" />
+              <input type="range" id="cloudBaseSize" min="0.5" max="2" step="0.1" value="${escapeHtml(engineSettings.cloudBaseSize || DEFAULT_ENGINE_SETTINGS.cloudBaseSize)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('cloudBaseSize', engineSettings.cloudBaseSize || DEFAULT_ENGINE_SETTINGS.cloudBaseSize)}</span>
             </div>
             <div class="engine-option">
               <label>Cloud count</label>
-              <input type="range" id="cloudCount" min="1" max="6" step="1" value="${engineSettings.cloudCount || DEFAULT_ENGINE_SETTINGS.cloudCount}" />
+              <input type="range" id="cloudCount" min="1" max="6" step="1" value="${escapeHtml(engineSettings.cloudCount || DEFAULT_ENGINE_SETTINGS.cloudCount)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('cloudCount', engineSettings.cloudCount || DEFAULT_ENGINE_SETTINGS.cloudCount)}</span>
             </div>
             <div class="engine-option">
               <label>Splash bounce</label>
-              <input type="range" id="splashBounce" min="40" max="120" step="5" value="${engineSettings.splashBounce || DEFAULT_ENGINE_SETTINGS.splashBounce}" />
+              <input type="range" id="splashBounce" min="40" max="120" step="5" value="${escapeHtml(engineSettings.splashBounce || DEFAULT_ENGINE_SETTINGS.splashBounce)}" />
               <span class="value-display">${AnimatedWeatherCardEditor.formatEngineValue('splashBounce', engineSettings.splashBounce || DEFAULT_ENGINE_SETTINGS.splashBounce)}</span>
             </div>
           </div>
@@ -460,52 +463,52 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           <div class="color-grid" id="color-grid" style="display: ${colorPalette === 'default' ? 'grid' : 'none'}; opacity: ${colorPalette === 'default' ? '1' : '0.5'}">
             <div class="color-option">
               <label>Sunny sky</label>
-              <input type="color" id="sunny_bg" value="${customColors.sunny_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.sunny_bg}" />
+              <input type="color" id="sunny_bg" value="${escapeHtml(customColors.sunny_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.sunny_bg)}" />
               <button class="color-reset" data-target="sunny_bg" ${customColors.sunny_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Rainy sky</label>
-              <input type="color" id="rainy_bg" value="${customColors.rainy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.rainy_bg}" />
+              <input type="color" id="rainy_bg" value="${escapeHtml(customColors.rainy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.rainy_bg)}" />
               <button class="color-reset" data-target="rainy_bg" ${customColors.rainy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Snowy sky</label>
-              <input type="color" id="snowy_bg" value="${customColors.snowy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.snowy_bg}" />
+              <input type="color" id="snowy_bg" value="${escapeHtml(customColors.snowy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.snowy_bg)}" />
               <button class="color-reset" data-target="snowy_bg" ${customColors.snowy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Stormy sky</label>
-              <input type="color" id="stormy_bg" value="${customColors.stormy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.stormy_bg}" />
+              <input type="color" id="stormy_bg" value="${escapeHtml(customColors.stormy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.stormy_bg)}" />
               <button class="color-reset" data-target="stormy_bg" ${customColors.stormy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Windy sky</label>
-              <input type="color" id="windy_bg" value="${customColors.windy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.windy_bg}" />
+              <input type="color" id="windy_bg" value="${escapeHtml(customColors.windy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.windy_bg)}" />
               <button class="color-reset" data-target="windy_bg" ${customColors.windy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Cloudy sky</label>
-              <input type="color" id="cloudy_bg" value="${customColors.cloudy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.cloudy_bg}" />
+              <input type="color" id="cloudy_bg" value="${escapeHtml(customColors.cloudy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.cloudy_bg)}" />
               <button class="color-reset" data-target="cloudy_bg" ${customColors.cloudy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Text</label>
-              <input type="color" id="text_color" value="${customColors.text_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.text_color}" />
+              <input type="color" id="text_color" value="${escapeHtml(customColors.text_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.text_color)}" />
               <button class="color-reset" data-target="text_color" ${customColors.text_color ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Sun</label>
-              <input type="color" id="sun_color" value="${customColors.sun_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.sun_color}" />
+              <input type="color" id="sun_color" value="${escapeHtml(customColors.sun_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.sun_color)}" />
               <button class="color-reset" data-target="sun_color" ${customColors.sun_color ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Rain</label>
-              <input type="color" id="rain_color" value="${customColors.rain_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.rain_color}" />
+              <input type="color" id="rain_color" value="${escapeHtml(customColors.rain_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.rain_color)}" />
               <button class="color-reset" data-target="rain_color" ${customColors.rain_color ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
               <label>Snow</label>
-              <input type="color" id="snow_color" value="${customColors.snow_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.snow_color}" />
+              <input type="color" id="snow_color" value="${escapeHtml(customColors.snow_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.snow_color)}" />
               <button class="color-reset" data-target="snow_color" ${customColors.snow_color ? '' : 'hidden'}>Reset</button>
             </div>
           </div>

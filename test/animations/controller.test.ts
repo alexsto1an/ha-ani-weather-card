@@ -207,7 +207,7 @@ describe('ModularIntegrationBridge — live wind', () => {
         const before = clouds();
         expect(before.length).toBeGreaterThan(0);
         const stop = vi.spyOn(animation, 'stop');
-        const gsap = (window as unknown as { gsap: { to: ReturnType<typeof vi.fn> } }).gsap;
+        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
         gsap.to.mockClear();
 
         bridge.updateWindSpeed(30);

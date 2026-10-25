@@ -1,6 +1,6 @@
 {
   "name": "animated-weather-card",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "An animated weather card for Home Assistant: a sky that follows the condition and the sun, with a matching sun tracker card",
   "main": "animated-weather-card.js",
   "scripts": {
@@ -40,5 +40,8 @@
   "bugs": {
     "url": "https://github.com/alexsto1an/ha-ani-weather-card/issues"
   },
-  "homepage": "https://github.com/alexsto1an/ha-ani-weather-card#readme"
+  "homepage": "https://github.com/alexsto1an/ha-ani-weather-card#readme",
+  "dependencies": {
+    "gsap": "3.15.0"
+  }
 }

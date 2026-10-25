@@ -1,15 +1,15 @@
+// GSAP, bundled: the card never fetches code at runtime, and moves without internet access
+import { gsap } from 'gsap';
 // Import types
-import { HomeAssistant, HassEntity, LovelaceCard, AnimatedWeatherCardConfig, TimeOfDayState, AnimatedWeatherCardElement } from './types';
+import { HomeAssistant, HassEntity, LovelaceCard, AnimatedWeatherCardConfig, TimeOfDayState, AnimatedWeatherCardElement, GSAP } from './types';
 // Import constants
 import {
     DEFAULT_CONFIG,
-    GSAP_CDN_URL,
     CARD_VERSION
 } from './constants';
 // Import utilities
 import {
     getWeatherSettings,
-    loadGSAP,
     clearPendingTimeouts,
     killCardGSAPAnimations,
     pauseCardGSAPAnimations,
@@ -77,10 +77,10 @@ const HERO_FADE_IN_MS = 220;
 /** Room the metrics row needs to spare before a 2×2 grid switches back to one row. */
 const METRICS_ROW_SLACK_PX = 24;
 
-// Load GSAP using utility function (card degrades gracefully without animations if this fails)
-loadGSAP(GSAP_CDN_URL).catch((err) => {
-    console.warn(`Animated Weather Card: GSAP unavailable — animations disabled. ${err.message}`);
-});
+// The card's own GSAP, for every animation, here and in the planes bundle.
+// Never window.gsap: another card on the dashboard may bring a different
+// version, and this one is left alone for it.
+window.AnimatedWeatherCardGsap = gsap as unknown as GSAP;
 
 
 /**
@@ -412,7 +412,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
         this.innerHTML = `
       <ha-card>
-        <div class="animated-weather-card no-transitions loading ${colorPalette === 'theme' ? 'theme-colors' : ''}"${this.config.spill_particles !== false ? ' data-spill' : ''}${compact ? ' data-variant="compact"' : ''} style="${customColorStyles}">
+        <div class="animated-weather-card no-transitions loading ${colorPalette === 'theme' ? 'theme-colors' : ''}"${this.config.spill_particles !== false ? ' data-spill' : ''}${compact ? ' data-variant="compact"' : ''} style="${escapeHtml(customColorStyles)}">
           <div class="sky" aria-hidden="true"></div>
           <div class="weather-skeleton" aria-hidden="true">
             <div class="skeleton-line"></div>

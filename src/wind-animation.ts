@@ -48,7 +48,7 @@ export class WindAnimation extends BaseAnimation {
     }
 
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start wind animation');
         }
         if (!this.element.querySelector(this.layerSelector)) {
@@ -121,7 +121,7 @@ export class WindAnimation extends BaseAnimation {
 
         const windLayer = this.element.querySelector(this.layerSelector);
         windLayer?.querySelectorAll('.leaf-gsap, .wind-swoosh-gsap').forEach(p => {
-            if (window.gsap) window.gsap.killTweensOf(p);
+            if (window.AnimatedWeatherCardGsap) window.AnimatedWeatherCardGsap.killTweensOf(p);
             p.remove();
         });
         this.leaves.clear();
@@ -133,14 +133,14 @@ export class WindAnimation extends BaseAnimation {
     protected async onPause(): Promise<void> {
         this.clearTimers();
         this.element.querySelectorAll(`${this.layerSelector} .leaf-gsap, ${this.layerSelector} .wind-swoosh-gsap`).forEach(p => {
-            window.gsap?.getTweensOf(p).forEach((t: any) => t.pause());
+            window.AnimatedWeatherCardGsap?.getTweensOf(p).forEach((t: any) => t.pause());
         });
         devLog(this.config.devMode, 'Wind animation paused');
     }
 
     protected async onResume(): Promise<void> {
         this.element.querySelectorAll(`${this.layerSelector} .leaf-gsap, ${this.layerSelector} .wind-swoosh-gsap`).forEach(p => {
-            window.gsap?.getTweensOf(p).forEach((t: any) => t.resume());
+            window.AnimatedWeatherCardGsap?.getTweensOf(p).forEach((t: any) => t.resume());
         });
         this.clearTimers();
         this.scheduleLeaf(between(300, 900));

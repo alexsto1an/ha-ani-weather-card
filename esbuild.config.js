@@ -23,12 +23,13 @@ const sharedOptions = {
   sourcemap: false,
   treeShaking: true,
   platform: 'browser',
-  legalComments: 'none',
+  // Keep third-party license notices (GSAP's, in the main bundle) at the end of the file
+  legalComments: 'eof',
   drop: ['debugger'],
-  // Mangle private properties starting with _, but leave the public DOM /
-  // animation surface alone so HA / GSAP can still reach them by name.
-  mangleProps: /^_/,
-  reserveProps: /^(hass|config|style|innerHTML|outerHTML|addEventListener|removeEventListener|querySelector|querySelectorAll|createElement|appendChild|removeChild|setAttribute|getAttribute|classList|className|dataset|textContent|value|checked|disabled|selected|parentNode|offsetWidth|offsetHeight|getBoundingClientRect|getPropertyValue|setProperty|animationType|layerSelector|containerSelector|isActive|isPaused|getState|getMetrics|start|stop|pause|resume|destroy|updateConfig)$/,
+  // No property mangling: GSAP, bundled into the main file, keeps its
+  // internals on `_` properties and reaches some of them by name, so
+  // renaming them breaks it (tweens never join its timeline). Keeping the
+  // names costs about 4 KB, half a KB gzipped.
 };
 
 const targets = [

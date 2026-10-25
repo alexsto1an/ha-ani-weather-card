@@ -105,7 +105,7 @@ export class RainAnimation extends BaseAnimation {
      * Start the rain animation
      */
     protected async onStart(): Promise<void> {
-        if (!window.gsap) {
+        if (!window.AnimatedWeatherCardGsap) {
             throw new Error('GSAP not loaded - cannot start rain animation');
         }
 
@@ -174,8 +174,8 @@ export class RainAnimation extends BaseAnimation {
         const fallSec = Math.max(0.25, (endY - startY) / speed);
         const dropWidth = parseFloat(drop.dataset.width || '2');
 
-        window.gsap.set(drop, { x, scaleY: 1, opacity: 0.55 + 0.45 * Math.min(1, dropWidth / 2.4) });
-        const tl = window.gsap.timeline({ onComplete: next });
+        window.AnimatedWeatherCardGsap.set(drop, { x, scaleY: 1, opacity: 0.55 + 0.45 * Math.min(1, dropWidth / 2.4) });
+        const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(drop, { y: startY }, { y: endY, duration: fallSec, ease: 'none' });
         if (splash) {
             // The streak keeps moving into the edge while the splash starts
@@ -195,12 +195,12 @@ export class RainAnimation extends BaseAnimation {
         this.pool?.stop();
         this.pool = undefined;
         this.splashDots.forEach(dot => {
-            window.gsap?.killTweensOf(dot);
+            window.AnimatedWeatherCardGsap?.killTweensOf(dot);
             dot.remove();
         });
         this.splashDots = [];
         this.rebounds.forEach(svg => {
-            window.gsap?.killTweensOf([svg, svg.firstChild]);
+            window.AnimatedWeatherCardGsap?.killTweensOf([svg, svg.firstChild]);
             svg.remove();
         });
         this.rebounds = [];
@@ -241,7 +241,7 @@ export class RainAnimation extends BaseAnimation {
      * Splash elements are reused round-robin.
      */
     private createSplash(x: number, y: number): void {
-        if (!window.gsap || !this.splashLayer) return;
+        if (!window.AnimatedWeatherCardGsap || !this.splashLayer) return;
         this.createRebound(x, y);
         for (const side of [-1, 1]) {
             let dot = this.splashDots[this.nextSplashDot];
@@ -257,9 +257,9 @@ export class RainAnimation extends BaseAnimation {
             const duration = between(0.22, 0.28);
             const rise = between(4, 10) * this.splashBounce;
             const spread = side * between(6, 12) * this.splashBounce;
-            window.gsap.killTweensOf(dot);
-            window.gsap.set(dot, { x: x - 1, y: y - 2, opacity: 0.9 });
-            const tl = window.gsap.timeline();
+            window.AnimatedWeatherCardGsap.killTweensOf(dot);
+            window.AnimatedWeatherCardGsap.set(dot, { x: x - 1, y: y - 2, opacity: 0.9 });
+            const tl = window.AnimatedWeatherCardGsap.timeline();
             tl.to(dot, { x: x - 1 + spread, duration, ease: 'power1.out' }, 0)
               .to(dot, { y: y - 2 - rise, duration: duration * 0.45, ease: 'power2.out' }, 0)
               .to(dot, { y: y - 2, duration: duration * 0.55, ease: 'power2.in' }, duration * 0.45)
@@ -300,9 +300,9 @@ export class RainAnimation extends BaseAnimation {
         arc.style.strokeDasharray = `${streak.toFixed(1)} ${(length + streak).toFixed(1)}`;
 
         const duration = between(0.42, 0.56);
-        window.gsap.killTweensOf([svg, arc]);
-        window.gsap.set(svg, { x, y, opacity: 0.85 });
-        window.gsap.timeline()
+        window.AnimatedWeatherCardGsap.killTweensOf([svg, arc]);
+        window.AnimatedWeatherCardGsap.set(svg, { x, y, opacity: 0.85 });
+        window.AnimatedWeatherCardGsap.timeline()
             .fromTo(arc, { strokeDashoffset: streak, strokeWidth: 1.6 },
                 { strokeDashoffset: -length, strokeWidth: 0.6, duration, ease: 'power2.out' }, 0)
             .to(svg, { opacity: 0, duration: duration * 0.35, ease: 'power1.in' }, duration * 0.65);

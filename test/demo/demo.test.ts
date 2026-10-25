@@ -602,9 +602,10 @@ describe('the setup guide', () => {
     const decode = (html: string) => html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
     const yamlBlocks = [...page.matchAll(/<div class="code[^"]*" data-lang="yaml">[\s\S]*?<code>([\s\S]*?)<\/code>/g)].map(m => decode(m[1]));
 
-    it('is built with the demo, with the card\'s GSAP', () => {
+    it('is built with the demo, and loads no GSAP of its own: the card brings it', () => {
         for (const file of ['setup/index.html', 'setup.css', 'setup.js', 'code.mjs']) expect(PAGE_FILES).toContain(file);
-        expect(page).toContain('%GSAP_CDN_URL%');
+        expect(page).not.toMatch(/<script[^>]*gsap/i);
+        expect(page).not.toContain('cdnjs');
         for (const asset of ['../demo.css', '../setup.css', '../animated-weather-card.js', '../animated-weather-card-note.js', '../setup.js']) {
             expect(page).toContain(asset);
         }

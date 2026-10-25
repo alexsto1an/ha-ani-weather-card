@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { CARD_VERSION } from '../../src/constants';
 
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
@@ -27,6 +28,35 @@ describe('what a release gives HACS', () => {
         const files = workflow.split('files: |')[1].split('\n').map(line => line.trim()).filter(line => /\.\w+$/.test(line));
         expect(files.sort()).toEqual(bundles());
         expect(workflow).not.toMatch(/\.zip\b/);
+    });
+
+    it('carries GSAP once, in the main bundle, with its license, and fetches nothing from a CDN', () => {
+        const main = read('animated-weather-card.js');
+        expect(main).toMatch(/GSAP 3\.\d+\.\d+/);
+        expect(main).toContain('https://gsap.com/standard-license');
+        for (const bundle of bundles()) {
+            const code = read(bundle);
+            expect(code, bundle).not.toContain('cdnjs');
+            if (bundle !== 'animated-weather-card.js') expect(code, bundle).not.toContain('gsap.com/standard-license');
+        }
+        expect(read('src/constants.ts')).not.toContain('GSAP_CDN_URL');
+        // GSAP reaches its `_` internals by name: renaming properties breaks it
+        expect(read('esbuild.config.js')).not.toMatch(/^\s*mangleProps/m);
+    });
+
+    it('moves things with the GSAP it carries', async () => {
+        // The tests run on a GSAP stub, so this loads the real bundle in a page
+        // of its own. A build that renames GSAP's internals still loads and
+        // still ticks, but its tweens never join the timeline and never move.
+        const { window } = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole() });
+        window.eval(read('animated-weather-card.js'));
+        const gsap = window.AnimatedWeatherCardGsap;
+        expect((window as unknown as { gsap?: unknown }).gsap).toBeUndefined();
+        const target = { x: 0 };
+        gsap.to(target, { x: 10, duration: 0.2, ease: 'none' });
+        await new Promise(resolve => setTimeout(resolve, 400));
+        expect(target.x).toBe(10);
+        window.close();
     });
 
     it('keeps the version in step', () => {
