@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A share image for the live demo and the setup guide: a link to either unfurls with the card on its partly cloudy day under the headline. Both pages carry the Open Graph and Twitter card tags for it.
+
 ## [1.1.0] - 2026-10-25
 
 ### Changed

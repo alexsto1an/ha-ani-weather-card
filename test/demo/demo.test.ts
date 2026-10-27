@@ -551,6 +551,28 @@ describe('the demo build', () => {
         expect(Object.keys(icons)).toHaveLength(names.length);
     });
 
+    it('gives both pages one share image at the site, a JPEG the build ships', () => {
+        const site = 'https://alexsto1an.github.io/ha-ani-weather-card/';
+        const image = readFileSync(join(process.cwd(), 'docs/images/share.jpg'));
+        // A JPEG: Facebook and LinkedIn don't take WebP for og:image
+        expect([...image.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+        expect(image.length).toBeLessThan(400 * 1024);
+        expect(readFileSync(join(process.cwd(), 'demo/build.mjs'), 'utf8')).toContain("'docs/images/share.jpg'");
+        for (const [file, url] of [['demo/index.html', site], ['demo/setup/index.html', `${site}setup/`]]) {
+            const head = readFileSync(join(process.cwd(), file), 'utf8').split('</head>')[0];
+            const meta = (name: string) => head.match(new RegExp(`<meta (?:property|name)="${name}" content="([^"]*)"`))?.[1];
+            // Absolute: a relative path works in a browser and nowhere a link is unfurled
+            expect(meta('og:image')).toBe(`${site}share.jpg`);
+            expect(meta('og:image:type')).toBe('image/jpeg');
+            expect(meta('og:image:width')).toBe('1200');
+            expect(meta('og:image:height')).toBe('630');
+            expect(meta('og:image:alt')).toMatch(/Live weather, on your dashboard/);
+            expect(meta('og:url')).toBe(url);
+            expect(meta('og:site_name')).toBe('Animated Weather Card');
+            expect(meta('twitter:card')).toBe('summary_large_image');
+        }
+    });
+
     it('refuses an icon @mdi/js doesn\'t have, instead of shipping a blank', () => {
         expect(() => resolveIcons(['mdi:not-a-real-icon'])).toThrow(/mdi:not-a-real-icon/);
     });

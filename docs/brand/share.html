@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Animated Weather Card share image</title>
+<style>
+    /* The demo's room, as its tokens have it (demo.css), lit by the card's own sky */
+    :root {
+        --sky: #4a6d99;
+        --ink: color-mix(in oklch, oklch(0.135 0.012 290), var(--sky) 8%);
+        --text: oklch(0.965 0.006 290);
+        --text-quiet: oklch(0.71 0.016 290);
+        --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+        --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+        /* Home Assistant's default dark theme, as the demo gives the card */
+        --ha-card-border-radius: 12px;
+        --primary-color: #009ac7;
+        --state-icon-color: #44739e;
+        --state-sun-above_horizon-color: #ffc107;
+        --state-sun-below_horizon-color: #3f51b5;
+        --primary-background-color: #111111;
+        --primary-text-color: #e1e1e1;
+        --secondary-text-color: #9b9b9b;
+        --card-background-color: #1c1c1c;
+        --divider-color: rgba(225, 225, 225, 0.12);
+    }
+    html, body { margin: 0; }
+    body {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        color: var(--text);
+        font-family: var(--font);
+        -webkit-font-smoothing: antialiased;
+        background:
+            radial-gradient(100% 52% at 30% -8%, color-mix(in oklch, var(--sky), transparent 84%), transparent 70%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+            var(--ink);
+    }
+    .frame { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 56px 64px 48px; }
+    .wordmark { display: inline-flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 600; letter-spacing: -0.012em; }
+    .wordmark svg { width: 30px; height: 30px; }
+    .headline { margin: 38px 0 0; font-family: var(--font-display); font-size: 66px; font-weight: 600; line-height: 0.98; letter-spacing: -0.032em; }
+    .headline .quiet { display: block; color: var(--text-quiet); }
+    /* The card is the window: the wide layout, across the room, with its light on the wall */
+    .window { position: relative; margin-top: auto; }
+    .light {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 200px;
+        height: 200px;
+        z-index: 0;
+        transform: translate(-50%, -50%) scale(12.9, 3.5);
+        background: radial-gradient(closest-side,
+            color-mix(in oklch, var(--sky) 46%, transparent) 0%,
+            color-mix(in oklch, var(--sky) 30%, transparent) 30%,
+            color-mix(in oklch, var(--sky) 12%, transparent) 58%,
+            color-mix(in oklch, var(--sky) 3%, transparent) 82%,
+            transparent 100%);
+    }
+    animated-weather-card {
+        position: relative;
+        z-index: 1;
+        display: block;
+        width: 1072px;
+        height: 302px;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 24px 60px -24px oklch(0 0 0 / 0.75);
+    }
+</style>
+</head>
+<body>
+<!-- The share image (og:image) of the demo and the setup guide: the real card on the sample's
+     partly cloudy day, as the demo's hero shows it, under the headline. To render it again:
+     `npm run demo` (for the icons), serve the repository root (python3 -m http.server) and
+     capture this page at 1200 × 630, 1×, as a JPEG around quality 90, about four seconds in,
+     once the clouds and the sun are placed. The render is docs/images/share.jpg, which the
+     build copies to the site. Like the icon's, it bakes the type of the machine that renders it. -->
+<div class="frame">
+    <div class="wordmark" id="wordmark"><span>Animated Weather Card</span></div>
+    <h1 class="headline">Live weather,<span class="quiet">on your dashboard.</span></h1>
+    <div class="window">
+        <div class="light"></div>
+        <animated-weather-card id="card"></animated-weather-card>
+    </div>
+</div>
+<script src="../../_site/icons.js"></script>
+<script src="../../demo/ha-elements.js"></script>
+<script src="../../animated-weather-card.js"></script>
+<script type="module">
+    import { ENTITIES, buildHass, minutesFor, sunAt } from '../../demo/scene.mjs';
+    import { logoSvg } from '../../demo/logo.mjs';
+    document.getElementById('wordmark').insertAdjacentHTML('afterbegin', logoSvg({ only: 'day', id: 'share' }));
+    const card = document.getElementById('card');
+    card.setConfig({ type: 'custom:animated-weather-card', entity: ENTITIES.weather, sun_entity: ENTITIES.sun });
+    card.hass = buildHass({ conditionId: 'partlycloudy', phase: 'day', sun: sunAt(minutesFor('day')) });
+    // The room is lit by the card's sky, as the demo's is
+    const tint = () => {
+        const sky = card.querySelector('.animated-weather-card');
+        const mid = sky && getComputedStyle(sky).getPropertyValue('--awc-sky-mid').trim();
+        if (mid) document.documentElement.style.setProperty('--sky', mid);
+    };
+    setTimeout(tint, 600);
+    setTimeout(tint, 2500);
+</script>
+</body>
+</html>

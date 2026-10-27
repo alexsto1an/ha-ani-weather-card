@@ -69,6 +69,8 @@ export function build(out = join(root, '_site')) {
     }
     // The favicon: the mark by day, standing alone (browsers don't animate favicons)
     writeFileSync(join(out, 'favicon.svg'), logoSvg({ only: 'day', id: 'favicon' }));
+    // The share image both pages name in their og:image, rendered once from docs/brand/share.html
+    copyFileSync(join(root, 'docs/images/share.jpg'), join(out, 'share.jpg'));
     copyFileSync(join(root, 'animated-weather-card.js'), join(out, 'animated-weather-card.js'));
     copyFileSync(join(root, 'animated-weather-card-note.js'), join(out, 'animated-weather-card-note.js'));
     copyFileSync(join(root, 'animated-weather-card-planes.js'), join(out, 'animated-weather-card-planes.js'));
