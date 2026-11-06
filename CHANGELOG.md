@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The times on the cards follow your profile's time zone setting, the server's or the device's: the sun tracker's times and its sun's place on the path, the weather card's sunset or sunrise, and the new clock. They always followed the device's time zone before.
 - The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 5.4 KB gzipped, to about 82 KB, 2.3 KB of it the icons.
 
+### Fixed
+
+- A clear evening before 20:00 showed an empty night sky, with no moon and no stars, and stayed that way all night. That's every clear evening where the sun sets early, such as autumn and winter in Europe. The card decided between the sun and the moon by the clock instead of by Home Assistant's `clear-night`. Home Assistant's `clear-night` and `sunny` now decide at any hour, for the sun tracker's shared sky too. A condition from another integration that only says "clear" follows the sun. With `enable_day_night_cycle`, the hours still decide, as before.
+
 ## [1.2.0] - 2026-11-06
 
 ### Added

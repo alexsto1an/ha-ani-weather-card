@@ -343,17 +343,32 @@ export function killCardGSAPAnimations(container: HTMLElement): void {
     });
 }
 
+/** How a clear sky decides between the sun and the moon and stars (see getWeatherClass). */
+export interface ClearSkyTime {
+    /** The day/night cycle is on: the hours decide, whatever the state says. */
+    clock?: boolean;
+    /** Night in the sky the card shows, when the caller knows it (the sun, or the cycle). */
+    night?: boolean;
+}
+
 /**
  * Map weather condition to CSS class with type validation.
- * Pass `timeZone` (e.g. `hass.config.time_zone`) to evaluate clear/night
- * detection in HA's timezone instead of the browser's local hour.
+ *
+ * A clear sky: Home Assistant's own states already say which it is
+ * (`clear-night` after sunset, `sunny` before), so they decide, at any hour.
+ * Free text that only says "clear" takes `time.night`, or the clock hours
+ * when that isn't known. With the day/night cycle on (`time.clock`), the
+ * hours decide every clear sky, as the cycle follows the clock instead of
+ * the sun. Pass `timeZone` (e.g. `hass.config.time_zone`) to read the hours
+ * in HA's timezone instead of the browser's.
  */
 export function getWeatherClass(
     condition: string,
     isDevMode: boolean,
     sunriseHour?: number,
     sunsetHour?: number,
-    timeZone?: string
+    timeZone?: string,
+    time: ClearSkyTime = {}
 ): WeatherCondition {
     if (typeof condition !== 'string') {
         console.warn('Invalid condition type provided, using sunny as fallback');
@@ -398,10 +413,17 @@ export function getWeatherClass(
     } else if (lowercaseCondition.includes('cloud') || lowercaseCondition.includes('overcast')) {
         return 'cloudy';
     } else if (lowercaseCondition.includes('clear') || lowercaseCondition.includes('sunny')) {
-        // Check if it's nighttime for clear conditions. Use HA's timezone if
-        // provided so the day/night decision agrees with the sun entity, even
-        // when the dashboard is viewed from a different timezone than HA's
-        // location.
+        if (!time.clock) {
+            // The state names the time of day: clear-night once the sun is
+            // down, which can be well before the clock's sunset hour (17:00
+            // in a European winter)
+            if (lowercaseCondition.includes('night')) return 'clear-night';
+            if (lowercaseCondition.includes('sunny')) return 'sunny';
+            if (time.night !== undefined) return time.night ? 'clear-night' : 'sunny';
+        }
+        // The clock's hours: the day/night cycle's, or the defaults when
+        // nothing else says. Use HA's timezone if provided, so the hour is
+        // HA's even when the dashboard is viewed from another timezone.
         const now = new Date();
         let hour: number;
         if (timeZone) {

@@ -645,7 +645,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const id = this.config.weather_entity;
         const state = id ? this._hass?.states[id]?.state : undefined;
         if (state && state !== 'unavailable' && state !== 'unknown') {
-            const weatherClass = getWeatherClass(state, false, undefined, undefined, this._hass?.config?.time_zone);
+            const weatherClass = getWeatherClass(state, false, undefined, undefined, this._hass?.config?.time_zone,
+                { night: phase === 'night' });
             if ((SKY_CONDITIONS as readonly string[]).includes(weatherClass)) return weatherClass as SkyCondition;
         }
         return phase === 'night' ? 'clear-night' : 'sunny';

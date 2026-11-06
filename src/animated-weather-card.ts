@@ -961,7 +961,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
                 config.dev_mode ?? false,
                 config.sunrise_hour,
                 config.sunset_hour,
-                this._hass?.config?.time_zone
+                this._hass?.config?.time_zone,
+                { clock: !!config.enable_day_night_cycle, night: this.skyIsNight() }
             );
             const themeClass = (config.color_palette || 'default') === 'theme' ? 'theme-colors' : '';
             // First paint: show the condition without transitions, then enable
@@ -1641,6 +1642,17 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         const elevation = sun.attributes?.elevation;
         return skyPhaseFromSun(typeof elevation === 'number' ? elevation : Number(elevation),
             !!sun.attributes?.rising, sun.state !== 'below_horizon');
+    }
+
+    /**
+     * Whether the sky shows night, for a condition that only says "clear":
+     * by the day/night cycle when it's on, else by the sun. Unknown without
+     * either, so the clock's default hours decide.
+     */
+    private skyIsNight(): boolean | undefined {
+        const cycle = !!this.timeOfDayManager && (this.timeOfDayManager.isEnabled() || this.devTimeOverride);
+        if (!cycle && !this._hass?.states[this.config?.sun_entity || 'sun.sun']) return undefined;
+        return this.currentSkyPhase() === 'night';
     }
 
     applySkyPhase(): void {
