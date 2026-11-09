@@ -344,6 +344,8 @@ function headHtml(model: ForecastModel, ctx: CardContext): string {
     if (ctx.clock) return bedsideHtml(model, ctx);
     const head = headline(model, ctx);
     if (!head) return '';
+    // The strip's hero is 112 px: its quiet line keeps its first two facts
+    if (ctx.compact) head.quiet = head.quiet.slice(0, 2);
     return `<div class="fc-head"><div class="fc-eyebrow">${escapeHtml(head.eyebrow)}</div><div class="fc-value">${head.value}</div>`
         + (head.quiet.length ? `<div class="fc-quiet">${head.quiet.map(q => `<span>${escapeHtml(q)}</span>`).join('<span class="fc-dot" aria-hidden="true"> · </span>')}</div>` : '')
         + '</div>';
@@ -629,7 +631,7 @@ const CARD_CSS = `
     .fc-strip-c { display: flex; align-items: center; gap: 20px; height: 100%; }
     .fc-strip-c .fc-head { width: 112px; flex: none; }
     .fc-strip-c .fc-value { font-size: 34px; margin-top: 5px; }
-    .fc-strip-c .fc-quiet { max-width: none; margin-top: 5px; font-size: 13px; line-height: 18px; }
+    .fc-strip-c .fc-quiet { max-width: 112px; margin-top: 5px; font-size: 13px; line-height: 18px; }
     .fc-strip-c .fc-chart { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 0 0 6px; }
     .fc-strip-c .fc-bedside .fc-clock { font-size: 34px; font-weight: 250; margin-top: 5px; }
     .fc-card.compact[data-fit="short"] .fc-strip-c .fc-value { font-size: 28px; }
