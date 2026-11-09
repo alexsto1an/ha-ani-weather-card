@@ -218,3 +218,29 @@ describe('sun tracker card', () => {
         expect(skyPhaseFromSun(null, false, false)).toBe('night');
     });
 });
+
+describe('the tracker in the profile\'s time zone', () => {
+    it('puts the sun where its headline says, in the server\'s zone when the profile asks for it', async () => {
+        const { vi } = await import('vitest');
+        vi.useFakeTimers({ now: new Date('2026-11-10T03:00:00Z') });  // 12:00 in Tokyo
+        await import('../../src/sun-tracker-card');
+        const card = document.createElement('animated-sun-tracker-card') as HTMLElement & { setConfig(c: object): void; hass: unknown };
+        card.setConfig({ sun_entity: 'sun.sun' });
+        document.body.append(card);
+        card.hass = {
+            states: { 'sun.sun': { entity_id: 'sun.sun', state: 'above_horizon', attributes: {
+                next_rising: '2026-11-10T21:10:00Z', next_setting: '2026-11-10T07:40:00Z', elevation: 35, rising: false,
+            } } },
+            config: { time_zone: 'Asia/Tokyo' },
+            language: 'en',
+            locale: { language: 'en', time_format: '24', time_zone: 'server' },
+            localize: () => '',
+        };
+        const root = card.shadowRoot!;
+        // 16:40 Tokyo is the sunset the headline shows; noon in Tokyo is half the chart's width
+        expect(root.querySelector('.st-time')!.textContent).toBe('16:40');
+        expect(parseFloat((root.querySelector('.st-dot') as HTMLElement).style.left)).toBeCloseTo(50, 0);
+        card.remove();
+        vi.useRealTimers();
+    });
+});

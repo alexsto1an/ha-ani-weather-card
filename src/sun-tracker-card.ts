@@ -10,7 +10,7 @@
 
 import { SunData } from './weather-data';
 import { iconBoxCss } from './styles/icon-box';
-import { localizeString, localeKey, formatTime, formatDuration, timeHtml as splitTimeHtml } from './localize';
+import { localizeString, localeKey, formatTime, formatDuration, hourOfDay, timeHtml as splitTimeHtml } from './localize';
 import { HomeAssistant } from './types';
 import { escapeHtml, getWeatherClass, lookup } from './utils';
 import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
@@ -151,11 +151,12 @@ function sunPath(riseHour: number, setHour: number, g: PathGeometry): string {
  * Returns 0 for null / unparseable inputs so the chart degrades to a
  * flat line instead of throwing.
  */
-function isoToHours(iso: string | null): number {
+function isoToHours(iso: string | null, hass?: HomeAssistant): number {
     if (!iso) return 0;
     const d = new Date(iso);
     if (isNaN(d.getTime())) return 0;
-    return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+    // In the time zone the times are shown in, so the dot sits where the headline says
+    return hourOfDay(d, hass);
 }
 
 /** "7:12 PM" → "7:12" + a smaller "PM", so the numerals carry the weight. */
@@ -712,11 +713,11 @@ class AnimatedSunTrackerCard extends HTMLElement {
         }
 
         const now = new Date();
-        const nowHour = now.getHours() + now.getMinutes() / 60;
-        const riseH = isoToHours(sun.sunrise);
-        const setH = isoToHours(sun.sunset);
-        const dawnH = sun.dawn ? isoToHours(sun.dawn) : Math.max(0, riseH - 0.5);
-        const duskH = sun.dusk ? isoToHours(sun.dusk) : Math.min(24, setH + 0.5);
+        const nowHour = hourOfDay(now, this._hass);
+        const riseH = isoToHours(sun.sunrise, this._hass);
+        const setH = isoToHours(sun.sunset, this._hass);
+        const dawnH = sun.dawn ? isoToHours(sun.dawn, this._hass) : Math.max(0, riseH - 0.5);
+        const duskH = sun.dusk ? isoToHours(sun.dusk, this._hass) : Math.min(24, setH + 0.5);
         const dayLength = setH - riseH;
 
         // Headline: whichever of sunrise / sunset comes next

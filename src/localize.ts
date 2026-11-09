@@ -250,6 +250,17 @@ export function shortDate(date: Date, hass?: LocaleSource, withMonth = false): s
     }
 }
 
+/** The time of day in hours (14.5 is 2:30 PM), in the card's time zone: where a time sits on a 24-hour drawing */
+export function hourOfDay(date: Date, hass?: LocaleSource): number {
+    try {
+        const parts = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23', timeZone: cardTimeZone(hass) }).formatToParts(date);
+        const part = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0);
+        return part('hour') + part('minute') / 60 + part('second') / 3600;
+    } catch {
+        return date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+    }
+}
+
 /** A day number for comparing dates in the card's time zone: two times on the same calendar day get the same number */
 export function dayKey(date: Date, hass?: LocaleSource): string {
     try {
