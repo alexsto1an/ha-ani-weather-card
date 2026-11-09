@@ -2,6 +2,7 @@
 // the dashboard's language. Shared by the forecast's drawings (the forecast
 // bundle).
 
+import { forecastString } from './forecast-strings';
 import type { HomeAssistant, HassEntity } from './types';
 import { formatLocalizedNumber, lookup, escapeHtml } from './utils';
 import { HA_CONDITION_NAMES } from './weather-data';
@@ -27,13 +28,13 @@ export function percent(value: number | undefined, hass?: HomeAssistant): string
 /** The hour an entry starts, "14" or "2 PM", or "Now" for the one under way */
 export function hourLabel(datetime: string, now: number, hass?: HomeAssistant): string {
     const t = Date.parse(datetime);
-    if (t <= now && t + 3600_000 > now) return localizeString(hass, 'now');
+    if (t <= now && t + 3600_000 > now) return forecastString(hass, 'now');
     return formatHour(new Date(t), hass);
 }
 
 /** A day's name, "Mon", or "Today" for today */
 export function dayLabel(date: Date, isToday: boolean, hass?: HomeAssistant, width: 'short' | 'long' = 'short'): string {
-    return isToday ? localizeString(hass, 'today') : formatWeekday(date, hass, width);
+    return isToday ? forecastString(hass, 'today') : formatWeekday(date, hass, width);
 }
 
 /** A condition as Home Assistant names it, in the user's language ("Partly cloudy", "Teilweise bewölkt") */

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { HEIGHT_STEPS, NOTE_FIT_STEPS } from '../../src/animated-weather-card';
+import { HEIGHT_STEPS, NOTE_FIT_STEPS, fitLadder } from '../../src/animated-weather-card';
 
 type Card = HTMLElement & { setConfig(config: object): void; hass: unknown; applySizeState(): void };
 
@@ -199,5 +199,59 @@ describe('the card steps down to the roomiest layout that fits', () => {
 
     it('has no note step without a note', async () => {
         expect((await mount(rows(5))).dataset.note).toBeUndefined();
+    });
+});
+
+describe('one ladder for the note, the forecast and the clock', () => {
+    const steps = (...args: Parameters<typeof fitLadder>) => fitLadder(...args).map(s => [s.height, s.note, s.forecast, s.clock, s.range].filter(Boolean).join('/'));
+
+    it('is the ladder the card always had without a forecast or a clock', () => {
+        expect(fitLadder(false, null, false).map(s => s.height)).toEqual([...HEIGHT_STEPS]);
+        expect(fitLadder(true, null, false).map(s => `${s.height}/${s.note}`)).toEqual(NOTE_FIT_STEPS.map(([h, n]) => `${h}/${n}`));
+    });
+
+    it('gives the forecast\'s extra day rows up first, then the hero\'s extras, then the second block, then its short form, then the forecast', () => {
+        expect(steps(false, { full: 'full', trims: ['d4', 'd3', 'd2'], first: 'first', short: 'short' }, false)).toEqual([
+            'regular/none/full/on',
+            'regular/none/d4/on', 'regular/none/d3/on', 'regular/none/d2/on',
+            'compact/none/d2/on', 'short/none/d2/on',
+            'short/none/first/on',
+            'compact/none/short/on', 'short/none/short/on', 'tight/none/short/on',
+            'tight/none/none/on',
+            'minimal/none/none/off',
+        ]);
+    });
+
+    it('lets the note go before the forecast, and the closing-line clock after it, then a wrapped high and low', () => {
+        const ladder = steps(true, { full: 'full', trims: [], short: 'short' }, true, true);
+        expect(ladder.slice(0, 5)).toEqual(['regular/long/full/on', 'close/long/full/on', 'regular/line/full/on', 'snug/line/full/on', 'regular/none/full/on']);
+        expect(ladder.slice(-4)).toEqual(['tight/none/none/on', 'tight/none/none/off', 'tight/none/none/off/none', 'minimal/none/none/off/none']);
+    });
+});
+
+describe('the rows the card asks for', () => {
+    type Sized = HTMLElement & { setConfig(c: object): void; getGridOptions(): { rows: number }; getCardSize(): number };
+    const rowsOf = (config: object) => {
+        const card = document.createElement('animated-weather-card') as Sized;
+        card.setConfig({ entity: 'weather.home', ...config });
+        return card.getGridOptions().rows;
+    };
+
+    it('asks one more row for a clock, and one more again for the closing line with a note', () => {
+        expect(rowsOf({})).toBe(4);
+        expect(rowsOf({ show_clock: true, review_clock: 'c' })).toBe(5);
+        expect(rowsOf({ show_clock: true, review_clock: 'c', show_note: true })).toBe(5);
+        expect(rowsOf({ show_clock: true, review_clock: 'a', show_note: true })).toBe(6);
+    });
+
+    it('asks two more for a forecast block, one for the sentence, four for both, and never more for a clock beside it', () => {
+        expect(rowsOf({ forecast: 'hourly' })).toBe(6);
+        expect(rowsOf({ forecast: 'hourly', review_forecast: 'b' })).toBe(5);
+        expect(rowsOf({ forecast: 'hourly', show_note: true })).toBe(7);
+        expect(rowsOf({ forecast: 'both' })).toBe(8);
+        expect(rowsOf({ forecast: 'both', show_note: true })).toBe(9);
+        expect(rowsOf({ forecast: 'hourly', show_clock: true })).toBe(6);
+        // The strip has no room for either
+        expect(rowsOf({ forecast: 'both', compact: true })).toBe(2);
     });
 });

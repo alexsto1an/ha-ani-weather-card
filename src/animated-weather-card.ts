@@ -825,7 +825,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     /** The clock's markup; updateClock fills it in at once and on every minute */
     private clockHtml(): string {
         return '<time class="awc-clock"><span class="awc-clock-time"></span><span class="awc-clock-period"></span>'
-            + '<span class="awc-clock-date" aria-hidden="true"></span><span class="awc-visually-hidden awc-clock-spoken"></span></time>';
+            + '<span class="awc-clock-date" aria-hidden="true"><span class="awc-date-short"></span><span class="awc-date-month"></span></span>'
+            + '<span class="awc-visually-hidden awc-clock-spoken"></span></time>';
     }
 
     /**
@@ -894,9 +895,10 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         };
         this.setClockDigits(el.querySelector('.awc-clock-time') as HTMLElement | null, time);
         set('.awc-clock-period', period);
-        // The eye gets the short date (a: "Tue 10"; b and c: "Tue, Nov 10"),
-        // a screen reader the whole of it
-        set('.awc-clock-date', shortDate(now, this._hass, this.clockStyle() !== 'a'));
+        // The eye gets the short date ("Tue 10", with the month from 460 px
+        // on the first line: the container picks), a screen reader the whole of it
+        set('.awc-date-short', shortDate(now, this._hass));
+        set('.awc-date-month', shortDate(now, this._hass, true));
         set('.awc-clock-spoken', `${time}${period ? ` ${period}` : ''}, ${formatDate(now, this._hass)}`);
         el.querySelector('.awc-clock-period')?.toggleAttribute('hidden', !period);
         const datetime = now.toISOString().slice(0, 16);

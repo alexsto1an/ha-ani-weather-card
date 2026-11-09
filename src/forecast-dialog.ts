@@ -50,7 +50,10 @@ export function openDialog(options: DialogOptions): (immediately?: boolean) => v
     const finish = () => {
         if (done) return;
         done = true;
-        if (dialog.open) dialog.close();
+        if (dialog.open) {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        }
         host.remove();
         html.style.overflow = overflow;
         // Back where it was opened from, if that's still on the page

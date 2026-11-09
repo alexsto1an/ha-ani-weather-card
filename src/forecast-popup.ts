@@ -7,6 +7,7 @@
 //
 // Review only: variants (review_popup) while they're compared.
 
+import { forecastString } from './forecast-strings';
 import type { PopupContext } from './forecast-views-api';
 import type { HassEntity, HomeAssistant } from './types';
 import { openDialog } from './forecast-dialog';
@@ -28,7 +29,7 @@ function reading(value: unknown, unit: unknown, hass?: HomeAssistant, decimals =
     return `${formatLocalizedNumber(n, hass, decimals)}${unit ? ` ${unit}` : ''}`;
 }
 
-interface Detail { label: string; value: string; sub?: string; arrow?: number }
+interface Detail { label: string; value: string; sub?: string; arrow?: number; /** The value is markup this file built (a time with its small day period), not text */ html?: boolean }
 
 /** Every reading the entity reports, as Home Assistant names them; only the ones it has */
 export function details(weather: HassEntity | undefined, model: ForecastModel, hass: HomeAssistant | undefined, sun?: HassEntity): Detail[] {
@@ -62,6 +63,7 @@ export function details(weather: HassEntity | undefined, model: ForecastModel, h
         out.push({
             label: localizeString(hass, day ? 'sunset' : 'sunrise'),
             value: timeHtml(formatTime(next, hass), 'awc-ampm'),
+            html: true,
             sub: `${localizeString(hass, day ? 'sunrise' : 'sunset')} ${formatTime(other, hass)}`,
         });
     }
@@ -72,7 +74,7 @@ function detailsHtml(list: Detail[]): string {
     if (!list.length) return '';
     return `<div class="pp-details">${list.map(d => `<div class="pp-detail" role="group">`
         + `<div class="pp-detail-label">${escapeHtml(d.label)}</div>`
-        + `<div class="pp-detail-value">${d.value.includes('<span') ? d.value : escapeHtml(d.value)}${d.arrow !== undefined
+        + `<div class="pp-detail-value">${d.html ? d.value : escapeHtml(d.value)}${d.arrow !== undefined
             ? `<ha-icon class="pp-arrow" icon="mdi:navigation" style="transform: rotate(${(d.arrow + 180) % 360}deg)" aria-hidden="true"></ha-icon>` : ''}</div>`
         + (d.sub ? `<div class="pp-detail-sub">${escapeHtml(d.sub)}</div>` : '')
         + '</div>').join('')}</div>`;
@@ -95,7 +97,7 @@ interface Live {
 /** The pieces every pop-up variant needs: the model, the hero's words, the readings */
 function pieces(ctx: PopupContext, live: Live) {
     const hass = ctx.hass;
-    const model = buildForecastModel({ hourly: live.hourly, daily: live.daily, dailyType: live.dailyType, now: Date.now(), current: ctx.current, hass, dayCount: 10 });
+    const model = buildForecastModel({ hourly: live.hourly, daily: live.daily, dailyType: live.dailyType, now: ctx.now, current: ctx.current, hass, dayCount: 10 });
     const weather = hass?.states[ctx.entityId];
     const sun = hass?.states['sun.sun'];
     const place = String(weather?.attributes?.friendly_name ?? '');
@@ -107,8 +109,8 @@ function pieces(ctx: PopupContext, live: Live) {
 /** The bar: the close button at the top start, as in Home Assistant's own dialogs, then the place */
 function barHtml(hass: HomeAssistant | undefined, place: string): string {
     return `<div class="pp-bar">`
-        + `<button type="button" class="pp-close" data-close aria-label="${escapeHtml(cardLocalize(hass, 'ui.common.close', localizeString(hass, 'close')))}"><span><ha-icon icon="mdi:close"></ha-icon></span></button>`
-        + `<h2 id="awc-sheet-title" tabindex="-1" data-autofocus><span class="awc-visually-hidden">${escapeHtml(localizeString(hass, 'forecast'))}, </span>${escapeHtml(place)}</h2>`
+        + `<button type="button" class="pp-close" data-close aria-label="${escapeHtml(cardLocalize(hass, 'ui.common.close', forecastString(hass, 'close')))}"><span><ha-icon icon="mdi:close"></ha-icon></span></button>`
+        + `<h2 id="awc-sheet-title" tabindex="-1" data-autofocus><span class="awc-visually-hidden">${escapeHtml(forecastString(hass, 'forecast'))}, </span>${escapeHtml(place)}</h2>`
         + '</div>';
 }
 
@@ -123,7 +125,7 @@ function runsHtml(hours: ReturnType<typeof hourWindows>, hass?: HomeAssistant): 
     hours.forEach((w, i) => {
         const last = runs[runs.length - 1];
         if (last && family(hours[i - 1]) === family(w)) { last.span++; return; }
-        const text = w.wet ? localizeString(hass, (w.kind ?? 'rain') as never) : conditionLabel(w.condition, hass);
+        const text = w.wet ? forecastString(hass, w.kind ?? 'rain') : conditionLabel(w.condition, hass);
         runs.push({ start: i, span: 1, text });
     });
     return `<div class="pp-runs" aria-hidden="true" style="--awc-cols: ${hours.length}">${runs.map(r => `<span style="grid-column: ${r.start + 1} / span ${r.span}">${escapeHtml(r.text)}</span>`).join('')}</div>`;
@@ -138,7 +140,7 @@ function runsHtml(hours: ReturnType<typeof hourWindows>, hass?: HomeAssistant): 
  */
 function sheetHtml(ctx: PopupContext, live: Live): string {
     const { hass, model, weather, sun, place, condition, feels } = pieces(ctx, live);
-    const hours = hourWindows(model.hours, Date.now(), 24, 1, hass, true);
+    const hours = hourWindows(model.hours, ctx.now, 24, 1, hass, true);
     const night = ctx.phase === 'night';
     return `
       <div class="pp-content">
@@ -150,12 +152,12 @@ function sheetHtml(ctx: PopupContext, live: Live): string {
           ${feels !== undefined ? `<div class="pp-feels">${escapeHtml(localizeString(hass, 'feels_like'))} ${escapeHtml(degrees(feels, hass))}</div>` : ''}
           ${ctx.note ? `<p class="pp-note">${escapeHtml(ctx.note)}</p>` : ''}
         </div>
-        ${hours.length ? `<div class="pp-block"><section class="pp-hours" role="region" tabindex="0" aria-label="${escapeHtml(localizeString(hass, 'next_hours'))}"><div class="pp-hours-track">${runsHtml(hours, hass)}${hoursHtml(hours, false, hass, 'pp-hour-grid')}</div></section></div>` : ''}
+        ${hours.length ? `<div class="pp-block"><section class="pp-hours" role="region" tabindex="0" aria-label="${escapeHtml(forecastString(hass, 'next_hours'))}"><div class="pp-hours-track">${runsHtml(hours, hass)}${hoursHtml(hours, false, hass, 'pp-hour-grid')}</div></section></div>` : ''}
         <div class="pp-block pp-lower">
           ${model.days.length ? `<div class="pp-days">${daysHtml(model.days, model, hass, ctx.current)}</div>` : ''}
           ${detailsHtml(details(weather, model, hass, sun))}
         </div>
-        <button type="button" class="pp-more" data-more>${escapeHtml(localizeString(hass, 'more_info'))}<span aria-hidden="true">›</span></button>
+        <button type="button" class="pp-more" data-more>${escapeHtml(forecastString(hass, 'more_info'))}<span aria-hidden="true">›</span></button>
       </div>`;
 }
 
@@ -168,17 +170,17 @@ function stops(ctx: PopupContext, live: Live, model: ForecastModel): Stop[] {
     const hass = ctx.hass;
     const weather = hass?.states[ctx.entityId];
     const a = weather?.attributes ?? {};
-    const now = Date.now();
+    const now = ctx.now;
     const facts = (e: Record<string, unknown>, windUnit: unknown) => [
-        num(e.precipitation_probability) !== undefined ? `${localizeString(hass, 'rain')} ${Math.round(num(e.precipitation_probability)!)}%` : '',
+        num(e.precipitation_probability) !== undefined ? `${forecastString(hass, 'rain')} ${Math.round(num(e.precipitation_probability)!)}%` : '',
         num(e.precipitation) ? reading(e.precipitation, a.precipitation_unit ?? 'mm', hass, 1) : '',
-        num(e.wind_speed) !== undefined ? `${cardLocalize(hass, 'ui.card.weather.attributes.wind_speed', 'Wind')} ${reading(e.wind_speed, windUnit, hass)}${num(e.wind_gust_speed) !== undefined ? `, ${localizeString(hass, 'gusts')} ${reading(e.wind_gust_speed, windUnit, hass)}` : ''}` : '',
+        num(e.wind_speed) !== undefined ? `${cardLocalize(hass, 'ui.card.weather.attributes.wind_speed', 'Wind')} ${reading(e.wind_speed, windUnit, hass)}${num(e.wind_gust_speed) !== undefined ? `, ${forecastString(hass, 'gusts')} ${reading(e.wind_gust_speed, windUnit, hass)}` : ''}` : '',
         num(e.humidity) !== undefined ? `${cardLocalize(hass, 'ui.card.weather.attributes.humidity', 'Humidity')} ${Math.round(num(e.humidity)!)}%` : '',
         num(e.uv_index) !== undefined ? `UV ${Math.round(num(e.uv_index)!)}` : '',
         num(e.cloud_coverage) !== undefined ? `${cardLocalize(hass, 'ui.card.weather.attributes.cloud_coverage', 'Cloud coverage')} ${Math.round(num(e.cloud_coverage)!)}%` : '',
         num(e.dew_point) !== undefined ? `${cardLocalize(hass, 'ui.card.weather.attributes.dew_point', 'Dew point')} ${degrees(num(e.dew_point), hass)}` : '',
     ].filter(Boolean);
-    const first: Stop = { t: now, label: localizeString(hass, 'now'), temp: ctx.current, condition: weather?.state, facts: facts(a as Record<string, unknown>, a.wind_speed_unit) };
+    const first: Stop = { t: now, label: forecastString(hass, 'now'), temp: ctx.current, condition: weather?.state, facts: facts(a as Record<string, unknown>, a.wind_speed_unit) };
     const today = new Date(now).toDateString();
     const later = model.hours.filter(e => Date.parse(e.datetime) > now + 10 * 60_000).map(e => {
         const t = Date.parse(e.datetime);
@@ -205,12 +207,12 @@ function scrubHtml(ctx: PopupContext, live: Live): string {
     const { hass, model, weather, sun, place, condition, feels } = pieces(ctx, live);
     const size = plotSize();
     const line = lineChart({
-        hass, hours: model.hours, now: Date.now(), current: ctx.current, unit: ctx.unit, width: size.width, windowHours: size.hours,
+        hass, hours: model.hours, now: ctx.now, current: ctx.current, unit: ctx.unit, width: size.width, windowHours: size.hours,
         lanes: { top: 28, gap: 4, amp: size.hours > 24 ? 128 : 112, bottom: 28 }, groundBelow: 0, sun: hass?.states['sun.sun'], dot: [7, 7],
         maxBands: 3, bandDetail: false, size: 'lg', axis: true,
     });
     const list = stops(ctx, live, model);
-    const count = list.filter(st => st.t <= Date.now() + size.hours * 3600_000).length;
+    const count = list.filter(st => st.t <= ctx.now + size.hours * 3600_000).length;
     return `
       <div class="pp-content">
         ${barHtml(hass, place)}
@@ -222,11 +224,11 @@ function scrubHtml(ctx: PopupContext, live: Live): string {
         </div>
         ${line.html ? `<div class="pp-block pp-scrub">
           <div class="pp-readout" aria-hidden="true">
-            <div class="pp-read-1"><span class="pp-read-time"></span><button type="button" class="pp-now" hidden>${escapeHtml(localizeString(hass, 'now'))} ›</button></div>
+            <div class="pp-read-1"><span class="pp-read-time"></span><button type="button" class="pp-now" hidden>${escapeHtml(forecastString(hass, 'now'))} ›</button></div>
             <div class="pp-read-2"><span class="pp-read-temp"></span><span class="pp-read-cond"></span></div>
             <div class="pp-read-3"></div>
           </div>
-          <div class="pp-plot" role="slider" tabindex="0" aria-label="${escapeHtml(localizeString(hass, 'next_hours'))}" aria-valuemin="0" aria-valuemax="${Math.max(0, count - 1)}" aria-valuenow="0">
+          <div class="pp-plot" role="slider" tabindex="0" aria-label="${escapeHtml(forecastString(hass, 'next_hours'))}" aria-valuemin="0" aria-valuemax="${Math.max(0, count - 1)}" aria-valuenow="0">
             ${line.html.replace('class="awc-line"', 'class="awc-line lg"')}
             <div class="pp-marker" aria-hidden="true"><i class="pp-marker-line" style="height: ${line.ground ?? 0}px"></i><i class="pp-marker-ring"></i></div>
           </div>
@@ -235,7 +237,7 @@ function scrubHtml(ctx: PopupContext, live: Live): string {
           ${model.days.length ? `<div class="pp-days">${daysHtml(model.days, model, hass, ctx.current)}</div>` : ''}
           ${detailsHtml(details(weather, model, hass, sun))}
         </div>
-        <button type="button" class="pp-more" data-more>${escapeHtml(localizeString(hass, 'more_info'))}<span aria-hidden="true">›</span></button>
+        <button type="button" class="pp-more" data-more>${escapeHtml(forecastString(hass, 'more_info'))}<span aria-hidden="true">›</span></button>
       </div>`;
 }
 
@@ -243,9 +245,9 @@ function scrubHtml(ctx: PopupContext, live: Live): string {
 function wireScrub(dialog: HTMLDialogElement, ctx: PopupContext, live: Live): void {
     const plot = dialog.querySelector('.pp-plot') as HTMLElement | null;
     if (!plot) return;
-    const model = buildForecastModel({ hourly: live.hourly, daily: live.daily, dailyType: live.dailyType, now: Date.now(), current: ctx.current, hass: ctx.hass, dayCount: 10 });
+    const model = buildForecastModel({ hourly: live.hourly, daily: live.daily, dailyType: live.dailyType, now: ctx.now, current: ctx.current, hass: ctx.hass, dayCount: 10 });
     const size = plotSize();
-    const list = stops(ctx, live, model).filter(st => st.t <= Date.now() + size.hours * 3600_000);
+    const list = stops(ctx, live, model).filter(st => st.t <= ctx.now + size.hours * 3600_000);
     if (!list.length) return;
     const pxPerMs = size.width / (size.hours * 3600_000);
     const xOf = (st: Stop) => Math.max(0, (st.t - list[0].t) * pxPerMs);
@@ -487,7 +489,9 @@ const VARIANTS: Record<string, { css: string; html(ctx: PopupContext, live: Live
 };
 
 /** Opens the pop-up; returns the way to close it */
-export function openPopup(ctx: PopupContext): () => void {
+export function openPopup(given: PopupContext): () => void {
+    // Its own copy: "now" moves on when it's drawn again with new data
+    const ctx: PopupContext = { ...given };
     const variant = (ctx.variant && Object.prototype.hasOwnProperty.call(VARIANTS, ctx.variant) ? VARIANTS[ctx.variant] : undefined) ?? VARIANTS.a;
     const weather = ctx.hass?.states[ctx.entityId];
     const live: Live = { hourly: ctx.hourly, daily: ctx.daily, dailyType: ctx.dailyType ?? dailyTypeFor(weather) };
@@ -496,6 +500,7 @@ export function openPopup(ctx: PopupContext): () => void {
 
     const draw = () => {
         if (!dialog) return;
+        ctx.now = Date.now();
         const content = dialog.querySelector('.pp-content') as HTMLElement | null;
         const hours = dialog.querySelector('.pp-hours') as HTMLElement | null;
         const scrollTop = content?.scrollTop ?? 0;
@@ -523,7 +528,7 @@ export function openPopup(ctx: PopupContext): () => void {
     };
 
     close = openDialog({
-        label: `${localizeString(ctx.hass, 'forecast')}`,
+        label: `${forecastString(ctx.hass, 'forecast')}`,
         css: variant.css,
         html: variant.html(ctx, live),
         className: [variant.className, ctx.theme ? 'theme' : ''].filter(Boolean).join(' '),

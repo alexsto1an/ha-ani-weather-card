@@ -27,10 +27,9 @@ describe('the forecast, shaped for drawing', () => {
         expect(model.today).toEqual({ high: 16.4, low: 7 });
     });
 
-    it('works today\'s high and low out from the hours when there are no days', () => {
+    it('says no high or low without a day: the hours left can\'t know the morning\'s low', () => {
         const model = buildForecastModel({ hourly, daily: null, dailyType: null, now, current: 11, hass: utc });
-        // Today's hours from 10:00 to 23:00: 12, 13, …, 21, 10, 11, 12, 13
-        expect(model.today).toEqual({ high: 21, low: 10 });
+        expect(model.today).toEqual({ high: undefined, low: undefined });
         expect(model.days).toEqual([]);
     });
 

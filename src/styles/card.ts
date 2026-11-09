@@ -490,6 +490,11 @@ ${iconBoxCss('animated-weather-card')}
         .awc-clock-time { display: inline-flex; }
         .awc-clock-time > span { display: inline-block; }
         .awc-clock-period[hidden] { display: none; }
+        .awc-date-month { display: none; }
+        @container awc (min-width: 460px) {
+          .awc-headline .awc-date-short { display: none; }
+          .awc-headline .awc-date-month { display: inline; }
+        }
 
         /* a: the hero's last line. Thin numerals at about 0.42× the
            temperature, in the quiet tint, with the short date; it leads into

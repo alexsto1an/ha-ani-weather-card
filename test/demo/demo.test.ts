@@ -1,3 +1,4 @@
+import '../../src/animated-weather-card';
 import { describe, it, expect, vi } from 'vitest';
 import { SKY_TEXT, oklchToSrgb, skyColors, skyPhaseFromSun, toHex } from '../../src/sky';
 import { getWeatherClass } from '../../src/utils';
@@ -380,11 +381,16 @@ describe('the demo\'s sample world', () => {
     });
 
     it('gives the cards the rows they declare, and a tile everything else', () => {
-        const weather = readFileSync(join(process.cwd(), 'src/animated-weather-card.ts'), 'utf8');
-        const tracker = readFileSync(join(process.cwd(), 'src/sun-tracker-card.ts'), 'utf8');
-        expect(weather).toContain(`{ columns: 12, rows: ${CARD_ROWS.weather},`);
-        expect(weather).toContain(`{ columns: 12, rows: ${CARD_ROWS.compact},`);
-        expect(tracker).toContain(`{ columns: 12, rows: ${CARD_ROWS.tracker},`);
+        type Sized = HTMLElement & { setConfig(c: object): void; getGridOptions(): { rows: number } };
+        const rowsOf = (type: string, config: object) => {
+            const card = document.createElement(type) as Sized;
+            card.setConfig(config);
+            return card.getGridOptions().rows;
+        };
+        // The dashboard's weather card writes a note; its strip is compact
+        expect(rowsOf('animated-weather-card', { entity: 'weather.home', show_note: true })).toBe(CARD_ROWS.weather);
+        expect(rowsOf('animated-weather-card', { entity: 'weather.home', compact: true })).toBe(CARD_ROWS.compact);
+        expect(rowsOf('animated-sun-tracker-card', { sun_entity: 'sun.sun', compact: true })).toBe(CARD_ROWS.tracker);
         const cards = DASHBOARD.flatMap(section => section.cards);
         for (const kind of Object.keys(CARD_ROWS)) expect(cards.filter(item => item.card === kind)).toHaveLength(1);
         for (const item of cards) {

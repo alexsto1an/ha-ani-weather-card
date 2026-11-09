@@ -57,12 +57,14 @@ describe('the forecast card', () => {
         };
         expect(sized({ compact: true }).rows).toBe(2);
         expect(sized({}).rows).toBeGreaterThanOrEqual(2);
-        expect(sized({ forecast: 'both' }).rows).toBeGreaterThan(sized({}).rows);
+        expect(sized({ forecast: 'both', review_card: 'b' }).rows).toBeGreaterThan(sized({ forecast: 'hourly', review_card: 'b' }).rows);
+        // The bedside clock asks for room to lead
+        expect(sized({ show_clock: true }).rows).toBeGreaterThan(sized({}).rows);
     });
 
     it('opens the forecast pop-up on a tap unless told otherwise', () => {
         const openPopup = vi.fn(() => () => {});
-        window.AnimatedWeatherCardForecast = { version: 1, sectionCss: '', renderSection: () => '', cardCss: '', renderCard: () => '<p>Forecast</p>', openPopup };
+        window.AnimatedWeatherCardForecast = { version: 1, sectionCss: '', renderSection: () => '', renderHighLow: () => '', fit: () => {}, cardCss: '', renderCard: () => '<p>Forecast</p>', openPopup };
         const card = new Card();
         card.setConfig({ entity: 'weather.home' });
         document.body.append(card);

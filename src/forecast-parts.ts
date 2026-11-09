@@ -3,6 +3,7 @@
 // and today's high and low. The weather card's forecast, the forecast card
 // and the pop-up put them together their own ways (forecast-views.ts).
 
+import { forecastString, ForecastString } from './forecast-strings';
 import type { HomeAssistant } from './types';
 import type { ForecastEntry } from './forecast-data';
 import { ForecastDay, ForecastModel, isWet } from './forecast-model';
@@ -93,7 +94,7 @@ export function hourWindows(hours: ForecastEntry[], now: number, count: number, 
             amount: amounts.length ? amounts.reduce((a, b) => a + b, 0) : undefined,
             isDay: at.is_daytime ?? !/night/.test(at.condition ?? ''),
             // Midnight is the new day's name, which no "12 AM" or "00:00" says as well
-            label: fromNow && i === 0 ? localizeString(hass, 'now')
+            label: fromNow && i === 0 ? forecastString(hass, 'now')
                 : hourOfDay(t, hass) === 0 ? formatWeekday(new Date(t), hass, 'short') : hourLabelFor(t, hass),
         });
     }
@@ -141,7 +142,7 @@ export function tokens(windows: HourWindow[], wetNow: boolean, hass?: HomeAssist
     const found: Omit<Token, 'span'>[] = [];
     let i = 0;
     if (windows.length && wetNow && !windows[0].wet) {
-        const dry = localizeString(hass, 'dry');
+        const dry = forecastString(hass, 'dry');
         found.push({ column: 0, text: dry, short: dry, wet: false });
     }
     while (i < windows.length) {
@@ -149,12 +150,12 @@ export function tokens(windows: HourWindow[], wetNow: boolean, hass?: HomeAssist
         const run: HourWindow[] = [];
         const begin = i;
         while (i < windows.length && windows[i].wet) run.push(windows[i++]);
-        const word = localizeString(hass, mostSevere(run));
+        const word = forecastString(hass, mostSevere(run));
         const chances = run.map(w => w.chance).filter((v): v is number => v !== undefined);
         const chance = roundedChance(chances.length ? Math.max(...chances) : undefined);
         found.push({ column: begin, text: chance !== undefined ? `${word} ${percent(chance, hass)}` : word, short: word, chance: chance !== undefined ? percent(chance, hass) : undefined, wet: true });
         if (i < windows.length) {
-            const dry = localizeString(hass, 'dry');
+            const dry = forecastString(hass, 'dry');
             found.push({ column: i, text: dry, short: dry, wet: false });
         }
     }
@@ -162,7 +163,7 @@ export function tokens(windows: HourWindow[], wetNow: boolean, hass?: HomeAssist
 }
 
 const SEVERITY: WetKind[] = ['storms', 'hail', 'snow', 'sleet', 'rain'];
-function mostSevere(run: HourWindow[]): CardString {
+function mostSevere(run: HourWindow[]): ForecastString {
     const kinds = run.map(w => w.kind ?? 'rain');
     return SEVERITY.find(kind => kinds.includes(kind)) ?? 'rain';
 }
@@ -170,7 +171,7 @@ function mostSevere(run: HourWindow[]): CardString {
 /** A screen reader's sentence for an hour: "3 PM: 23°, Rainy, rain 80% chance" */
 function hourSentence(w: HourWindow, hass?: HomeAssistant): string {
     const parts = [degrees(w.temp, hass), conditionLabel(w.condition, hass)];
-    if (w.wet && w.chance !== undefined) parts.push(localizeString(hass, 'chance', { percent: percent(roundedChance(w.chance), hass) }));
+    if (w.wet && w.chance !== undefined) parts.push(forecastString(hass, 'chance', { percent: percent(roundedChance(w.chance), hass) }));
     return `${w.label}: ${parts.filter(Boolean).join(', ')}`;
 }
 
@@ -182,13 +183,13 @@ export function hoursHtml(windows: HourWindow[], wetNow: boolean, hass?: HomeAss
         + `<span class="awc-hour-label" aria-hidden="true">${escapeHtml(w.label)}</span>`
         + `<span class="awc-hour-temp" aria-hidden="true">${escapeHtml(degrees(w.temp, hass))}</span></li>`).join('');
     const line = marks.map(t => `<li aria-hidden="true"><span class="awc-hour-token${t.wet ? '' : ' dry'}" style="grid-column: ${t.column + 1} / span ${t.span}" data-short="${escapeHtml(t.short)}"${t.chance ? ` data-chance="${escapeHtml(t.chance)}"` : ''}>${escapeHtml(t.text)}</span></li>`).join('');
-    return `<ol class="awc-hours ${className}" style="--awc-cols: ${windows.length}" aria-label="${escapeHtml(localizeString(hass, 'next_hours'))}">${cells}${line}</ol>`;
+    return `<ol class="awc-hours ${className}" style="--awc-cols: ${windows.length}" aria-label="${escapeHtml(forecastString(hass, 'next_hours'))}">${cells}${line}</ol>`;
 }
 
 /** A day's "what": the wet word and its chance at full strength, or Home Assistant's name for a dry day, in the tint */
 function dayWhat(day: ForecastDay, hass?: HomeAssistant): { text: string; wet: boolean; short?: string } {
     if (isWet({ precipitation_probability: day.chance, precipitation: day.precipitation, condition: day.condition })) {
-        const word = localizeString(hass, wetKind([day.condition]));
+        const word = forecastString(hass, wetKind([day.condition]));
         const chance = roundedChance(day.chance);
         return { text: chance !== undefined ? `${word} ${percent(chance, hass)}` : word, wet: true, short: word };
     }
@@ -215,9 +216,9 @@ export function daysHtml(days: ForecastDay[], model: ForecastModel, hass?: HomeA
         const spoken = [
             day.isToday ? name : formatWeekday(day.date, hass, 'long'),
             conditionLabel(day.condition, hass),
-            what.wet && day.chance !== undefined ? localizeString(hass, 'chance', { percent: percent(roundedChance(day.chance), hass) }) : '',
-            day.low !== undefined ? `${localizeString(hass, 'low').toLowerCase()} ${degrees(day.low, hass)}` : '',
-            day.high !== undefined ? `${localizeString(hass, 'high').toLowerCase()} ${degrees(day.high, hass)}` : '',
+            what.wet && day.chance !== undefined ? forecastString(hass, 'chance', { percent: percent(roundedChance(day.chance), hass) }) : '',
+            day.low !== undefined ? `${forecastString(hass, 'low').toLowerCase()} ${degrees(day.low, hass)}` : '',
+            day.high !== undefined ? `${forecastString(hass, 'high').toLowerCase()} ${degrees(day.high, hass)}` : '',
         ].filter(Boolean).join(', ');
         return `<li><span class="awc-visually-hidden">${escapeHtml(spoken)}</span>`
             + `<span class="awc-day-name" aria-hidden="true">${escapeHtml(name)}</span>`
@@ -226,18 +227,18 @@ export function daysHtml(days: ForecastDay[], model: ForecastModel, hass?: HomeA
             + barHtml(day, model.span, current)
             + `<span class="awc-day-high" aria-hidden="true">${day.high !== undefined ? escapeHtml(degrees(day.high, hass)) : ''}</span></li>`;
     }).join('');
-    return `<ol class="awc-days ${className}" aria-label="${escapeHtml(localizeString(hass, 'next_days'))}">${rows}</ol>`;
+    return `<ol class="awc-days ${className}" aria-label="${escapeHtml(forecastString(hass, 'next_days'))}">${rows}</ol>`;
 }
 
 /** Today's high and low, as a line ("H 24°  L 15°") or a stack beside the temperature */
 export function highLowHtml(today: ForecastModel['today'], hass?: HomeAssistant): string {
     const { high, low } = today;
     if (high === undefined && low === undefined) return '';
-    const pair = (label: CardString, value: number | undefined) => value === undefined ? ''
-        : `<span class="awc-hl-pair" aria-hidden="true"><span class="awc-hl-label">${escapeHtml(localizeString(hass, label))}</span>${escapeHtml(degrees(value, hass))}</span>`;
+    const pair = (label: ForecastString, value: number | undefined) => value === undefined ? ''
+        : `<span class="awc-hl-pair" aria-hidden="true"><span class="awc-hl-label">${escapeHtml(forecastString(hass, label))}</span>${escapeHtml(degrees(value, hass))}</span>`;
     const spoken = [
-        high !== undefined ? `${localizeString(hass, 'high')} ${degrees(high, hass)}` : '',
-        low !== undefined ? `${localizeString(hass, 'low').toLowerCase()} ${degrees(low, hass)}` : '',
+        high !== undefined ? `${forecastString(hass, 'high')} ${degrees(high, hass)}` : '',
+        low !== undefined ? `${forecastString(hass, 'low').toLowerCase()} ${degrees(low, hass)}` : '',
     ].filter(Boolean).join(', ');
     return `${pair('high_short', high)}${pair('low_short', low)}<span class="awc-visually-hidden">${escapeHtml(spoken)}</span>`;
 }

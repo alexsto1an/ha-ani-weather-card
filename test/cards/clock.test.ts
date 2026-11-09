@@ -38,3 +38,47 @@ describe('the clock\'s minute', () => {
         ticker.stop();
     });
 });
+
+describe('the clock on the weather card', () => {
+    type Card = HTMLElement & { setConfig(c: object): void; hass: unknown; setAnimationsPaused(p: boolean): void };
+    const hass = (timeFormat = '24') => ({
+        states: { 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: { temperature: 21, friendly_name: 'Home' } } },
+        config: { time_zone: 'Asia/Tokyo' },
+        language: 'en',
+        locale: { language: 'en', time_format: timeFormat, time_zone: 'server' },
+        localize: () => '',
+    });
+    const mount = async (config: object, timeFormat = '24') => {
+        const card = document.createElement('animated-weather-card') as Card;
+        card.setConfig({ entity: 'weather.home', show_clock: true, ...config });
+        document.body.appendChild(card);
+        card.hass = hass(timeFormat);
+        await vi.advanceTimersByTimeAsync(300);
+        return card;
+    };
+    afterEach(() => { document.body.replaceChildren(); });
+
+    it('shows the time in the profile\'s time zone and format, on the line its design gives it', async () => {
+        vi.useFakeTimers({ now: new Date('2026-11-10T10:07:30Z') });
+        await import('../../src/animated-weather-card');
+        const c = await mount({ review_clock: 'c' });
+        expect(c.querySelector('.awc-headline .awc-clock-time')!.textContent).toBe('19:07');
+        expect(c.querySelector('.awc-headline-place')!.textContent).toBe('Home');
+        expect(c.querySelector('.awc-clock-spoken')!.textContent).toMatch(/^19:07, Tuesday/);
+        const a = await mount({ review_clock: 'a' }, '12');
+        expect(a.querySelector('.main-weather-info > .awc-clock .awc-clock-time')!.textContent).toBe('7:07');
+        expect(a.querySelector('.awc-clock-period')!.textContent).toBe('PM');
+    });
+
+    it('rests while the card does, and reads the time the moment it\'s back', async () => {
+        vi.useFakeTimers({ now: new Date('2026-11-10T10:07:30Z') });
+        await import('../../src/animated-weather-card');
+        const card = await mount({ review_clock: 'b' });
+        const time = () => card.querySelector('.awc-clock-time')!.textContent;
+        card.setAnimationsPaused(true);
+        await vi.advanceTimersByTimeAsync(5 * 60_000);
+        expect(time()).toBe('19:07');
+        card.setAnimationsPaused(false);
+        expect(time()).toBe('19:12');
+    });
+});

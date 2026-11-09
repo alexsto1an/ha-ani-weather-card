@@ -5,6 +5,7 @@
 // while they're compared in the real card. They share their parts
 // (forecast-parts.ts).
 
+import { forecastString } from './forecast-strings';
 import type { ForecastContext, ForecastViews, PopupContext } from './forecast-views-api';
 import { skyGlowGradient, SKY_GLOW_FORECAST, SKY_GLOW_FORECAST_WIDE, skyColors, sampleSky, SKY_CONDITIONS, type SkyCondition, type SkyPhase, SKY_TEXT, SKY_TEXT_SECONDARY_ALPHA, oklchToSrgb, toHex, SKY_COLOR_PROPERTIES, SKY_DISSOLVE_SEC, SKY_DISSOLVE_EASE } from './sky';
 import { buildForecastModel, ForecastModel } from './forecast-model';
@@ -66,7 +67,7 @@ export function sentenceLines(model: ForecastModel, ctx: ForecastContext): strin
     const warm = /F/.test(ctx.unit) ? 3 : 2;
     const high = after.reduce<typeof after[0] | undefined>((a, b) => !a || b.temperature! > a.temperature! ? b : a, undefined);
     const low = after.reduce<typeof after[0] | undefined>((a, b) => !a || b.temperature! < a.temperature! ? b : a, undefined);
-    const extreme = (e: typeof high, key: 'high_at' | 'low_at') => e ? localizeString(hass, key, { value: degrees(e.temperature, hass), time: hourLabelFor(Date.parse(e.datetime), hass) }) : '';
+    const extreme = (e: typeof high, key: 'high_at' | 'low_at') => e ? forecastString(hass, key, { value: degrees(e.temperature, hass), time: hourLabelFor(Date.parse(e.datetime), hass) }) : '';
     const highText = high && high.temperature! - now >= warm ? extreme(high, 'high_at') : '';
     const lowText = low && now - low.temperature! >= warm ? extreme(low, 'low_at') : '';
     const lines: string[] = [];
@@ -81,7 +82,7 @@ export function sentenceLines(model: ForecastModel, ctx: ForecastContext): strin
         if (highText && lowText) lines.push(lowText);
     } else {
         const last = hours[hours.length - 1];
-        lines.push(localizeString(hass, 'steady_until', { time: hourLabelFor(Date.parse(last.datetime), hass) }));
+        lines.push(forecastString(hass, 'steady_until', { time: hourLabelFor(Date.parse(last.datetime), hass) }));
     }
     return lines;
 }
@@ -254,11 +255,11 @@ function cardHoursAndDays(ctx: CardContext): string {
 /** Days as columns, for the strip without hours: the name, the high and the low, and what falls */
 function dayColumnsHtml(days: ReturnType<typeof modelFor>['days'], ctx: ForecastContext): string {
     const cells = days.map(day => {
-        const name = day.isToday ? localizeString(ctx.hass, 'today') : formatWeekday(day.date, ctx.hass, 'short');
+        const name = day.isToday ? forecastString(ctx.hass, 'today') : formatWeekday(day.date, ctx.hass, 'short');
         return `<li><span class="awc-hour-label">${escapeHtml(name)}</span>`
             + `<span class="awc-hour-temp">${escapeHtml(degrees(day.high, ctx.hass))} <span class="fc-low">${escapeHtml(degrees(day.low, ctx.hass))}</span></span></li>`;
     }).join('');
-    return `<ol class="awc-hours" style="--awc-cols: ${days.length}" aria-label="${escapeHtml(localizeString(ctx.hass, 'next_days'))}">${cells}</ol>`;
+    return `<ol class="awc-hours" style="--awc-cols: ${days.length}" aria-label="${escapeHtml(forecastString(ctx.hass, 'next_days'))}">${cells}</ol>`;
 }
 
 /** A big time or value with its day period small, as the tracker sets its headline time */
@@ -267,7 +268,7 @@ const valueHtml = (text: string) => timeHtml(text, 'fc-ampm');
 /** Hours from now, in words: "in 8 h", "within the hour" (never a minute countdown: a forecast isn't that exact) */
 function inHours(t: number, ctx: ForecastContext): string {
     const hours = Math.round((t - ctx.now) / 3600_000);
-    return hours < 1 ? localizeString(ctx.hass, 'within_hour').toLowerCase() : localizeString(ctx.hass, 'in_hours', { hours: String(hours) });
+    return hours < 1 ? forecastString(ctx.hass, 'within_hour').toLowerCase() : forecastString(ctx.hass, 'in_hours', { hours: String(hours) });
 }
 
 interface Headline { eyebrow: string; value: string; quiet: string[] }
@@ -288,7 +289,7 @@ function headline(model: ForecastModel, ctx: ForecastContext): Headline | null {
         const wet = days.find(d => (d.chance ?? 0) >= 50);
         if (wet) return { eyebrow: kindWord(wetKindOf(wet.condition), hass), value: escapeHtml(dayName(wet, ctx)), quiet: [wet.chance !== undefined ? percent(Math.round(wet.chance / 10) * 10, hass) : ''] };
         const warm = days.reduce((a, b) => (b.high ?? -99) > (a.high ?? -99) ? b : a, days[0]);
-        return { eyebrow: localizeString(hass, 'high'), value: escapeHtml(degrees(warm.high, hass)), quiet: [dayName(warm, ctx)] };
+        return { eyebrow: forecastString(hass, 'high'), value: escapeHtml(degrees(warm.high, hass)), quiet: [dayName(warm, ctx)] };
     }
     const bands = wetBands(model.hours, ctx.now, end);
     const band = bands[0];
@@ -297,12 +298,12 @@ function headline(model: ForecastModel, ctx: ForecastContext): Headline | null {
         return {
             eyebrow: kindWord(band.kind, hass),
             value: valueHtml(hourLabelFor(band.start, hass)),
-            quiet: [inHours(band.start, ctx), chance, band.end <= end ? localizeString(hass, 'until_time', { time: hourLabelFor(band.end, hass) }) : ''].filter(Boolean),
+            quiet: [inHours(band.start, ctx), chance, band.end <= end ? forecastString(hass, 'until_time', { time: hourLabelFor(band.end, hass) }) : ''].filter(Boolean),
         };
     }
     if (band) {
-        if (band.end > end) return { eyebrow: kindWord(band.kind, hass), value: escapeHtml(localizeString(hass, 'now')), quiet: [localizeString(hass, 'through_time', { time: hourLabelFor(end, hass) })] };
-        return { eyebrow: localizeString(hass, 'dry_from'), value: valueHtml(hourLabelFor(band.end, hass)), quiet: [inHours(band.end, ctx)] };
+        if (band.end > end) return { eyebrow: kindWord(band.kind, hass), value: escapeHtml(forecastString(hass, 'now')), quiet: [forecastString(hass, 'through_time', { time: hourLabelFor(end, hass) })] };
+        return { eyebrow: forecastString(hass, 'dry_from'), value: valueHtml(hourLabelFor(band.end, hass)), quiet: [inHours(band.end, ctx)] };
     }
     const now = ctx.current ?? hours[0].temperature!;
     const after = hours.filter(e => Date.parse(e.datetime) > ctx.now + 10 * 60_000);
@@ -314,14 +315,14 @@ function headline(model: ForecastModel, ctx: ForecastContext): Headline | null {
         .sort((a, b) => Date.parse(a.e.datetime) - Date.parse(b.e.datetime))[0];
     if (next) {
         const t = Date.parse(next.e.datetime);
-        return { eyebrow: localizeString(hass, next.key), value: escapeHtml(degrees(next.e.temperature, hass)), quiet: [localizeString(hass, 'at_time', { time: hourLabelFor(t, hass) }), inHours(t, ctx)] };
+        return { eyebrow: forecastString(hass, next.key), value: escapeHtml(degrees(next.e.temperature, hass)), quiet: [forecastString(hass, 'at_time', { time: hourLabelFor(t, hass) }), inHours(t, ctx)] };
     }
     const last = hours[hours.length - 1];
-    return { eyebrow: localizeString(hass, 'high'), value: escapeHtml(degrees(Math.max(...hours.map(e => e.temperature!)), hass)), quiet: [localizeString(hass, 'steady_until', { time: hourLabelFor(Date.parse(last.datetime), hass) })] };
+    return { eyebrow: forecastString(hass, 'high'), value: escapeHtml(degrees(Math.max(...hours.map(e => e.temperature!)), hass)), quiet: [forecastString(hass, 'steady_until', { time: hourLabelFor(Date.parse(last.datetime), hass) })] };
 }
 
 const wetKindOf = (condition?: string) => /lightning/.test(condition ?? '') ? 'storms' as const : condition === 'snowy' ? 'snow' as const : /snowy-rainy|hail/.test(condition ?? '') ? 'sleet' as const : 'rain' as const;
-const dayName = (day: ForecastModel['days'][0], ctx: ForecastContext) => day.isToday ? localizeString(ctx.hass, 'today') : formatWeekday(day.date, ctx.hass, 'short');
+const dayName = (day: ForecastModel['days'][0], ctx: ForecastContext) => day.isToday ? forecastString(ctx.hass, 'today') : formatWeekday(day.date, ctx.hass, 'short');
 
 /**
  * Bedside (show_clock on the forecast card): the time leads, the date over
@@ -552,6 +553,9 @@ const CARD_CSS = `
         linear-gradient(180deg, var(--awc-sky-mid) 0%, var(--awc-sky-bottom) 100%);
     }
     .fc-card.compact { padding: 16px 20px; display: flex; flex-direction: column; justify-content: center; }
+    /* The strip's quiet text is full strength: under the mid tone of a sunny
+       dawn the tint falls under 4.5:1 (sky.test.ts) */
+    .fc-card.sky.compact { --awc-secondary: 1; }
     .fc-low { font-weight: 400; opacity: var(--awc-secondary); margin-left: 2px; }
     .fc-card:not(.sky) .fc-low { color: var(--secondary-text-color); opacity: 1; }
     .fc-empty { margin: auto; font-size: 14px; opacity: var(--awc-secondary); }

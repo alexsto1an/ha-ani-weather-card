@@ -6,6 +6,7 @@
 // never colour alone. Shared by the weather card's forecast, the forecast
 // card and the pop-up (forecast-views.ts).
 
+import { forecastString } from './forecast-strings';
 import type { HomeAssistant, HassEntity } from './types';
 import type { ForecastEntry } from './forecast-data';
 import { degrees, percent } from './forecast-format';
@@ -189,13 +190,13 @@ export function wetBands(hours: ForecastEntry[], now: number, end: number): Band
 
 /** When a band happens, in words: "5–8 PM", "from 5 PM" (it runs past the window), "until 8 PM" (it's under way) */
 export function bandWhen(band: Band, now: number, end: number, hass?: HomeAssistant): string {
-    if (band.start <= now + 60_000) return localizeString(hass, 'until_time', { time: hourLabelFor(band.end, hass) });
-    if (band.end > end) return localizeString(hass, 'from_time', { time: hourLabelFor(band.start, hass) });
+    if (band.start <= now + 60_000) return forecastString(hass, 'until_time', { time: hourLabelFor(band.end, hass) });
+    if (band.end > end) return forecastString(hass, 'from_time', { time: hourLabelFor(band.start, hass) });
     return rangeText(band.start, band.end, hass);
 }
 
 /** What the kind of weather is called: Rain, Snow, Sleet, Storms */
-export const kindWord = (kind: Kind, hass?: HomeAssistant) => localizeString(hass, kind as CardString);
+export const kindWord = (kind: Kind, hass?: HomeAssistant) => forecastString(hass, kind);
 
 /** A band's time range, sharing the day period when it can ("5–8 PM"), 24-hour "17:00–20:00" */
 function rangeText(start: number, end: number, hass?: HomeAssistant): string {
@@ -213,7 +214,7 @@ export function textWidth(text: string, px: number, weight: number): number {
     if (measurer === undefined) {
         try { measurer = document.createElement('canvas').getContext('2d'); } catch { measurer = null; }
     }
-    if (measurer) {
+    if (measurer && typeof measurer.measureText === 'function') {
         measurer.font = `${weight} ${px}px -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, "Segoe UI", system-ui, sans-serif`;
         const w = measurer.measureText(text).width;
         if (w > 0) return w;
@@ -297,7 +298,7 @@ export function lineChart(o: LineOptions): Line {
         const left = align === 'center' ? anchorX - width / 2 : align === 'end' ? anchorX - width : anchorX;
         return { lane, x: Math.max(0, Math.min(o.width - width, left)), w: width, html, text, align, required };
     };
-    const word = (kind: Kind) => localizeString(hass, kind as CardString);
+    const word = (kind: Kind) => forecastString(hass, kind);
     const candidates: Label[] = [];
     bands.slice(0, o.maxBands).forEach((band, i) => {
         if (i === 0 && o.skipFirstBand) return;
@@ -369,10 +370,10 @@ export function lineChart(o: LineOptions): Line {
 
     // What a screen reader hears: the same facts, the dropped labels too
     const summary = [
-        `${localizeString(hass, 'next_hours')}: ${localizeString(hass, 'now').toLowerCase()} ${degrees(firstValue, hass)}`,
-        showHigh ? `${localizeString(hass, 'high').toLowerCase()} ${degrees(highPoint.v, hass)}, ${hourLabelFor(highPoint.t, hass)}` : '',
-        showLow ? `${localizeString(hass, 'low').toLowerCase()} ${degrees(lowPoint.v, hass)}, ${hourLabelFor(lowPoint.t, hass)}` : '',
-        ...bands.map(b => `${word(b.kind)} ${rangeText(Math.max(o.now, b.start), b.end, hass)}${b.chance !== undefined ? `, ${localizeString(hass, 'chance', { percent: percent(Math.round(b.chance / 10) * 10, hass) })}` : ''}`),
+        `${forecastString(hass, 'next_hours')}: ${forecastString(hass, 'now').toLowerCase()} ${degrees(firstValue, hass)}`,
+        showHigh ? `${forecastString(hass, 'high').toLowerCase()} ${degrees(highPoint.v, hass)}, ${hourLabelFor(highPoint.t, hass)}` : '',
+        showLow ? `${forecastString(hass, 'low').toLowerCase()} ${degrees(lowPoint.v, hass)}, ${hourLabelFor(lowPoint.t, hass)}` : '',
+        ...bands.map(b => `${word(b.kind)} ${rangeText(Math.max(o.now, b.start), b.end, hass)}${b.chance !== undefined ? `, ${forecastString(hass, 'chance', { percent: percent(Math.round(b.chance / 10) * 10, hass) })}` : ''}`),
     ].filter(Boolean).join('. ');
 
     const html = `<div class="awc-line" role="img" aria-label="${escapeHtml(summary)}" style="height: ${height}px">`
