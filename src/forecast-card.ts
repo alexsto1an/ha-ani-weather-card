@@ -162,6 +162,8 @@ class AnimatedForecastCard extends HTMLElement {
             condition,
             phase,
             theme: this.config.color_palette === 'theme',
+            width: (this.root.querySelector('.fc-card') as HTMLElement | null)?.clientWidth ?? 0,
+            show: this.config.forecast ?? (this.config.compact ? 'hourly' : 'both'),
             variant: this.config.review_card,
             compact: !!this.config.compact,
         };
@@ -242,11 +244,16 @@ class AnimatedForecastCard extends HTMLElement {
     private fit(): void {
         const card = this.root.querySelector('.fc-card') as HTMLElement | null;
         if (!card) return;
-        const steps = (card.dataset.fitSteps ?? 'regular').split(' ');
+        const drawing = card.firstElementChild as HTMLElement | null;
+        const steps = (drawing?.dataset.fitSteps ?? 'regular').split(' ');
+        // The drawing fills the card: what overflows it would be cut off by the card's padding edge
+        const overflows = () => card.scrollHeight > card.clientHeight + 1 || card.scrollWidth > card.clientWidth + 1
+            || (!!drawing && drawing.scrollHeight > drawing.clientHeight + 1);
         for (const step of steps) {
             card.dataset.fit = step;
-            if (card.scrollHeight <= card.clientHeight + 1 && card.scrollWidth <= card.clientWidth + 1) return;
+            if (!overflows()) break;
         }
+        window.AnimatedWeatherCardForecast?.fit(card);
     }
 
     getCardSize(): number {

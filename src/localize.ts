@@ -14,7 +14,10 @@ export type CardString =
     | 'first_light' | 'last_light' | 'moon'
     | 'in_duration'
     | 'note_reading' | 'note_writing'
-    | 'now' | 'today';
+    | 'now' | 'today'
+    | 'high_short' | 'low_short' | 'high' | 'low'
+    | 'rain' | 'snow' | 'sleet' | 'hail' | 'storms' | 'dry' | 'chance'
+    | 'forecast' | 'more_info' | 'close' | 'next_hours' | 'next_days';
 
 const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
     en: {
@@ -24,6 +27,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'in {duration}',
         note_reading: 'Reading the forecast', note_writing: 'Writing the note',
         now: 'Now', today: 'Today',
+        high_short: 'H', low_short: 'L', high: 'High', low: 'Low',
+        rain: 'Rain', snow: 'Snow', sleet: 'Sleet', hail: 'Hail', storms: 'Storms', dry: 'Dry', chance: '{percent} chance',
+        forecast: 'Forecast', more_info: 'History and settings', close: 'Close', next_hours: 'Next hours', next_days: 'Next days',
     },
     de: {
         feels_like: 'Gefühlt', indoors: 'Innen',
@@ -32,6 +38,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'in {duration}',
         note_reading: 'Vorhersage wird gelesen', note_writing: 'Notiz wird geschrieben',
         now: 'Jetzt', today: 'Heute',
+        high_short: 'H', low_short: 'T', high: 'Höchstwert', low: 'Tiefstwert',
+        rain: 'Regen', snow: 'Schnee', sleet: 'Schneeregen', hail: 'Hagel', storms: 'Gewitter', dry: 'Trocken', chance: '{percent} Wahrscheinlichkeit',
+        forecast: 'Vorhersage', more_info: 'Verlauf und Einstellungen', close: 'Schließen', next_hours: 'Nächste Stunden', next_days: 'Nächste Tage',
     },
     es: {
         feels_like: 'Sensación térmica', indoors: 'Interior',
@@ -40,6 +49,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'en {duration}',
         note_reading: 'Leyendo el pronóstico', note_writing: 'Escribiendo la nota',
         now: 'Ahora', today: 'Hoy',
+        high_short: 'Máx', low_short: 'Mín', high: 'Máxima', low: 'Mínima',
+        rain: 'Lluvia', snow: 'Nieve', sleet: 'Aguanieve', hail: 'Granizo', storms: 'Tormentas', dry: 'Seco', chance: '{percent} de probabilidad',
+        forecast: 'Pronóstico', more_info: 'Historial y ajustes', close: 'Cerrar', next_hours: 'Próximas horas', next_days: 'Próximos días',
     },
     fr: {
         feels_like: 'Ressenti', indoors: 'Intérieur',
@@ -48,6 +60,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'dans {duration}',
         note_reading: 'Lecture des prévisions', note_writing: 'Rédaction de la note',
         now: 'Maint.', today: 'Auj.',
+        high_short: 'Max', low_short: 'Min', high: 'Maximale', low: 'Minimale',
+        rain: 'Pluie', snow: 'Neige', sleet: 'Neige fondue', hail: 'Grêle', storms: 'Orages', dry: 'Sec', chance: '{percent} de probabilité',
+        forecast: 'Prévisions', more_info: 'Historique et paramètres', close: 'Fermer', next_hours: 'Prochaines heures', next_days: 'Prochains jours',
     },
     it: {
         feels_like: 'Percepita', indoors: 'Interno',
@@ -56,6 +71,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'tra {duration}',
         note_reading: 'Lettura delle previsioni', note_writing: 'Scrittura della nota',
         now: 'Ora', today: 'Oggi',
+        high_short: 'Max', low_short: 'Min', high: 'Massima', low: 'Minima',
+        rain: 'Pioggia', snow: 'Neve', sleet: 'Nevischio', hail: 'Grandine', storms: 'Temporali', dry: 'Asciutto', chance: '{percent} di probabilità',
+        forecast: 'Previsioni', more_info: 'Cronologia e impostazioni', close: 'Chiudi', next_hours: 'Prossime ore', next_days: 'Prossimi giorni',
     },
     nl: {
         feels_like: 'Voelt als', indoors: 'Binnen',
@@ -64,6 +82,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'over {duration}',
         note_reading: 'Verwachting lezen', note_writing: 'Notitie schrijven',
         now: 'Nu', today: 'Vandaag',
+        high_short: 'H', low_short: 'L', high: 'Hoogste', low: 'Laagste',
+        rain: 'Regen', snow: 'Sneeuw', sleet: 'Natte sneeuw', hail: 'Hagel', storms: 'Onweer', dry: 'Droog', chance: '{percent} kans',
+        forecast: 'Verwachting', more_info: 'Geschiedenis en instellingen', close: 'Sluiten', next_hours: 'Komende uren', next_days: 'Komende dagen',
     },
     pl: {
         feels_like: 'Odczuwalna', indoors: 'Wewnątrz',
@@ -72,6 +93,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'za {duration}',
         note_reading: 'Czytanie prognozy', note_writing: 'Pisanie notatki',
         now: 'Teraz', today: 'Dziś',
+        high_short: 'Maks', low_short: 'Min', high: 'Maksymalna', low: 'Minimalna',
+        rain: 'Deszcz', snow: 'Śnieg', sleet: 'Deszcz ze śniegiem', hail: 'Grad', storms: 'Burze', dry: 'Sucho', chance: '{percent} szans',
+        forecast: 'Prognoza', more_info: 'Historia i ustawienia', close: 'Zamknij', next_hours: 'Najbliższe godziny', next_days: 'Najbliższe dni',
     },
     pt: {
         feels_like: 'Sensação térmica', indoors: 'Interior',
@@ -80,6 +104,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'em {duration}',
         note_reading: 'Leitura da previsão', note_writing: 'Escrita da nota',
         now: 'Agora', today: 'Hoje',
+        high_short: 'Máx', low_short: 'Mín', high: 'Máxima', low: 'Mínima',
+        rain: 'Chuva', snow: 'Neve', sleet: 'Chuva e neve', hail: 'Granizo', storms: 'Trovoadas', dry: 'Seco', chance: '{percent} de probabilidade',
+        forecast: 'Previsão', more_info: 'Histórico e definições', close: 'Fechar', next_hours: 'Próximas horas', next_days: 'Próximos dias',
     },
     ro: {
         feels_like: 'Resimțită', indoors: 'Interior',
@@ -88,6 +115,9 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'în {duration}',
         note_reading: 'Citesc prognoza', note_writing: 'Scriu nota',
         now: 'Acum', today: 'Azi',
+        high_short: 'Max', low_short: 'Min', high: 'Maxima', low: 'Minima',
+        rain: 'Ploaie', snow: 'Ninsoare', sleet: 'Lapoviță', hail: 'Grindină', storms: 'Furtuni', dry: 'Uscat', chance: '{percent} probabilitate',
+        forecast: 'Prognoză', more_info: 'Istoric și setări', close: 'Închide', next_hours: 'Orele următoare', next_days: 'Zilele următoare',
     },
 };
 
@@ -188,10 +218,17 @@ export function clockParts(date: Date, hass?: LocaleSource): { time: string; per
     }
 }
 
-/** An hour on its own for a forecast ("14", "2 PM"), in the same format and time zone */
+/**
+ * An hour on its own for a forecast ("14", "2 PM"), in the same format and
+ * time zone. Built from the hour and the day period alone: Intl's own hour
+ * says "15 Uhr" in German and "15 h" in French, too long for a column.
+ */
 export function formatHour(date: Date, hass?: LocaleSource): string {
     try {
-        return timeFormat(hass, { hour: 'numeric' }).format(date);
+        const parts = timeFormat(hass, { hour: 'numeric' }).formatToParts(date);
+        const hour = parts.find(p => p.type === 'hour')?.value ?? String(date.getHours());
+        const period = parts.find(p => p.type === 'dayPeriod')?.value;
+        return period ? `${hour} ${period}` : hour;
     } catch {
         return String(date.getHours());
     }
@@ -210,6 +247,30 @@ export function formatWeekday(date: Date, hass?: LocaleSource, width: 'short' | 
 export function formatDate(date: Date, hass?: LocaleSource, options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' }): string {
     try {
         return new Intl.DateTimeFormat(hass ? cardLanguage(hass) : undefined, { ...options, timeZone: cardTimeZone(hass) }).format(date);
+    } catch {
+        return date.toDateString();
+    }
+}
+
+/**
+ * Today's date, short, for the clock: the weekday and the day ("Tue 10",
+ * "Di., 10."), with the month too ("Tue, Nov 10"). English puts the
+ * weekday first, which Intl's American order doesn't.
+ */
+export function shortDate(date: Date, hass?: LocaleSource, withMonth = false): string {
+    const language = hass ? cardLanguage(hass) : undefined;
+    const options: Intl.DateTimeFormatOptions = withMonth
+        ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: cardTimeZone(hass) }
+        : { weekday: 'short', day: 'numeric', timeZone: cardTimeZone(hass) };
+    try {
+        const format = new Intl.DateTimeFormat(language, options);
+        if (!withMonth && (language ?? 'en').toLowerCase().startsWith('en')) {
+            const parts = format.formatToParts(date);
+            const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
+            const day = parts.find(p => p.type === 'day')?.value ?? '';
+            return `${weekday} ${day}`.trim();
+        }
+        return format.format(date);
     } catch {
         return date.toDateString();
     }

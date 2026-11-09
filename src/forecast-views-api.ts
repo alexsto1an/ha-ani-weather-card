@@ -25,6 +25,10 @@ export interface ForecastContext {
     phase: string;
     /** Theme palette: no sky */
     theme: boolean;
+    /** The width the drawing has, in px (0 before layout): how many hours fit */
+    width: number;
+    /** What it shows: the next hours, the next days, or both (each falls back to the other when the entity lacks it) */
+    show: 'hourly' | 'daily' | 'both';
     /** Review only: which variant to draw */
     variant?: string;
 }
@@ -44,9 +48,13 @@ export interface PopupContext extends ForecastContext {
 export interface ForecastViews {
     /** Bumped when this interface changes in a way an older main bundle can't use */
     version: 1;
-    /** The weather card's forecast section */
+    /** The weather card's forecast section: its markup, which names its levels for the fit (data-roomy, data-keep, data-drop) */
     sectionCss: string;
     renderSection(ctx: ForecastContext): string;
+    /** Fits a drawing's words to the room they got: a long word loses its chance, a dry day's name goes rather than be cut */
+    fit(root: HTMLElement): void;
+    /** Today's high and low, for its place on the card ('line' beside the condition, 'stack' beside the temperature) */
+    renderHighLow(ctx: ForecastContext, place: 'line' | 'stack'): string;
     /** The forecast card, inside its shadow root */
     cardCss: string;
     renderCard(ctx: ForecastContext & { compact: boolean }): string;
