@@ -95,7 +95,7 @@ export interface HomeAssistant {
     localize: (key: string, ...args: any[]) => string;
     language: string;
     /** The user's language and formats (HA 2023+) */
-    locale?: { language: string; time_format?: 'language' | 'system' | '12' | '24'; number_format?: string };
+    locale?: { language: string; time_format?: 'language' | 'system' | '12' | '24'; number_format?: string; time_zone?: 'local' | 'server' };
     /** A state in the user's language, e.g. a moon phase (HA 2023.11+) */
     formatEntityState?: (stateObj: HassEntity, state?: string) => string;
     selectedLanguage?: string;
@@ -241,6 +241,14 @@ export interface AnimatedWeatherCardConfig {
     /** What a double tap does (default: nothing) */
     double_tap_action?: import('./actions').ActionConfig;
     show_sun?: boolean;
+    /** The time, in the quiet tier (and today's date with it) */
+    show_clock?: boolean;
+    /** The forecast on the card: the next hours, the next days, or both (default none) */
+    forecast?: 'hourly' | 'daily' | 'both' | 'none';
+    /** Review only, while the variants are compared: which design to draw */
+    review_clock?: string;
+    review_forecast?: string;
+    review_popup?: string;
     animate?: boolean;
     auto_pause?: boolean;
     dev_mode?: boolean;
@@ -481,6 +489,10 @@ declare global {
         AnimatedWeatherCardNote?: new (host: import('./note-generator').NoteHost) => import('./note-generator').NoteWriter;
         /** Set by the planes bundle (animated-weather-card-planes.js) when it loads */
         AnimatedWeatherCardPlanes?: typeof import('./planes-animation').PlanesAnimation;
+        /** Set by the forecast bundle (animated-weather-card-forecast.js) when it loads: the forecast's drawings */
+        AnimatedWeatherCardForecast?: import('./forecast-views-api').ForecastViews;
+        /** The page's forecast subscriptions, made by the first bundle that asks (forecast-data.ts) */
+        AnimatedWeatherCardForecasts?: import('./forecast-data').ForecastHub;
         animatedWeatherCardBannerShown?: boolean;
         loadCardHelpers?: () => Promise<{
             createCardElement: (config: Record<string, any>) => HTMLElement;

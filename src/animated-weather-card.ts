@@ -52,6 +52,13 @@ import { registerSkyProperties, skyPhaseFromSun, SkyPhase, skyColors, SKY_TEXT, 
 import { generateCustomColorStyles } from './color-utils';
 // Register the sun tracker card (bundled into same JS file)
 import './sun-tracker-card';
+// And the forecast card, whose drawing (like the weather card's forecast and
+// its pop-up) is in the forecast bundle, loaded when a card first needs it
+import { loadForecastViews } from './forecast-card';
+import { ForecastFeed } from './forecast-feed';
+import type { ForecastContext } from './forecast-views-api';
+import { MinuteTicker } from './clock';
+import { clockParts, formatDate } from './localize';
 
 registerSkyProperties();
 
@@ -162,6 +169,16 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     private noteComing: NoteStage | false = false;
     /** A note typing itself in (see typeIn) */
     private noteTyping?: { text: string; finish(): void };
+    /** On the minute, while the card is seen: the clock's reading, and the forecast's hour moving on */
+    private minuteTicker = new MinuteTicker(() => this.onMinute());
+    /** The hour the forecast was last drawn in, so it's drawn again when the next one starts */
+    private forecastHour = -1;
+    /** The forecast's markup last drawn, so an unchanged one isn't drawn again */
+    private forecastHtml = '';
+    /** The forecast the card shows (forecast), through the page's shared subscriptions */
+    private forecastFeed = new ForecastFeed(() => this.updateForecast());
+    /** Closes the forecast pop-up, while it's open */
+    private closePopup?: () => void;
     /**
      * A card from the card picker starts on your own weather: the first
      * weather entity not on the dashboard yet, else one that is, else
@@ -246,6 +263,12 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             this.writtenNote = null;
             this.noteComing = false;
             this.mountNoteWriter();
+        }
+
+        // The forecast and the clock follow the new options
+        if (this.isConnected) {
+            this.syncForecast();
+            this.syncMinuteTicker();
         }
 
         // auto_pause adds or removes the window focus listeners
@@ -692,6 +715,142 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.fadeThrough(short, note.line, refit);
     }
 
+    // ── The clock and the forecast ──────────────────────────────────────
+
+    /** The time is on the card (show_clock) */
+    private clockEnabled(): boolean {
+        return !!this.config?.show_clock;
+    }
+
+    /**
+     * What the card's forecast needs, or null with none. The days are always
+     * asked for: today's high and low come from them. The one-line strip has
+     * no room, and dev mode shows sample weather a forecast wouldn't match.
+     */
+    private forecastWants(): { hourly: boolean; daily: boolean } | null {
+        const mode = this.config?.forecast;
+        if (!mode || mode === 'none' || this.config?.compact || this.config?.dev_mode) return null;
+        return { hourly: mode !== 'daily', daily: true };
+    }
+
+    private syncForecast(): void {
+        const wants = this.forecastWants();
+        if (!wants || !this.isConnected) {
+            this.forecastFeed.stop();
+            return;
+        }
+        this.forecastFeed.sync(this._hass, this.config?.entity, wants);
+    }
+
+    /** Ticks while there's a clock or a forecast to keep current and the card is seen */
+    private syncMinuteTicker(): void {
+        const wanted = this.isConnected && !this.animationsPaused && (this.clockEnabled() || !!this.forecastWants());
+        if (wanted) this.minuteTicker.start();
+        else this.minuteTicker.stop();
+    }
+
+    private onMinute(): void {
+        this.updateClock();
+        // A new hour: the forecast's first hour moves on
+        const hour = Math.floor(Date.now() / 3600_000);
+        if (this.forecastWants() && hour !== this.forecastHour) this.updateForecast();
+    }
+
+    /** The clock's reading: the time, its day period, and today's date */
+    private updateClock(): void {
+        const el = this.querySelector('.awc-clock') as HTMLElement | null;
+        if (!el) return;
+        const now = new Date();
+        const { time, period } = clockParts(now, this._hass);
+        const set = (selector: string, value: string) => {
+            const node = el.querySelector(selector);
+            if (node && node.textContent !== value) node.textContent = value;
+        };
+        set('.awc-clock-time', time);
+        set('.awc-clock-period', period);
+        set('.awc-clock-date', formatDate(now, this._hass));
+        el.querySelector('.awc-clock-period')?.toggleAttribute('hidden', !period);
+        const datetime = now.toISOString().slice(0, 16);
+        if (el.getAttribute('datetime') !== datetime) el.setAttribute('datetime', datetime);
+    }
+
+    /** What the forecast's drawings need to know */
+    private forecastContext(variant?: string): ForecastContext {
+        const weather = this.config?.entity ? this._hass?.states[this.config.entity] : undefined;
+        const card = this.querySelector('.animated-weather-card') as HTMLElement | null;
+        const current = Number(weather?.attributes?.temperature);
+        return {
+            hass: this._hass,
+            entityId: this.config?.entity ?? '',
+            hourly: this.forecastFeed.hourly,
+            daily: this.forecastFeed.daily,
+            dailyType: this.forecastFeed.dailyType,
+            current: isFinite(current) ? current : undefined,
+            unit: String(weather?.attributes?.temperature_unit ?? this._hass?.config?.unit_system?.temperature ?? '°'),
+            now: Date.now(),
+            condition: this.currentWeatherClass || 'sunny',
+            phase: card?.dataset.phase ?? this.currentSkyPhase(),
+            theme: this.config?.color_palette === 'theme',
+            variant,
+        };
+    }
+
+    /**
+     * Draw the forecast into its place on the card. The drawing is in the
+     * forecast bundle, fetched the first time; until it and the forecast
+     * are in, the place is held at the size the forecast will take, so the
+     * card doesn't move when it arrives.
+     */
+    private updateForecast(): void {
+        const slot = this.querySelector('.awc-forecast') as HTMLElement | null;
+        if (!slot) return;
+        const views = window.AnimatedWeatherCardForecast;
+        if (!views) {
+            loadForecastViews()
+                .then(() => { if (this.isConnected) this.updateForecast(); })
+                .catch((err: Error) => console.warn(`Animated Weather Card: ${err.message}`));
+            return;
+        }
+        if (!this.querySelector('style.awc-forecast-css')) {
+            const style = document.createElement('style');
+            style.className = 'awc-forecast-css';
+            style.textContent = views.sectionCss;
+            this.appendChild(style);
+        }
+        this.forecastHour = Math.floor(Date.now() / 3600_000);
+        const html = this.forecastFeed.settled ? views.renderSection(this.forecastContext(this.config?.review_forecast)) : '';
+        slot.toggleAttribute('data-pending', !this.forecastFeed.settled);
+        if (html === this.forecastHtml) return;
+        this.forecastHtml = html;
+        slot.innerHTML = html;
+        slot.hidden = this.forecastFeed.settled && !html;
+        this.applySizeState();
+    }
+
+    /** The forecast pop-up (tap_action: forecast), in the card's sky */
+    openForecast(): void {
+        const views = window.AnimatedWeatherCardForecast;
+        if (!views) {
+            loadForecastViews()
+                .then(() => { if (this.isConnected) this.openForecast(); })
+                .catch((err: Error) => console.warn(`Animated Weather Card: ${err.message}`));
+            return;
+        }
+        // The pop-up listens to the hours and the days itself, through the
+        // page's subscriptions; it starts from what this card already has
+        this.closePopup?.();
+        const still = this.config?.animate === false || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        this.closePopup = views.openPopup({
+            ...this.forecastContext(this.config?.review_popup),
+            returnFocus: this.querySelector('.weather-info') as HTMLElement | null,
+            note: this.noteEnabled() ? this.currentNote()?.note ?? null : null,
+            still,
+            openMoreInfo: () => this.dispatchEvent(new CustomEvent('hass-more-info', {
+                detail: { entityId: this.config?.entity }, bubbles: true, composed: true,
+            })),
+        });
+    }
+
     private compactMeta(location: string | undefined, feelsLike: string | null | undefined): string {
         return [
             this.config?.show_location !== false ? location : '',
@@ -758,9 +917,17 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         // change that.
         const info = this.querySelector('.weather-info') as HTMLElement | null;
         if (info) {
-            bindActions(info, this, () => this.actionsConfig());
+            // tap_action: forecast (or a hold or double tap set to it) opens the pop-up here
+            bindActions(info, this, () => this.actionsConfig(), { forecast: () => this.openForecast() });
             syncActionTarget(info, this.actionsConfig(), 'group');
         }
+
+        // The clock and the forecast, drawn into the new markup
+        this.forecastHtml = '';
+        this.syncForecast();
+        this.syncMinuteTicker();
+        this.updateClock();
+        if (this.forecastWants()) this.updateForecast();
 
         // Only run initial setup if not in the middle of a dev mode change.
         // Track this timeout so a fast disconnect/reconnect cycle doesn't queue
@@ -781,6 +948,9 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.animationsPaused = paused;
         // Rests the CSS loops too (sun breathing, star twinkles)
         this.toggleAttribute('data-paused', paused);
+
+        // The clock rests with the card, and reads the time again the moment it's seen
+        this.syncMinuteTicker();
 
         if (this.animationsPaused) {
             this.animationController?.pauseAllAnimations();
@@ -979,6 +1149,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             // before any of the weather-specific early returns below.
             this.handleFlightUpdates();
             this.noteWriter?.hassChanged();
+            this.syncForecast();
 
             if (!oldHass) {
                 // First time — full render
@@ -1139,6 +1310,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         }
 
         this.updateNote();
+        if (this.forecastWants()) this.updateForecast();
 
         this.applySkyPhase();
         this.applySizeState();
@@ -1433,6 +1605,10 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.noteExpiryTimer = undefined;
         this.noteWriter?.stop();
         this.noteTyping?.finish();
+        this.minuteTicker.stop();
+        this.forecastFeed.stop();
+        this.closePopup?.();
+        this.closePopup = undefined;
         this.clearAnimations();
         this.resizeObserver?.disconnect();
         this.resizeObserver = undefined;

@@ -11,23 +11,9 @@ import { AnimatedWeatherCardConfig, HassEntity, HomeAssistant } from './types';
 import { HA_CONDITION_NAMES, WeatherNote } from './weather-data';
 import { convertWindSpeedToKmh, lookup } from './utils';
 import { cardLanguage, formatTime } from './localize';
+import { ForecastEntry, ForecastType, forecastTypeFor, subscribeForecast } from './forecast-data';
 
-/** One forecast entry, as weather/subscribe_forecast sends it. Every field but the time is optional. */
-export interface ForecastEntry {
-    datetime: string;
-    condition?: string;
-    temperature?: number;
-    templow?: number;
-    apparent_temperature?: number;
-    precipitation_probability?: number;
-    precipitation?: number;
-    wind_speed?: number;
-    wind_gust_speed?: number;
-    uv_index?: number;
-    is_daytime?: boolean;
-}
-
-export type ForecastType = 'hourly' | 'twice_daily' | 'daily';
+export type { ForecastEntry, ForecastType } from './forecast-data';
 
 export type NoteTone = 'snarky' | 'calm' | 'friendly' | 'dry';
 
@@ -712,6 +698,7 @@ export class NoteWriter {
     /** No AI Task to ask: no placeholder for a note that can't come */
     private unconfigured = false;
     private subscriptions: Promise<(() => void) | void>[] = [];
+    private stopForecast?: () => void;
     private subscribedTo?: string;
     private lastWeather?: HassEntity;
     private timer?: ReturnType<typeof setInterval>;
@@ -754,7 +741,8 @@ export class NoteWriter {
             this.check();
         }, { type: 'frontend/subscribe_user_data', key: target }).catch(() => this.check()));
 
-        const type = this.forecastTypeFor(hass.states[config.entity]);
+        // The forecast comes through the page's one subscription per entity (forecast-data.ts)
+        const type = forecastTypeFor(hass.states[config.entity]);
         this.forecastSettled = !type;
         const settle = () => {
             clearTimeout(this.forecastWait);
@@ -762,12 +750,14 @@ export class NoteWriter {
             this.check();
         };
         if (type) {
-            this.subscriptions.push(hass.connection.subscribeMessage<{ type?: ForecastType; forecast?: ForecastEntry[] | null }>(message => {
-                this.forecast = Array.isArray(message?.forecast) ? message.forecast : null;
-                this.forecastType = this.forecast ? (message.type ?? type) : null;
-                settle();
-            }, { type: 'weather/subscribe_forecast', entity_id: config.entity, forecast_type: type }).catch(settle));
             this.forecastWait = setTimeout(settle, FORECAST_WAIT_MS);
+            this.stopForecast = subscribeForecast(hass, config.entity, type, update => {
+                if (!update.failed) {
+                    this.forecast = update.forecast;
+                    this.forecastType = update.forecast ? update.type : null;
+                }
+                settle();
+            });
         }
 
         const calendars = noteCalendars(config);
@@ -962,17 +952,9 @@ export class NoteWriter {
         return this.host.hass!.callWS({ type: 'frontend/set_user_data', key, value });
     }
 
-    /** Hourly where the entity has it (supported_features), then twice daily, then daily. */
-    private forecastTypeFor(weather: HassEntity | undefined): ForecastType | null {
-        const features = Number(weather?.attributes?.supported_features);
-        if (!isFinite(features)) return 'hourly';
-        if (features & 2) return 'hourly';
-        if (features & 4) return 'twice_daily';
-        if (features & 1) return 'daily';
-        return null;
-    }
-
     private unsubscribe(): void {
+        this.stopForecast?.();
+        this.stopForecast = undefined;
         clearInterval(this.timer);
         this.timer = undefined;
         clearTimeout(this.forecastWait);
