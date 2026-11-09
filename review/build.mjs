@@ -5,7 +5,7 @@
 //
 //   npm run build && node review/build.mjs   → _review/, serve it or publish it
 
-import { copyFileSync, mkdirSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconNames, resolveIcons } from '../demo/build.mjs';
@@ -16,7 +16,12 @@ const out = join(root, '_review');
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-for (const file of ['index.html', 'review.css', 'review.js', 'forecast-sample.mjs']) copyFileSync(join(here, file), join(out, file));
+for (const file of ['review.css', 'review.js', 'variants.mjs', 'forecast-sample.mjs']) copyFileSync(join(here, file), join(out, file));
+// The page as the Artifact takes it (it adds the document around it), and as
+// a local page, which needs its doctype or it lays out in quirks mode
+const page = readFileSync(join(here, 'index.html'), 'utf8');
+writeFileSync(join(out, 'artifact.html'), page);
+writeFileSync(join(out, 'index.html'), `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n${page}\n</html>\n`);
 for (const file of ['scene.mjs', 'clock.js', 'ha-elements.js']) copyFileSync(join(root, 'demo', file), join(out, file));
 const bundles = readdirSync(root).filter(name => /^animated-weather-card.*\.js$/.test(name));
 for (const bundle of bundles) copyFileSync(join(root, bundle), join(out, bundle));

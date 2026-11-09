@@ -1,11 +1,12 @@
 const esbuild = require('esbuild');
 
-// Five bundles:
+// Six bundles:
 //   - animated-weather-card.js         → main runtime, loaded on every dashboard
 //   - animated-weather-card-editor.js  → visual editor, lazy-loaded on first open
 //   - animated-weather-card-dev.js     → developer panel, lazy-loaded in dev_mode
 //   - animated-weather-card-note.js    → note writer, lazy-loaded with show_note
 //   - animated-weather-card-planes.js  → plane fly-overs, lazy-loaded with flights_entity
+//   - animated-weather-card-forecast.js → the forecast's drawings and its pop-up, lazy-loaded with a forecast
 //
 // All are emitted as IIFE so they remain drop-in script tags. The main
 // bundle injects a <script> for the others the first time it needs them;
@@ -38,6 +39,7 @@ const targets = [
   { entryPoints: ['src/animated-weather-card-dev.ts'], outfile: 'animated-weather-card-dev.js' },
   { entryPoints: ['src/animated-weather-card-note.ts'], outfile: 'animated-weather-card-note.js' },
   { entryPoints: ['src/animated-weather-card-planes.ts'], outfile: 'animated-weather-card-planes.js' },
+  { entryPoints: ['src/animated-weather-card-forecast.ts'], outfile: 'animated-weather-card-forecast.js' },
 ];
 
 if (watch) {

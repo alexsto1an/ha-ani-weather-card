@@ -84,3 +84,4 @@ jobs:
             animated-weather-card-dev.js
             animated-weather-card-note.js
             animated-weather-card-planes.js
+            animated-weather-card-forecast.js

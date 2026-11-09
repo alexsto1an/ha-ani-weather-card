@@ -127,8 +127,8 @@ entity: weather.forecast_home</code></pre>
                     <p>When a new version is out, HACS shows an update. Download it and reload your browser.</p>
 
                     <h3 id="manual">By hand</h3>
-                    <p>The card is five files that sit in the same folder. Only the first is a dashboard resource; it loads the others when it needs them.</p>
-                    <p>It's split so each screen downloads only what it uses. Every phone and wall tablet that shows your dashboard loads the card, but few of them ever open the editor, and only some cards write a note, fly planes or run in developer mode. Those parts wait in files of their own until a card needs one. Each is fetched from the folder the first file came from, so keep all five together.</p>
+                    <p>The card is six files that sit in the same folder. Only the first is a dashboard resource; it loads the others when it needs them.</p>
+                    <p>It's split so each screen downloads only what it uses. Every phone and wall tablet that shows your dashboard loads the card, but few of them ever open the editor, and only some cards write a note, fly planes or run in developer mode. Those parts wait in files of their own until a card needs one. Each is fetched from the folder the first file came from, so keep all six together.</p>
                     <div class="table-scroll">
                         <table class="files">
                             <thead><tr><th scope="col">File</th><th scope="col">What it is</th></tr></thead>
@@ -137,6 +137,7 @@ entity: weather.forecast_home</code></pre>
                                 <tr><td><code>animated-weather-card-editor.js</code></td><td>The visual editors for both cards, loaded the first time you open a card's settings.</td></tr>
                                 <tr><td><code>animated-weather-card-note.js</code></td><td>The note writer, loaded only by cards that write their own note.</td></tr>
                                 <tr><td><code>animated-weather-card-planes.js</code></td><td>The planes, loaded only by cards with a flights sensor.</td></tr>
+                                <tr><td><code>animated-weather-card-forecast.js</code></td><td>The forecast's drawings and its pop-up, loaded only by cards that show a forecast.</td></tr>
                                 <tr><td><code>animated-weather-card-dev.js</code></td><td>The developer panel, loaded only with <code>dev_mode: true</code>. You can leave it out.</td></tr>
                             </tbody>
                         </table>

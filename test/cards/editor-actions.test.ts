@@ -28,10 +28,10 @@ describe('the weather editor\'s interactions, before Home Assistant\'s form is t
     const pick = (select: Select, value: string) =>
         select.dispatchEvent(new CustomEvent('selected', { detail: { value } }));
 
-    it('offers each gesture the plain actions, the default first', async () => {
+    it('offers each gesture the plain actions, the default first, and the card\'s own forecast', async () => {
         const select = await open();
         for (const key of ['tap_action', 'hold_action', 'double_tap_action']) {
-            expect(select(key).options.map(o => o.value)).toEqual(['default', 'more-info', 'navigate', 'url', 'none']);
+            expect(select(key).options.map(o => o.value)).toEqual(['default', 'more-info', 'navigate', 'url', 'none', 'forecast']);
             expect(select(key).value).toBe('default');
         }
         expect(editor.querySelector('[data-section="interactions"]')).not.toBeNull();
