@@ -97,19 +97,12 @@ export function buildForecastModel({ hourly, daily, dailyType, now, current, has
     const days = joinDays(daily ?? [], dailyType, now, hass).slice(0, dayCount);
 
     // Today's high and low: the day's forecast, widened to take in what it is
-    // now (a forecast high of 18° reads wrong when it's 19° out); without a
-    // daily forecast, the rest of today's hours and now
-    const todayKey = dayKey(new Date(now), hass);
+    // now (a forecast high of 18° reads wrong when it's 19° out). Only from a
+    // day: the hours left can't know the morning's low, and a half-true low
+    // is worse than none.
     const todayDay = days.find(d => d.isToday);
     let high = todayDay?.high;
     let low = todayDay?.low;
-    if (high === undefined || low === undefined) {
-        const temps = hours.filter(e => dayKey(new Date(time(e)), hass) === todayKey).map(e => num(e.temperature)).filter((v): v is number => v !== undefined);
-        if (temps.length >= 2 || (temps.length && current !== undefined)) {
-            high ??= Math.max(...temps);
-            low ??= Math.min(...temps);
-        }
-    }
     if (current !== undefined) {
         if (high !== undefined) high = Math.max(high, current);
         if (low !== undefined) low = Math.min(low, current);

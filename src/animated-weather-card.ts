@@ -98,6 +98,8 @@ const METRICS_ROW_SLACK_PX = 24;
 const FORECAST_TOP_MIN = 0.43;
 /** On a narrow card the clock's tinted line ends inside this fraction of the width, clear of the light */
 const CLOCK_LINE_MAX = 0.55;
+/** And today's high and low beside the temperature, at full strength, inside this one */
+const HL_STACK_MAX = 0.65;
 
 // The card's own GSAP, for every animation, here and in the planes bundle.
 // Never window.gsap: another card on the dashboard may bring a different
@@ -139,36 +141,48 @@ export interface FitStep {
     range?: 'none';
 }
 
-/** How the forecast gives way, as its drawing says: levels tried while the hero is whole, the one kept while it shrinks, then the last ones before none */
+/**
+ * How the forecast gives way, as its drawing names its levels: whole; with
+ * fewer day rows (never below two); without its second block (both → the
+ * hours); its one-line short form; then none.
+ */
 export interface ForecastLevels {
-    roomy: string[];
-    keep: string;
-    drop: string[];
+    full: string;
+    trims: string[];
+    first?: string;
+    short?: string;
 }
 
 /**
  * One ladder for the note, the forecast and the clock, roomiest first. The
- * note gives way first (its steps as before), then the forecast's extra
- * rows, then the hero's extras and size (the height steps), then the rest
- * of the forecast, then the clock, then a high and low that had to wrap.
- * The metric labels outlast every option. Without a forecast or a clock
- * it's the ladder the card always had.
+ * note gives way first (its steps as before); then the forecast's extra day
+ * rows; then Feels like and the temperature's size; then the forecast's
+ * second block; then the forecast shortens to one line, the full hero
+ * coming back; then the location (and the clocks on its line); then the
+ * forecast; then the closing-line clock; then a high and low that had to
+ * wrap. The metric labels outlast every option. Without a forecast or a
+ * clock it's the ladder the card always had.
  */
 export function fitLadder(note: boolean, forecast: ForecastLevels | null, clock: boolean, rangeWraps = false): FitStep[] {
     const steps: FitStep[] = [];
-    const first = forecast ? forecast.roomy[0] ?? forecast.keep : 'none';
     const add = (height: string, noteLength: FitStep['note'], level: string, clockOn = true, range?: 'none') =>
         steps.push({ height, note: noteLength, forecast: level, clock: clockOn ? 'on' : 'off', ...(range ? { range } : {}) });
-    if (note) for (const [height, length] of NOTE_FIT_STEPS.slice(0, 4)) add(height, length, first);
-    add('regular', 'none', first);
-    for (const level of forecast?.roomy.slice(1) ?? []) add('regular', 'none', level);
-    const kept = forecast ? forecast.keep : 'none';
-    if (kept !== first) add('regular', 'none', kept);
-    for (const height of ['compact', 'short', 'tight']) add(height, 'none', kept);
-    if (forecast) {
-        for (const level of forecast.drop) add('tight', 'none', level);
-        add('tight', 'none', 'none');
+    const full = forecast?.full ?? 'none';
+    const kept = forecast?.trims[forecast.trims.length - 1] ?? full;
+    if (note) for (const [height, length] of NOTE_FIT_STEPS.slice(0, 4)) add(height, length, full);
+    add('regular', 'none', full);
+    for (const level of forecast?.trims ?? []) add('regular', 'none', level);
+    add('compact', 'none', kept);
+    add('short', 'none', kept);
+    if (forecast?.first) add('short', 'none', forecast.first);
+    if (forecast?.short) {
+        add('compact', 'none', forecast.short);
+        add('short', 'none', forecast.short);
+        add('tight', 'none', forecast.short);
+    } else {
+        add('tight', 'none', forecast?.first ?? kept);
     }
+    if (forecast) add('tight', 'none', 'none');
     if (clock) add('tight', 'none', 'none', false);
     if (rangeWraps) add('tight', 'none', 'none', false, 'none');
     add('minimal', 'none', 'none', false, rangeWraps ? 'none' : undefined);
@@ -232,6 +246,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     private forecastHtml = '';
     /** The width the forecast was drawn for: a new one can fit more hours, or fewer */
     private forecastWidth = 0;
+    /** When the clock last read the time: a reading after a gap just appears */
+    private clockReadAt = 0;
     /** The forecast the card shows (forecast), through the page's shared subscriptions */
     private forecastFeed = new ForecastFeed(() => this.updateForecast());
     /** Closes the forecast pop-up, while it's open */
@@ -538,7 +554,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             <div class="weather-info" role="group" aria-label="Current weather">
               <div class="main-weather-info">
                 ${this.headlineHtml(compact, location)}
-                <div class="temperature" aria-live="polite"><span class="temperature-value">${escapeHtml(temperature)}</span><span class="degree">°</span>${this.highLowPlace() === 'stack' ? '<span class="awc-hl awc-hl-stack" hidden></span>' : ''}</div>
+                <div class="temperature" aria-live="polite"${this.highLowPlace() === 'stack' ? ' data-hl="stack"' : ''}><span class="temperature-value">${escapeHtml(temperature)}</span><span class="degree">°</span>${this.highLowPlace() === 'stack' ? '<span class="awc-hl awc-hl-stack" hidden></span>' : ''}</div>
                 ${this.highLowPlace() === 'line'
                     ? `<div class="awc-desc-line"><div class="weather-desc" aria-live="polite">${escapeHtml(weatherCondition)}</div><span class="awc-hl awc-hl-line" hidden></span></div>`
                     : `<div class="weather-desc" aria-live="polite">${escapeHtml(weatherCondition)}</div>`}
@@ -803,14 +819,13 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     /** Where today's high and low go: on the condition's line, beside the temperature, or in the forecast itself */
     private highLowPlace(): 'line' | 'stack' | 'none' {
         if (!this.forecastWants()) return 'none';
-        return { a: 'line', b: 'none', c: 'stack' }[this.forecastStyle()] as 'line' | 'stack' | 'none';
+        return this.forecastStyle() === 'a' ? 'line' : 'stack';
     }
 
     /** The clock's markup; updateClock fills it in at once and on every minute */
     private clockHtml(): string {
         return '<time class="awc-clock"><span class="awc-clock-time"></span><span class="awc-clock-period"></span>'
-            + '<span class="awc-clock-date" aria-hidden="true"></span><span class="awc-clock-date-long" aria-hidden="true"></span>'
-            + '<span class="awc-visually-hidden awc-clock-spoken"></span></time>';
+            + '<span class="awc-clock-date" aria-hidden="true"></span><span class="awc-visually-hidden awc-clock-spoken"></span></time>';
     }
 
     /**
@@ -877,16 +892,47 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             const node = el.querySelector(selector);
             if (node && node.textContent !== value) node.textContent = value;
         };
-        set('.awc-clock-time', time);
+        this.setClockDigits(el.querySelector('.awc-clock-time') as HTMLElement | null, time);
         set('.awc-clock-period', period);
         // The eye gets the short date (a: "Tue 10"; b and c: "Tue, Nov 10"),
         // a screen reader the whole of it
         set('.awc-clock-date', shortDate(now, this._hass, this.clockStyle() !== 'a'));
-        set('.awc-clock-date-long', formatDate(now, this._hass));
-        set('.awc-clock-spoken', formatDate(now, this._hass));
+        set('.awc-clock-spoken', `${time}${period ? ` ${period}` : ''}, ${formatDate(now, this._hass)}`);
         el.querySelector('.awc-clock-period')?.toggleAttribute('hidden', !period);
         const datetime = now.toISOString().slice(0, 16);
         if (el.getAttribute('datetime') !== datetime) el.setAttribute('datetime', datetime);
+    }
+
+    /**
+     * The clock's digits, each its own span: on the minute only the ones that
+     * changed fade, out and in, with no rise (a clock that hopped every
+     * minute would be interface motion). The first reading after the card
+     * was away just appears: nobody saw that minute change.
+     */
+    private setClockDigits(el: HTMLElement | null, time: string): void {
+        if (!el || el.dataset.text === time) return;
+        const previous = el.dataset.text ?? '';
+        const seen = Date.now() - this.clockReadAt < 70_000;
+        this.clockReadAt = Date.now();
+        el.dataset.text = time;
+        el.setAttribute('aria-hidden', 'true');
+        const still = !seen || previous.length !== time.length || this.config?.animate === false
+            || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || typeof el.animate !== 'function';
+        if (still) {
+            el.replaceChildren(...Array.from(time, ch => Object.assign(document.createElement('span'), { textContent: ch })));
+            return;
+        }
+        Array.from(time).forEach((ch, i) => {
+            const span = el.children[i] as HTMLElement | undefined;
+            if (!span || span.textContent === ch) return;
+            const out = span.animate([{ opacity: 1 }, { opacity: 0 }], { duration: HERO_FADE_OUT_MS, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' });
+            out.onfinish = () => {
+                span.textContent = ch;
+                span.animate([{ opacity: 0 }, { opacity: 1 }], { duration: HERO_FADE_IN_MS, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' });
+                out.cancel();
+            };
+            out.oncancel = () => { span.textContent = ch; };
+        });
     }
 
     /** What the forecast's drawings need to know */
@@ -952,12 +998,17 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         const html = this.forecastFeed.settled ? views.renderSection(ctx) : '';
         slot.toggleAttribute('data-pending', !this.forecastFeed.settled);
         if (html !== this.forecastHtml) {
+            // Its first arrival fades in, into the place held for it
+            if (!this.forecastHtml && html) {
+                slot.setAttribute('data-arrive', '');
+                setTimeout(() => slot.removeAttribute('data-arrive'), 400);
+            }
             this.forecastHtml = html;
             slot.innerHTML = html;
             slot.hidden = this.forecastFeed.settled && !html;
             // The drawing names how it gives way (forecastLevels)
             const root = slot.firstElementChild as HTMLElement | null;
-            for (const name of ['roomy', 'keep', 'drop'] as const) {
+            for (const name of ['full', 'trims', 'first', 'short'] as const) {
                 const value = root?.dataset[name];
                 if (value !== undefined) slot.dataset[name] = value;
                 else delete slot.dataset[name];
@@ -1931,7 +1982,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             // Wide, the hero column is bottom-aligned: too tall, it overflows upward
             || (wide && !!hero && !!hero.firstElementChild && (hero.firstElementChild as HTMLElement).getBoundingClientRect().top < hero.getBoundingClientRect().top - 1)
             // A forecast running the card's width keeps out of the sun's light: its top no higher than 0.43 of the card
-            || (!!levels && !wide && step.forecast !== 'none' && (sized || levels.roomy.includes(step.forecast) && step.forecast !== levels.roomy[levels.roomy.length - 1])
+            || (!!levels && !wide && step.forecast !== 'none' && (sized || step.height === 'regular' && step.forecast !== levels.trims[levels.trims.length - 1] && (step.forecast === levels.full || levels.trims.includes(step.forecast)))
                 && forecast!.getBoundingClientRect().top - card.getBoundingClientRect().top < FORECAST_TOP_MIN * card.clientHeight)
             // A high and low on a line of their own costs a line the short steps don't have
             || (rangeWrapped() && step.range !== 'none' && ['short', 'snug', 'tight', 'minimal'].includes(step.height));
@@ -1943,37 +1994,25 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
     /** The forecast's levels, as its drawing names them; while it's on its way, one held place */
     private forecastLevels(forecast: HTMLElement): ForecastLevels {
-        const list = (name: string) => (forecast.dataset[name] ?? '').split(' ').filter(Boolean);
-        const keep = forecast.dataset.keep;
-        return keep ? { roomy: list('roomy'), keep, drop: list('drop') } : { roomy: [], keep: 'all', drop: [] };
+        const d = forecast.dataset;
+        if (!d.full) return { full: 'full', trims: [] };
+        return { full: d.full, trims: (d.trims ?? '').split(' ').filter(Boolean), first: d.first || undefined, short: d.short || undefined };
     }
 
     /**
-     * The clock beside the temperature on a wide card (a), when the hero
-     * column has room for it, else under it. 24 px of slack before it moves
-     * back, so one wider minute can't flip it. Then the clock's own line:
-     * its date goes when the line would reach into the light (a), or the
-     * place and then the date when the first line runs out of room (b, c).
+     * The clock's line, and today's high and low beside the temperature:
+     * whole parts or nothing. Clock a's date goes when its tinted line would
+     * reach into the light; on b and c's first line the place goes first,
+     * then the date, never the time. The stack goes when it would reach the
+     * light on a narrow card.
      */
-    private applyClockPlace(card: HTMLElement, hero: HTMLElement | null): void {
-        const clock = card.querySelector('.main-weather-info > .awc-clock') as HTMLElement | null;
-        if (clock && hero && card.clientWidth >= 640) {
-            const temp = hero.querySelector('.temperature') as HTMLElement | null;
-            const previous = card.dataset.clockPlace;
-            card.dataset.clockPlace = 'beside';
-            const need = (temp?.getBoundingClientRect().width ?? 0) + 32 + clock.getBoundingClientRect().width;
-            const room = hero.clientWidth - need;
-            card.dataset.clockPlace = room < 0 || (previous === 'below' && room < METRICS_ROW_SLACK_PX) ? 'below' : 'beside';
-        } else {
-            delete card.dataset.clockPlace;
-        }
+    private applyClockPlace(card: HTMLElement, _hero: HTMLElement | null): void {
+        const narrow = card.clientWidth < 640;
+        const left = card.getBoundingClientRect().left;
         delete card.dataset.clockDate;
-        if (clock && card.dataset.clockPlace !== 'beside') {
-            const date = clock.querySelector('.awc-clock-date') as HTMLElement | null;
-            if (date && date.getBoundingClientRect().right - card.getBoundingClientRect().left > CLOCK_LINE_MAX * card.clientWidth) {
-                card.dataset.clockDate = 'none';
-            }
-        }
+        const clock = card.querySelector('.main-weather-info > .awc-clock') as HTMLElement | null;
+        const date = clock?.querySelector('.awc-clock-date') as HTMLElement | null;
+        if (date && narrow && date.getBoundingClientRect().right - left > CLOCK_LINE_MAX * card.clientWidth) card.dataset.clockDate = 'none';
         const headline = card.querySelector('.awc-headline') as HTMLElement | null;
         delete card.dataset.headline;
         if (headline) {
@@ -1982,6 +2021,9 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
                 card.dataset.headline = parts;
             }
         }
+        delete card.dataset.hlFit;
+        const stack = card.querySelector('.awc-hl-stack:not([hidden])') as HTMLElement | null;
+        if (stack && narrow && stack.getBoundingClientRect().right - left > HL_STACK_MAX * card.clientWidth) card.dataset.hlFit = 'none';
     }
 
     /**
@@ -1991,9 +2033,26 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
      */
     getGridOptions() {
         if (this.config?.compact) return { columns: 12, rows: 2, min_columns: 6, min_rows: 1 };
-        return this.noteEnabled()
-            ? { columns: 12, rows: 5, min_columns: 6, min_rows: 3 }
-            : { columns: 12, rows: 4, min_columns: 6, min_rows: 3 };
+        return { columns: 12, rows: this.gridRows(), min_columns: 6, min_rows: 3 };
+    }
+
+    /**
+     * The rows each option asks for, so every one the user turned on shows on
+     * a phone: a note one more, a clock one more (a clock on the closing line
+     * one more again with a note), a forecast block two more (the sentence
+     * one), both blocks four more. A clock never adds a row to a forecast.
+     */
+    private gridRows(): number {
+        const note = this.noteEnabled();
+        const wants = this.forecastWants();
+        if (wants) {
+            const both = this.config?.forecast === 'both';
+            if (both) return note ? 9 : 8;
+            const sentence = this.forecastStyle() === 'b';
+            return (sentence ? 5 : 6) + (note ? 1 : 0);
+        }
+        if (this.clockEnabled()) return note && this.clockStyle() === 'a' ? 6 : 5;
+        return note ? 5 : 4;
     }
 
     getCardSize(): number {
@@ -2005,6 +2064,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         if (this.config?.show_indoor !== false) size += 1;
         if (this.config?.show_attributes !== false) size += 1;
         if (this.noteEnabled()) size += 1;
+        if (this.forecastWants()) size += this.config?.forecast === 'both' ? 3 : 2;
+        else if (this.clockEnabled()) size += 1;
         return size;
     }
 

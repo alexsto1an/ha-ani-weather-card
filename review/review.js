@@ -30,6 +30,8 @@ const CONDITION_NAMES = {
     de: { 'clear-night': 'Klar, Nacht', sunny: 'Sonnig', partlycloudy: 'Teilweise bewölkt', cloudy: 'Bewölkt', rainy: 'Regnerisch', pouring: 'Strömend', 'lightning-rainy': 'Gewitter, regnerisch', fog: 'Nebel' },
     fr: { 'clear-night': 'Nuit dégagée', sunny: 'Ensoleillé', partlycloudy: 'Partiellement nuageux', cloudy: 'Nuageux', rainy: 'Pluvieux', pouring: 'Averses', 'lightning-rainy': 'Orageux, pluvieux', fog: 'Brouillard' },
     pl: { 'clear-night': 'Pogodna noc', sunny: 'Słonecznie', partlycloudy: 'Częściowe zachmurzenie', cloudy: 'Pochmurno', rainy: 'Deszczowo', pouring: 'Ulewa', 'lightning-rainy': 'Burza z deszczem', fog: 'Mgła' },
+    es: { 'clear-night': 'Despejado, noche', sunny: 'Soleado', partlycloudy: 'Parcialmente nublado', cloudy: 'Nublado', rainy: 'Lluvioso', pouring: 'Aguacero', 'lightning-rainy': 'Tormenta, lluvia', fog: 'Niebla' },
+    pt: { 'clear-night': 'Limpo, noite', sunny: 'Ensolarado', partlycloudy: 'Parcialmente nublado', cloudy: 'Nublado', rainy: 'Chuvoso', pouring: 'Chuva torrencial', 'lightning-rainy': 'Trovoada, chuva', fog: 'Nevoeiro' },
     ro: { 'clear-night': 'Senin, noapte', sunny: 'Însorit', partlycloudy: 'Parțial înnorat', cloudy: 'Înnorat', rainy: 'Ploios', pouring: 'Ploaie torențială', 'lightning-rainy': 'Furtună cu ploaie', fog: 'Ceață' },
 };
 

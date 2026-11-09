@@ -25,12 +25,11 @@ export interface DialogOptions {
     closed?(): void;
 }
 
-/** How long it takes to leave; the CSS's own timings must match (data-closing) */
+/** How long it takes to leave; the CSS's own timings must match (data-closing). Still, it just goes. */
 const CLOSE_MS = 200;
-const CLOSE_STILL_MS = 120;
 
-/** Open a dialog; returns the way to close it (with its exit) */
-export function openDialog(options: DialogOptions): () => void {
+/** Open a dialog; returns the way to close it: with its exit, or at once (to hand over to another dialog) */
+export function openDialog(options: DialogOptions): (immediately?: boolean) => void {
     const host = document.createElement('awc-forecast-popup');
     host.style.position = 'fixed';
     host.style.zIndex = '10';
@@ -59,11 +58,16 @@ export function openDialog(options: DialogOptions): () => void {
         if (back?.isConnected) back.focus({ preventScroll: true });
         options.closed?.();
     };
-    const close = () => {
-        if (closing || done) return;
+    const close = (immediately = false) => {
+        if (done) return;
+        if (immediately || options.still) {
+            finish();
+            return;
+        }
+        if (closing) return;
         closing = true;
         dialog.dataset.closing = '';
-        window.setTimeout(finish, options.still ? CLOSE_STILL_MS : CLOSE_MS);
+        window.setTimeout(finish, CLOSE_MS);
     };
 
     // Escape: let the exit play rather than vanish
@@ -75,9 +79,10 @@ export function openDialog(options: DialogOptions): () => void {
     dialog.addEventListener('click', (e) => {
         if (e.target === dialog) close();
     });
-    for (const button of Array.from(root.querySelectorAll('[data-close]'))) {
-        button.addEventListener('click', close);
-    }
+    // Its close buttons, however often its contents are drawn again
+    root.addEventListener('click', (e) => {
+        if ((e.target as Element | null)?.closest?.('[data-close]')) close();
+    });
     try {
         dialog.showModal();
     } catch {

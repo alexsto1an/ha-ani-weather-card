@@ -273,7 +273,8 @@ export const SKY_GLOW_COMPACT: GlowGeometry = { rx: 0.24, ry: 0.95, cx: 0.86, cy
  * The forecast card: no sun of its own (it's the weather card's, above it),
  * so its light comes from just above its top-right corner.
  */
-export const SKY_GLOW_FORECAST: GlowGeometry = { rx: 0.50, ry: 0.55, cx: 0.90, cy: -0.12, fade: 0.64 };
+export const SKY_GLOW_FORECAST: GlowGeometry = { rx: 0.36, ry: 0.50, cx: 0.90, cy: 0.00, fade: 0.64 };
+export const SKY_GLOW_FORECAST_WIDE: GlowGeometry = { rx: 0.26, ry: 0.50, cx: 0.92, cy: -0.10, fade: 0.64 };
 
 /** CSS radial-gradient for the glow, e.g. `skyGlowGradient(SKY_GLOW, 'var(--awc-sky-glow)')`. */
 export function skyGlowGradient(g: GlowGeometry, color: string): string {

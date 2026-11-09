@@ -44,6 +44,8 @@ export interface HourWindow {
     condition?: string;
     wet: boolean;
     kind?: WetKind;
+    /** The most severe wet condition in the window, when it's wet */
+    wetCondition?: string;
     chance?: number;
     amount?: number;
     isDay: boolean;
@@ -66,13 +68,19 @@ export function hourWindows(hours: ForecastEntry[], now: number, count: number, 
         for (let i = 0; i < 24 && hourOfDay(start, hass) % step !== 0; i++) start += HOUR;
     }
     const windows: HourWindow[] = [];
+    let wasWet = false;
     for (let i = 0; i < count; i++) {
         const t = start + i * step * HOUR;
         const inside = hours.filter(e => time(e) >= t - HOUR / 2 && time(e) < t + step * HOUR - HOUR / 2);
         if (!inside.length) break;
         const at = inside.reduce((best, e) => Math.abs(time(e) - t) < Math.abs(time(best) - t) ? e : best, inside[0]);
-        const wetOnes = inside.filter(isWet);
         const chances = inside.map(e => num(e.precipitation_probability)).filter((v): v is number => v !== undefined);
+        // Wet from 40%, and dry again only under 30%, so a 35% hour can't flicker the word on and off
+        const wetOnes = inside.filter(e => {
+            const p = num(e.precipitation_probability);
+            return p !== undefined ? p >= (wasWet ? 30 : 40) : isWet(e);
+        });
+        wasWet = wetOnes.length > 0;
         const amounts = inside.map(e => num(e.precipitation)).filter((v): v is number => v !== undefined);
         windows.push({
             start: t,
@@ -80,10 +88,13 @@ export function hourWindows(hours: ForecastEntry[], now: number, count: number, 
             condition: at.condition,
             wet: wetOnes.length > 0,
             kind: wetOnes.length ? wetKind(wetOnes.map(e => e.condition)) : undefined,
+            wetCondition: wetOnes.length ? (wetOnes.find(e => /lightning/.test(e.condition ?? '')) ?? wetOnes.find(e => /pouring|snowy|hail/.test(e.condition ?? '')) ?? wetOnes.find(e => /rain/.test(e.condition ?? '')) ?? wetOnes[0]).condition : undefined,
             chance: chances.length ? Math.max(...chances) : undefined,
             amount: amounts.length ? amounts.reduce((a, b) => a + b, 0) : undefined,
             isDay: at.is_daytime ?? !/night/.test(at.condition ?? ''),
-            label: fromNow && i === 0 ? localizeString(hass, 'now') : hourLabelFor(t, hass),
+            // Midnight is the new day's name, which no "12 AM" or "00:00" says as well
+            label: fromNow && i === 0 ? localizeString(hass, 'now')
+                : hourOfDay(t, hass) === 0 ? formatWeekday(new Date(t), hass, 'short') : hourLabelFor(t, hass),
         });
     }
     return windows;
@@ -115,6 +126,8 @@ export interface Token {
     span: number;
     text: string;
     short: string;
+    /** The chance alone, for a word that doesn't fit at all */
+    chance?: string;
     wet: boolean;
 }
 
@@ -139,7 +152,7 @@ export function tokens(windows: HourWindow[], wetNow: boolean, hass?: HomeAssist
         const word = localizeString(hass, mostSevere(run));
         const chances = run.map(w => w.chance).filter((v): v is number => v !== undefined);
         const chance = roundedChance(chances.length ? Math.max(...chances) : undefined);
-        found.push({ column: begin, text: chance !== undefined ? `${word} ${percent(chance, hass)}` : word, short: word, wet: true });
+        found.push({ column: begin, text: chance !== undefined ? `${word} ${percent(chance, hass)}` : word, short: word, chance: chance !== undefined ? percent(chance, hass) : undefined, wet: true });
         if (i < windows.length) {
             const dry = localizeString(hass, 'dry');
             found.push({ column: i, text: dry, short: dry, wet: false });
@@ -168,7 +181,7 @@ export function hoursHtml(windows: HourWindow[], wetNow: boolean, hass?: HomeAss
     const cells = windows.map(w => `<li><span class="awc-visually-hidden">${escapeHtml(hourSentence(w, hass))}</span>`
         + `<span class="awc-hour-label" aria-hidden="true">${escapeHtml(w.label)}</span>`
         + `<span class="awc-hour-temp" aria-hidden="true">${escapeHtml(degrees(w.temp, hass))}</span></li>`).join('');
-    const line = marks.map(t => `<li aria-hidden="true"><span class="awc-hour-token${t.wet ? '' : ' dry'}" style="grid-column: ${t.column + 1} / span ${t.span}" data-short="${escapeHtml(t.short)}">${escapeHtml(t.text)}</span></li>`).join('');
+    const line = marks.map(t => `<li aria-hidden="true"><span class="awc-hour-token${t.wet ? '' : ' dry'}" style="grid-column: ${t.column + 1} / span ${t.span}" data-short="${escapeHtml(t.short)}"${t.chance ? ` data-chance="${escapeHtml(t.chance)}"` : ''}>${escapeHtml(t.text)}</span></li>`).join('');
     return `<ol class="awc-hours ${className}" style="--awc-cols: ${windows.length}" aria-label="${escapeHtml(localizeString(hass, 'next_hours'))}">${cells}${line}</ol>`;
 }
 
@@ -241,11 +254,13 @@ export function partsCss(theme: string): string {
         .awc-hours > li, .awc-days > li { display: contents; }
 
         /* Hours: equal columns, so the row is a true time axis */
+        /* Its rows always held, the word line too, so rain arriving never moves the fit */
         .awc-hours {
           display: grid;
           grid-template-columns: repeat(var(--awc-cols, 5), minmax(0, 1fr));
+          grid-template-rows: 14px 21px 16px;
           column-gap: 8px;
-          row-gap: 4px;
+          row-gap: 2px;
         }
         .awc-hour-label {
           grid-row: 1;
@@ -269,14 +284,13 @@ export function partsCss(theme: string): string {
         .awc-hour-token {
           grid-row: 3;
           font-size: 13px;
-          line-height: 18px;
+          line-height: 16px;
           font-weight: 400;
           letter-spacing: -0.004em;
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
           min-width: 0;
           overflow: hidden;
-          text-overflow: ellipsis;
           padding-right: 12px;
         }
 
@@ -296,15 +310,18 @@ export function partsCss(theme: string): string {
         .awc-day-low, .awc-day-high { font-size: 15px; line-height: 20px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
         .awc-day-low { font-weight: 400; opacity: var(--awc-secondary, 0.8); }
         .awc-day-high { font-weight: 500; }
-        .awc-bar { position: relative; height: 3px; border-radius: 1.5px; background: color-mix(in srgb, currentColor 20%, transparent); }
-        .awc-bar.empty { background: none; }
-        .awc-bar > i { position: absolute; inset-block: 0; min-width: 6px; border-radius: 1.5px; background: currentColor; opacity: 0.8; }
+        /* The track: the hairline's strength, drawn with opacity (older
+           WebViews have no color-mix) */
+        .awc-bar { position: relative; height: 4px; border-radius: 2px; }
+        .awc-bar::before { content: ''; position: absolute; inset: 0; border-radius: 2px; background: currentColor; opacity: 0.2; }
+        .awc-bar.empty::before { display: none; }
+        .awc-bar > i { position: absolute; inset-block: 0; min-width: 6px; border-radius: 2px; background: currentColor; opacity: 0.8; }
         .awc-bar > b {
           position: absolute;
           top: 50%;
-          width: 6px;
-          height: 6px;
-          margin: -3px 0 0 -3px;
+          width: 8px;
+          height: 8px;
+          margin: -4px 0 0 -4px;
           border-radius: 50%;
           background: currentColor;
           box-shadow: 0 0 0 2px var(--awc-sky-mid, transparent);
@@ -315,7 +332,7 @@ export function partsCss(theme: string): string {
         .awc-hl-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 3px; }
 
         ${theme} :is(.awc-hour-label, .awc-hour-token.dry, .awc-day-what.dry, .awc-day-low, .awc-hl-label) { color: var(--secondary-text-color); }
-        ${theme} .awc-bar { background: var(--divider-color, rgba(0, 0, 0, 0.12)); }
+        ${theme} .awc-bar::before { background: var(--divider-color, rgba(0, 0, 0, 0.12)); opacity: 1; }
         ${theme} .awc-bar > i { background: var(--primary-color); opacity: 1; }
         ${theme} .awc-bar > b { background: var(--primary-text-color); box-shadow: 0 0 0 2px var(--ha-card-background, var(--card-background-color, #fff)); }
     `;
@@ -332,12 +349,14 @@ export function fitWords(root: HTMLElement): void {
         el.dataset.full ??= el.textContent ?? '';
         el.textContent = el.dataset.full;
         el.style.visibility = '';
-        if (el.scrollWidth <= el.clientWidth + 1) continue;
+        // Strict: a text one pixel too wide already shows its ellipsis
+        if (el.scrollWidth <= el.clientWidth) continue;
         if (el.classList.contains('awc-day-what') && el.classList.contains('dry')) {
             el.style.visibility = 'hidden';
             continue;
         }
         const short = el.dataset.short;
         if (short) el.textContent = short;
+        if (el.scrollWidth > el.clientWidth && el.dataset.chance) el.textContent = el.dataset.chance;
     }
 }

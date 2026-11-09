@@ -5,6 +5,8 @@ const rows = (n) => n * 56 + (n - 1) * 8;
 const ENTITY = { entity: 'weather.home', sun_entity: 'sun.sun' };
 const PHONE = 353;
 const WIDE = 820;
+/** The rows each forecast card design asks for, with hours and days */
+const CARD_ROWS = { a: 5, b: 5, c: 6 };
 
 const weather = (label, width, rowCount, config) => ({ label: `${label} · ${width} × ${rows(rowCount)}`, width, height: rows(rowCount), config: { ...ENTITY, ...config } });
 
@@ -15,7 +17,7 @@ export const SURFACES = [
         about: 'show_clock: true. Each asks the sections grid for one more row; in a phone\'s four rows it gives way, and the card is exactly as it is today.',
         variants: ['a', 'b', 'c'].map(v => ({
             letter: v.toUpperCase(),
-            name: { a: 'Under the hero', b: 'Where and when', c: 'Head of the line' }[v],
+            name: { a: 'Closing line', b: 'Where and when', c: 'Head of the axis' }[v],
             summary: '',
             tradeoffs: '',
             yaml: `show_clock: true\nreview_clock: ${v}`,
@@ -33,7 +35,7 @@ export const SURFACES = [
         about: 'forecast: hourly, daily or both. Between the hero and the metrics; it gives way in short frames before anything else the card had.',
         variants: ['a', 'b', 'c'].map(v => ({
             letter: v.toUpperCase(),
-            name: { a: 'Columns', b: 'Horizon', c: 'The line' }[v],
+            name: { a: 'Columns', b: 'The sentence', c: 'The line' }[v],
             summary: '',
             tradeoffs: '',
             yaml: `forecast: hourly\nreview_forecast: ${v}`,
@@ -51,20 +53,22 @@ export const SURFACES = [
         about: 'custom:animated-forecast-card, in the weather entity\'s sky. The strip sits under a compact weather card; a tap opens the pop-up.',
         variants: ['a', 'b', 'c'].map(v => ({
             letter: v.toUpperCase(),
-            name: { a: 'Hours and days', b: 'Strip of skies', c: 'The line' }[v],
+            name: { a: 'Columns and rows', b: 'Skies', c: 'The instrument' }[v],
             summary: '',
             tradeoffs: '',
             yaml: `type: custom:animated-forecast-card\nentity: weather.home\nreview_card: ${v}`,
             frames: [
                 {
-                    label: 'Under a compact weather card · 353 × 120 + 120',
+                    label: 'Between a compact weather card and the compact tracker · 353 × 120 each',
                     stack: [
                         { width: PHONE, height: rows(2), config: { ...ENTITY, compact: true } },
                         { type: 'animated-forecast-card', width: PHONE, height: rows(2), config: { ...ENTITY, compact: true, review_card: v } },
+                        { type: 'animated-sun-tracker-card', width: PHONE, height: rows(2), config: { sun_entity: 'sun.sun', weather_entity: 'weather.home', compact: true } },
                     ],
                 },
-                { label: `Regular, both · ${PHONE} × ${rows(5)}`, type: 'animated-forecast-card', width: PHONE, height: rows(5), config: { ...ENTITY, forecast: 'both', review_card: v } },
-                { label: `Wide · ${WIDE} × ${rows(4)}`, type: 'animated-forecast-card', width: WIDE, height: rows(4), config: { ...ENTITY, forecast: 'both', review_card: v } },
+                { label: `Regular, hours and days · ${PHONE} × ${rows(CARD_ROWS[v])}`, type: 'animated-forecast-card', width: PHONE, height: rows(CARD_ROWS[v]), config: { ...ENTITY, forecast: 'both', review_card: v } },
+                { label: `Bedside, show_clock · ${PHONE} × ${rows(CARD_ROWS[v] + 3)}`, type: 'animated-forecast-card', width: PHONE, height: rows(CARD_ROWS[v] + 3), config: { ...ENTITY, forecast: 'both', review_card: v, show_clock: true } },
+                { label: `Wide · ${WIDE} × ${rows(CARD_ROWS[v])}`, type: 'animated-forecast-card', width: WIDE, height: rows(CARD_ROWS[v]), config: { ...ENTITY, forecast: 'both', review_card: v } },
             ],
         })),
     },
@@ -72,9 +76,9 @@ export const SURFACES = [
         id: 'popup',
         title: 'Pop-up',
         about: 'tap_action: { action: forecast }. Tap a card, or use the button. Escape, the close button or the backdrop closes it, and focus goes back to the card.',
-        variants: ['a', 'b', 'c'].map(v => ({
+        variants: ['a', 'c'].map(v => ({
             letter: v.toUpperCase(),
-            name: { a: 'Sheet', b: 'The whole sky', c: 'Scrub the line' }[v],
+            name: { a: 'The sheet', c: 'The scrub' }[v],
             summary: '',
             tradeoffs: '',
             yaml: `tap_action:\n  action: forecast\nreview_popup: ${v}`,

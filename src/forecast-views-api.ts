@@ -57,7 +57,7 @@ export interface ForecastViews {
     renderHighLow(ctx: ForecastContext, place: 'line' | 'stack'): string;
     /** The forecast card, inside its shadow root */
     cardCss: string;
-    renderCard(ctx: ForecastContext & { compact: boolean }): string;
+    renderCard(ctx: ForecastContext & { compact: boolean; clock: boolean }): string;
     /** The pop-up: opens over the page, returns a way to close it */
     openPopup(ctx: PopupContext): () => void;
 }

@@ -15,6 +15,7 @@ import { loadEditorBundle, loadSiblingBundle } from './bundles';
 import { localeKey } from './localize';
 import { ForecastFeed } from './forecast-feed';
 import { iconBoxCss } from './styles/icon-box';
+import { MinuteTicker } from './clock';
 import type { ForecastContext } from './forecast-views-api';
 import {
     skyColors, skyPhaseFromSun, registerSkyProperties, SKY_CONDITIONS,
@@ -32,6 +33,8 @@ export interface ForecastCardConfig {
     /** One strip, to sit under the weather card */
     compact?: boolean;
     color_palette?: 'default' | 'theme';
+    /** Bedside: the time leads the card, the date over it, what's coming under it */
+    show_clock?: boolean;
     /** What a tap does (default: the forecast pop-up) */
     tap_action?: ActionConfig;
     hold_action?: ActionConfig;
@@ -67,6 +70,8 @@ class AnimatedForecastCard extends HTMLElement {
     private readonly feed = new ForecastFeed(() => this.render());
     private resizeObserver?: ResizeObserver;
     private hourTimer?: ReturnType<typeof setInterval>;
+    /** With the bedside clock, it draws on the minute */
+    private ticker = new MinuteTicker(() => this.render());
     private closePopup?: () => void;
 
     constructor() {
@@ -77,6 +82,8 @@ class AnimatedForecastCard extends HTMLElement {
     setConfig(config: ForecastCardConfig): void {
         if (!config.entity) throw new Error('Please define a weather entity (entity: weather.home)');
         this.config = { ...config };
+        if (this.isConnected && config.show_clock) this.ticker.start();
+        else this.ticker.stop();
         this.syncFeed();
         this.render();
     }
@@ -102,6 +109,7 @@ class AnimatedForecastCard extends HTMLElement {
         this.syncFeed();
         // The hour under way moves on with the clock, not with Home Assistant
         this.hourTimer ??= setInterval(() => this.render(), 5 * 60_000);
+        if (this.config.show_clock) this.ticker.start();
         if (!this.resizeObserver && typeof ResizeObserver !== 'undefined') {
             this.resizeObserver = new ResizeObserver(() => this.fit());
             this.resizeObserver.observe(this);
@@ -113,6 +121,7 @@ class AnimatedForecastCard extends HTMLElement {
         this.feed.stop();
         clearInterval(this.hourTimer);
         this.hourTimer = undefined;
+        this.ticker.stop();
         this.resizeObserver?.disconnect();
         this.resizeObserver = undefined;
         this.closePopup?.();
@@ -146,7 +155,7 @@ class AnimatedForecastCard extends HTMLElement {
         return { condition, phase };
     }
 
-    context(): ForecastContext & { compact: boolean } {
+    context(): ForecastContext & { compact: boolean; clock: boolean } {
         const weather = this.config.entity ? this._hass?.states[this.config.entity] : undefined;
         const { condition, phase } = this.sky();
         const current = Number(weather?.attributes?.temperature);
@@ -166,6 +175,7 @@ class AnimatedForecastCard extends HTMLElement {
             show: this.config.forecast ?? (this.config.compact ? 'hourly' : 'both'),
             variant: this.config.review_card,
             compact: !!this.config.compact,
+            clock: !!this.config.show_clock,
         };
     }
 
@@ -215,6 +225,7 @@ class AnimatedForecastCard extends HTMLElement {
         card.classList.toggle('compact', ctx.compact);
         card.parentElement?.classList.toggle('sky', colorized);
         card.dataset.variant = ctx.variant ?? '';
+        card.classList.toggle('fc-skies', ctx.variant === 'b');
         const sky = skyColors(ctx.condition as SkyCondition, ctx.phase as SkyPhase);
         const vars: Record<string, string> = { '--awc-sky-top': sky.top, '--awc-sky-mid': sky.mid, '--awc-sky-bottom': sky.bottom, '--awc-sky-glow': sky.glow, '--awc-sky-scrim': sky.scrim };
         for (const name of SKY_COLOR_PROPERTIES) {
@@ -250,22 +261,31 @@ class AnimatedForecastCard extends HTMLElement {
         const overflows = () => card.scrollHeight > card.clientHeight + 1 || card.scrollWidth > card.clientWidth + 1
             || (!!drawing && drawing.scrollHeight > drawing.clientHeight + 1);
         for (const step of steps) {
-            card.dataset.fit = step;
+            // A step can name several things it gives up ("short,d3"): a token list for CSS
+            card.dataset.fit = step.replace(/,/g, ' ');
             if (!overflows()) break;
         }
         window.AnimatedWeatherCardForecast?.fit(card);
     }
 
     getCardSize(): number {
-        return this.config.compact ? 2 : this.config.forecast === 'both' ? 5 : 3;
+        return this.config.compact ? 2 : this.gridRows();
     }
 
-    /** Sections view: full width; the strip two rows, the card three (four with both) */
+    /**
+     * Sections view: full width; the strip two rows. Review only: each design
+     * asks its own (a five, b three or five with both, c six), the bedside
+     * clock three more.
+     */
     getGridOptions() {
         if (this.config.compact) return { columns: 12, rows: 2, min_columns: 6, min_rows: 1 };
-        return this.config.forecast === 'both'
-            ? { columns: 12, rows: 5, min_columns: 6, min_rows: 3 }
-            : { columns: 12, rows: 3, min_columns: 6, min_rows: 2 };
+        return { columns: 12, rows: this.gridRows(), min_columns: 6, min_rows: 2 };
+    }
+
+    private gridRows(): number {
+        const show = this.config.forecast ?? 'both';
+        const base = this.config.review_card === 'b' ? (show === 'both' ? 5 : 3) : this.config.review_card === 'c' ? 6 : 5;
+        return base + (this.config.show_clock ? 3 : 0);
     }
 
     static async getConfigElement(): Promise<HTMLElement> {

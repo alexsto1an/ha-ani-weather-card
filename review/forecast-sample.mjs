@@ -120,7 +120,13 @@ export function withForecast(hass, forecast) {
     const weatherId = Object.keys(hass.states).find(id => id.startsWith('weather.'));
     if (weatherId) {
         const w = hass.states[weatherId];
-        hass.states[weatherId] = { ...w, attributes: { ...w.attributes, supported_features: features } };
+        // The readings a full integration reports, for the pop-up's details
+        const first = forecast.hourly?.[0] ?? {};
+        hass.states[weatherId] = { ...w, attributes: {
+            ...w.attributes, supported_features: features,
+            dew_point: first.dew_point ?? 9, uv_index: first.uv_index ?? 3, cloud_coverage: first.cloud_coverage ?? 40,
+            wind_gust_speed: first.wind_gust_speed ?? 24, visibility: 16, visibility_unit: 'km', precipitation_unit: 'mm',
+        } };
     }
     hass.connection = {
         ...hass.connection,

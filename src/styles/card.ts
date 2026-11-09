@@ -484,10 +484,12 @@ ${iconBoxCss('animated-weather-card')}
         /* ── Clock (show_clock) ──────────────────────────────────────────── */
         /* The time, on the minute, always a step below the temperature. Three
            placements while they're compared (review_clock): a, the hero's
-           last line; b and c, the hero's first line with the place. */
+           last line; b and c, the hero's first line with the place. Each
+           digit is its own span, so only the ones that change fade. */
         .awc-clock { white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .awc-clock-time { display: inline-flex; }
+        .awc-clock-time > span { display: inline-block; }
         .awc-clock-period[hidden] { display: none; }
-        .awc-clock-date-long { display: none; }
 
         /* a: the hero's last line. Thin numerals at about 0.42× the
            temperature, in the quiet tint, with the short date; it leads into
@@ -517,7 +519,7 @@ ${iconBoxCss('animated-weather-card')}
           /* Takes back the line's gap: 0.32em of its own size after the digits */
           margin-left: calc(0.32em - 12px);
         }
-        .main-weather-info > .awc-clock :is(.awc-clock-date, .awc-clock-date-long) {
+        .main-weather-info > .awc-clock .awc-clock-date {
           font-size: 15px;
           line-height: 15px;
           font-weight: 400;
@@ -530,68 +532,36 @@ ${iconBoxCss('animated-weather-card')}
           margin-top: 4px;
         }
         .animated-weather-card[data-clock="off"] .main-weather-info > .awc-clock,
-        .animated-weather-card[data-clock-date="none"] .awc-clock-date { display: none; }
-        /* Wide, beside the temperature at 48 px, the long date under it */
-        @container awc (min-width: 640px) {
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            grid-template-areas: "loc loc" "temp clock" "desc desc" "meta meta" "note note";
-            column-gap: 32px;
-            align-items: baseline;
-            align-content: end;
-          }
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info > * { grid-column: 1 / -1; }
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info > .temperature { grid-column: 1; }
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info > .awc-clock {
-            --awc-clock-size: 48px;
-            grid-column: 2;
-            grid-row: 2;
-            /* Its own width, not the column's: the fit measures it */
-            justify-self: start;
-            flex-direction: column;
-            align-items: flex-start;
-            row-gap: 6px;
-            margin-top: 0;
-          }
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info > .awc-clock .awc-clock-period { margin-left: 0.32em; }
-          .animated-weather-card[data-clock-place="beside"] .main-weather-info > .awc-clock > :is(.awc-clock-time) { display: inline; }
-          .animated-weather-card[data-clock-place="beside"] .awc-clock-date { display: none; }
-          .animated-weather-card[data-clock-place="beside"] .awc-clock-date-long { display: block; }
-        }
+        .animated-weather-card[data-clock-date="none"] .main-weather-info > .awc-clock .awc-clock-date { display: none; }
         .animated-weather-card.theme-colors .main-weather-info > .awc-clock { color: var(--secondary-text-color); }
 
         /* b and c: the hero's first line, the time and the date with the
            place after them. It's the location's line, so it shows and goes
-           with it (tight drops it). Full strength: its right end reaches
-           into the light, where the tint fails; capped so it never meets
-           the sun. Whole parts or nothing: the place goes first, then the
-           date (applySizeState), never the time. */
+           with it (tight drops it). Full strength, and stopped at 62% of the
+           card: past that it reaches the light, where even full-strength text
+           falls under 4.5:1. Whole parts or nothing: the place goes first,
+           then the date, never the time (applySizeState). */
         .location.awc-headline {
           display: flex;
           align-items: baseline;
           opacity: 1;
-          max-width: calc(66cqi - var(--awc-pad));
+          max-width: calc(62cqi - var(--awc-pad));
           text-overflow: clip;
         }
+        @container awc (min-width: 640px) { .location.awc-headline { max-width: none; } }
         .awc-headline .awc-clock { display: inline-flex; align-items: baseline; }
         .awc-headline-sep { margin: 0 6px; opacity: 0.6; }
         .awc-headline .awc-clock-date::before { content: '·'; margin: 0 6px; opacity: 0.6; }
-        .awc-headline-place { font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .awc-headline-place { font-weight: 400; }
         .awc-headline .awc-clock-date { font-weight: 400; }
         .animated-weather-card[data-headline="time-date"] .awc-headline :is(.awc-headline-sep, .awc-headline-place),
         .animated-weather-card[data-headline="time"] .awc-headline :is(.awc-headline-sep, .awc-headline-place, .awc-clock-date) { display: none; }
         /* b: at the location's own size, the time in its weight */
         .awc-headline[data-clock="b"] .awc-clock-time { font-weight: 600; letter-spacing: -0.01em; }
         .awc-headline[data-clock="b"] .awc-clock-period { font-size: 0.7em; font-weight: 500; letter-spacing: 0.02em; margin-left: 0.24em; }
-        /* c: the time at 0.3× the temperature, so the ratio never changes;
-           the date only from 460 px, where wall and bedside frames live */
-        .awc-headline[data-clock="c"] {
-          --awc-clock-size: 24px;
-          gap: 0;
-          max-width: calc(62cqi - var(--awc-pad));
-        }
-        .awc-headline[data-clock="c"] .awc-clock { margin-right: 12px; }
+        /* c: the time at 0.3× the temperature, so the ratio never changes,
+           then the date and the place at the location's size */
+        .awc-headline[data-clock="c"] { --awc-clock-size: 24px; }
         .awc-headline[data-clock="c"] .awc-clock-time {
           font-family: var(--awc-font-display);
           font-size: var(--awc-clock-size);
@@ -600,57 +570,58 @@ ${iconBoxCss('animated-weather-card')}
           letter-spacing: -0.02em;
         }
         .awc-headline[data-clock="c"] .awc-clock-period { font-size: calc(var(--awc-clock-size) * 0.5); font-weight: 500; letter-spacing: 0.04em; margin-left: 0.2em; }
-        .awc-headline[data-clock="c"] .awc-clock-date { display: none; }
-        .awc-headline[data-clock="c"] .awc-headline-sep { display: none; }
+        .awc-headline[data-clock="c"] .awc-clock-date::before { content: none; }
+        .awc-headline[data-clock="c"] .awc-clock-date { margin-left: 12px; }
         .awc-headline[data-clock="c"] .awc-headline-place { font-weight: 500; opacity: 0.94; }
         @container awc (max-width: 319px) {
           .awc-headline[data-clock="c"] { --awc-clock-size: 19px; }
           .awc-headline[data-clock="c"] .awc-clock-time { font-weight: 400; }
         }
-        @container awc (min-width: 460px) {
-          .awc-headline[data-clock="c"] { --awc-clock-size: 29px; }
-          .awc-headline[data-clock="c"] .awc-clock-date { display: inline; font-size: 16px; }
-          .awc-headline[data-clock="c"] .awc-clock-date::before { content: none; }
-          .awc-headline[data-clock="c"] .awc-clock-date + * { margin-left: 0; }
-          .awc-headline[data-clock="c"] .awc-headline-sep { display: inline; }
-        }
-        @container awc (min-width: 640px) { .awc-headline[data-clock="c"] { --awc-clock-size: 36px; max-width: none; } }
+        @container awc (min-width: 460px) { .awc-headline[data-clock="c"] { --awc-clock-size: 29px; } }
+        @container awc (min-width: 640px) { .awc-headline[data-clock="c"] { --awc-clock-size: 36px; } }
         .animated-weather-card:is([data-height="short"], [data-height="snug"]) .awc-headline[data-clock="c"] { --awc-clock-size: 18px; }
         .animated-weather-card:is([data-height="short"], [data-height="snug"]) .awc-headline[data-clock="c"] .awc-clock-time { font-weight: 400; }
         .animated-weather-card.theme-colors .awc-headline .awc-clock-time { color: var(--primary-text-color); }
         .animated-weather-card.theme-colors .awc-headline :is(.awc-clock-period, .awc-clock-date, .awc-headline-place, .awc-headline-sep) { color: var(--secondary-text-color); }
 
         /* ── Forecast (forecast) ─────────────────────────────────────────── */
-        /* Between the hero and the metrics, kept with them at the foot. Its
-           drawing comes with the forecast bundle; until it and the forecast
-           are in, its place is held at the size it'll take. */
-        .awc-forecast { position: relative; flex-shrink: 0; margin-top: auto; }
+        /* Narrow: between the hero and the metrics, 10 px above the metrics'
+           divider, which is its ground; a tall frame's spare height opens
+           above it, as open sky under the hero. Its drawing comes with the
+           forecast bundle; until it and the forecast are in, its place is
+           held, silently, at the size it'll take. */
+        .awc-forecast { position: relative; flex-shrink: 0; margin-top: auto; margin-bottom: -10px; }
+        .animated-weather-card:is([data-height="close"], [data-height="short"], [data-height="snug"], [data-height="tight"], [data-height="minimal"]) .awc-forecast { margin-bottom: -2px; }
         .animated-weather-card .awc-forecast ~ .weather-attributes { margin-top: 0; }
-        .awc-forecast[data-pending][data-variant="a"] { height: 67px; }
-        .awc-forecast[data-pending][data-variant="b"] { height: 122px; }
-        .awc-forecast[data-pending][data-variant="c"] { height: 96px; }
+        .awc-forecast[data-pending][data-variant="a"] { height: 55px; }
+        .awc-forecast[data-pending][data-variant="b"] { height: 44px; }
+        .awc-forecast[data-pending][data-variant="c"] { height: 68px; }
         .animated-weather-card[data-forecast="none"] .awc-forecast,
         .awc-forecast[hidden] { display: none; }
-        /* Wide: under the hero, in the hero's column; the metrics keep theirs */
+        .animated-weather-card[data-forecast="none"] .awc-forecast ~ .weather-attributes { margin-top: auto; }
+        /* Wide: a full-width row under the hero and the metrics, with a
+           hairline of its own (the metrics' divider is vertical there) */
         @container awc (min-width: 640px) {
-          .weather-info:has(> .awc-forecast) {
+          .weather-info:has(> .awc-forecast:not([hidden])) {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             grid-template-rows: minmax(0, 1fr) auto;
             column-gap: 40px;
+            row-gap: 24px;
             align-items: end;
           }
           .weather-info:has(> .awc-forecast) > .main-weather-info { grid-column: 1; grid-row: 1; min-height: 0; }
-          .weather-info:has(> .awc-forecast) > .awc-forecast { grid-column: 1; grid-row: 2; margin-top: 20px; }
-          .weather-info:has(> .awc-forecast) > .weather-attributes { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
+          .weather-info:has(> .awc-forecast) > .weather-attributes { grid-column: 2; grid-row: 1; align-self: end; }
+          .weather-info > .awc-forecast { grid-column: 1 / -1; grid-row: 2; margin: 0; padding-top: 14px; }
+          .weather-info > .awc-forecast::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 1px; background: currentColor; opacity: 0.2; }
+          .animated-weather-card.theme-colors .weather-info > .awc-forecast::before { background: var(--divider-color, rgba(0, 0, 0, 0.12)); opacity: 1; }
           .animated-weather-card[data-forecast="none"] .weather-info:has(> .awc-forecast) > .main-weather-info { grid-row: 1 / span 2; }
+          .awc-forecast[data-pending] { height: auto; min-height: 68px; }
         }
-        .animated-weather-card[data-forecast="none"] .awc-forecast ~ .weather-attributes { margin-top: auto; }
         .awc-hl[hidden] { display: none; }
-        /* Today's high and low on the condition's line: no height of its own,
-           a line of its own only where it has to wrap (and the fit lets it).
-           Narrow, the line stops short of the light, where its full-strength
-           text would fall under 4.5:1. */
+        /* Today's high and low on the condition's line (a): no height of its
+           own, a line of its own only where it has to wrap (and the fit lets
+           it). Narrow, the line stops short of the light. */
         .awc-desc-line {
           display: flex;
           flex-wrap: wrap;
@@ -666,6 +637,10 @@ ${iconBoxCss('animated-weather-card')}
         .animated-weather-card[data-range="none"] .awc-hl-line { display: none; }
         @container awc (min-width: 640px) { .awc-desc-line { max-width: none; } }
         @container awc (max-width: 319px) { .awc-desc-line { margin-top: 6px; } }
+        /* Beside the temperature (b, c): inside its own line, so it costs no
+           height at any step; gone when it would reach the light */
+        .temperature[data-hl="stack"] { display: flex; align-items: center; }
+        .animated-weather-card[data-hl-fit="none"] .awc-hl-stack { display: none; }
 
         /* ── Metrics ─────────────────────────────────────────────────────── */
         .weather-attributes {
