@@ -355,4 +355,127 @@ const VIEW_CSS = `
 .theme-colors :is(.fv-head, .fv-rd-l, .fv-rd em) { color: var(--secondary-text-color); opacity: 1; }
 `;
 
-export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS + FCARD_CSS + VIEW_CSS;
+/** The nightstand: take 4's, whole */
+const NIGHT_CSS = `
+animated-weather-card[data-qn] .weather-info > :not(.qn) { display: none !important; }
+animated-weather-card[data-qn] .weather-info { padding: 0; gap: 0; text-shadow: none; }
+/* The veil: one layer over the sky and every kind of weather, under the words; thinner where the moon is */
+.qn-veil { position: absolute; inset: 0; z-index: 28; pointer-events: none; border-radius: inherit; opacity: 0;
+  background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.55), rgba(3, 4, 9, 0.62) 100%); }
+.animated-weather-card:is([data-phase="dawn"], [data-phase="dusk"]) > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.55), rgba(3, 4, 9, 0.8) 100%); }
+.animated-weather-card[data-phase="day"] > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.65), rgba(3, 4, 9, 0.85) 100%); }
+.animated-weather-card.theme-colors > .qn-veil { background: rgba(3, 4, 9, 0.96); }
+/* Clouds and stars keep the top of the sky: none below the time's cap line, so no core and no star sits behind a figure */
+animated-weather-card[data-qn] .clouds-container { -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); }
+animated-weather-card[data-qn] .stars-field { -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 38%); mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 38%); }
+/* Lightning stays (it's real), capped: its flash peaks at 0.2, its bolt at 35%, no glow */
+animated-weather-card[data-qn-night] .lightning { background: radial-gradient(110% 80% at 50% 0%, rgba(232, 238, 255, 0.2) 0%, rgba(214, 224, 255, 0.05) 55%, transparent 85%) !important; }
+animated-weather-card[data-qn-night] .lightning svg path { filter: none !important; opacity: 0.35; }
+.qn { --pad-x: 44px; --pad-y: 30px; position: absolute; inset: 0; container: qn / size; box-sizing: border-box; color: var(--weather-text-color); font-family: var(--awc-font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+.qn-left { position: absolute; left: var(--pad-x); bottom: var(--pad-y); }
+.qn-time {
+  display: block; font-family: var(--awc-font-display); font-size: var(--qn-size, 160px); font-weight: 250;
+  line-height: 0.74; letter-spacing: -0.02em; font-variant-numeric: proportional-nums; margin-left: -0.055em;
+  font-feature-settings: "case" 1; text-shadow: 0 1px 14px var(--weather-text-shadow);
+}
+.qn-time .awc-ampm { font-family: var(--awc-font); font-size: 22px; line-height: 1; font-weight: 500; letter-spacing: 0.04em; vertical-align: top; margin-left: 0.12em; position: relative; top: 0.04em; opacity: var(--qn-quiet-a, 0.8); }
+.qn-sub { position: relative; margin-top: 20px; height: 30px; font-size: 24px; line-height: 30px; letter-spacing: -0.012em; white-space: nowrap; }
+.qn-right { position: absolute; right: var(--pad-x); bottom: var(--pad-y); left: var(--qn-right-left, 60%); height: 0; }
+.qn-zone { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.qn-sub > .qn-zone { top: 0; bottom: auto; }
+.qn-line { display: block; max-width: 100%; }
+.qn-quiet { opacity: var(--qn-quiet-a, 0.8); }
+/* Night: one line, the temperature a step heavier than the condition (hierarchy by weight, not alpha) */
+.qn-zone[data-kind="line"] .qn-line { font-size: 24px; line-height: 30px; letter-spacing: -0.012em; text-wrap: balance; max-height: 60px; overflow: hidden; }
+.qn-zone[data-kind="line"] { left: calc(40px - var(--qn-gutter, 72px) - var(--qn-period, 0px) - var(--qn-spare, 0px)); align-items: flex-end; text-align: right; }
+.qn-zone[data-kind="column"] .qn-line { white-space: nowrap; }
+.qn-zone[data-kind="line"] .qn-t { font-weight: 500; margin-right: 12px; white-space: nowrap; }
+.qn-cond { font-weight: 400; }
+.qn-alert { font-weight: 500; }
+.qn-big { font-family: var(--awc-font-display); font-size: 76px; line-height: 0.9; font-weight: 200; letter-spacing: -0.045em; margin: 0 0 auto -0.055em; padding-bottom: 10px; font-variant-numeric: proportional-nums; text-shadow: 0 1px 14px var(--weather-text-shadow); }
+.qn-condline { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
+.qn-w500 { font-weight: 500; }
+.qn-zone[data-kind="column"] .qn-line:not(.qn-big):not(.qn-condline) { font-size: 20px; line-height: 26px; letter-spacing: -0.012em; }
+.qn-range { display: inline-flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; }
+.qn-range > span:first-child { font-weight: 400; opacity: var(--qn-quiet-a, 0.8); }
+.qn-range > span:last-child { font-weight: 500; }
+.qn-bar { position: relative; width: 116px; height: 14px; }
+.qn-fill { position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px;
+  -webkit-mask-image: radial-gradient(circle at var(--now) 50%, transparent 7px, #000 7.5px); mask-image: radial-gradient(circle at var(--now) 50%, transparent 7px, #000 7.5px); }
+.qn-now { position: absolute; left: var(--now); top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--weather-text-color); }
+/* Night: no tint anywhere (0.8 over a dim ember falls under 3:1); weight carries the hierarchy */
+.qn[data-night] { --qn-quiet-a: 1; }
+.qn[data-night] :is(.qn-time, .qn-big) { text-shadow: none; }
+.theme-colors .qn { --weather-text-shadow: transparent; }
+.theme-colors .qn .qn-big { color: var(--awc-hero-color, var(--primary-color)); }
+.theme-colors .qn :is(.qn-quiet, .awc-ampm) { color: var(--secondary-text-color); opacity: 1; }
+.theme-colors .qn[data-night] .qn-quiet { color: inherit; }
+.theme-colors .qn-fill { background: var(--primary-text-color) !important; }
+.theme-colors .qn-now { background: var(--primary-color); }
+/* Narrow (a phone's column, a portrait phone on a stand): the weather under the time */
+@container qn (max-width: 600px) {
+  .qn { --pad-x: 20px; --pad-y: 20px; }
+  .qn-time .awc-ampm { font-size: 15px; }
+  .qn-sub { margin-top: 12px; height: 22px; font-size: 17px; line-height: 22px; }
+  .qn-left { bottom: calc(var(--pad-y) + 62px); }
+  .qn-right { left: var(--pad-x) !important; bottom: calc(var(--pad-y) + 48px) !important; }
+  .qn-right > .qn-zone { top: 0; bottom: auto; }
+  .qn-zone[data-kind="line"] { left: 0; align-items: flex-start; text-align: left; }
+  .qn-zone[data-kind] .qn-line, .qn-zone[data-kind] .qn-condline, .qn-zone[data-kind="column"] .qn-line:not(.qn-big):not(.qn-condline) { font-size: 17px; line-height: 22px; margin: 0; }
+  .qn-zone[data-kind="column"] { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+  .qn-zone[data-kind="column"] .qn-big { font-size: 17px; line-height: 22px; font-family: var(--awc-font); font-weight: 500; letter-spacing: -0.012em; margin: 0; padding: 0; text-shadow: none; }
+  .qn-zone[data-kind="column"] .qn-condline { font-weight: 400; }
+  .qn-zone[data-kind="column"] .qn-line:nth-child(n+3) { flex-basis: 100%; }
+  .qn-zone[data-kind="column"] .qn-line:nth-child(n+4) { display: none; }
+}
+`;
+
+/** The wall: take 5's composition, drawn with the row's and the list's parts */
+const WALL_CSS = `
+.animated-weather-card[data-fw] .weather-info > :not(.fw) { display: none !important; }
+.fw {
+  --pad: 28px; --t0: 192px; --colB: max(40%, 334px);
+  position: absolute; inset: 0; z-index: 30; box-sizing: border-box; pointer-events: none;
+  color: var(--weather-text-color); text-shadow: 0 1px 12px var(--weather-text-shadow);
+}
+.fw :is(button, .fc-hourly, .fc-daily) { pointer-events: auto; }
+.fw p { margin: 0; }
+/* Room: the temperature, its cap line on the padding line */
+.fw-temp { position: absolute; left: var(--pad); top: var(--pad); margin: calc(var(--t0) * -0.1005) 0 0 -0.055em; font-family: var(--awc-font-display); font-size: var(--t0); font-weight: 200; line-height: 0.9; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fw-deg { letter-spacing: 0; margin-left: 0.02em; }
+/* The clock, quiet: on the temperature's baseline, with the date (D11: an eleventh of the temperature's ink) */
+.fw-when { position: absolute; left: var(--colB); top: calc(var(--pad) + var(--t0) * 0.705); display: flex; align-items: baseline; column-gap: 12px; white-space: nowrap; transform: translateY(-100%); line-height: 1; }
+.fw-clock { font-family: var(--awc-font-display); font-size: 40px; line-height: 44px; font-weight: 400; letter-spacing: -0.01em; opacity: 0.8; margin-bottom: -8px; font-variant-numeric: tabular-nums; }
+.fw-clock .awc-ampm { font-size: max(11px, 0.42em); margin-left: 0.2em; }
+.fw-date { font-size: 21px; line-height: 26px; font-weight: 400; letter-spacing: -0.008em; }
+.fw-away { display: none; align-items: center; column-gap: 12px; font-size: 21px; line-height: 26px; }
+.fw[data-away] .fw-away { display: inline-flex; }
+.fw[data-away] :is(.fw-clock, .fw-date) { display: none; }
+.fw-at { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fw-rel { font-weight: 400; opacity: 0.8; margin-left: 8px; }
+/* Today, on the condition's line (the hand). Pulled, the high, the low and feels-like step out in place */
+.fw-today { position: absolute; left: var(--pad); top: calc(var(--pad) + var(--t0) * 0.705 + 22px); display: flex; align-items: baseline; column-gap: 0.9em; font-size: 21px; line-height: 26px; font-weight: 400; white-space: nowrap; }
+.fw-cond { font-weight: 600; }
+.fw .awc-hl-pair b { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; }
+.fw[data-away] :is(.fw-hl, .fw-feels) { visibility: hidden; }
+/* Next: the line that says what turns, the hours under it, the week beside them */
+.fw-next { position: absolute; left: var(--pad); right: var(--pad); bottom: var(--pad); }
+.fw-turn { font-family: var(--awc-font-display); font-size: 48px; line-height: 53px; font-weight: 400; letter-spacing: -0.022em; margin-bottom: 14px; white-space: nowrap; overflow: hidden; }
+.fw-band { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); column-gap: 40px; align-items: end; }
+.fw-hours { min-width: 0; --fc-label: 21px; --fc-label-lh: 26px; --fc-value: 40px; --fc-value-lh: 44px; --fc-value-w: 500; --fc-cols-h: 64px; --fc-glyph-gap: 6px; --fc-plot-gap: 8px; --fc-stroke: 4px; --fc-mid-h: 140px; --fc-bleed: 28px; }
+.fw-hours .fc-hr { font-weight: 500; letter-spacing: 0; opacity: 0.8; }
+.fw-hours .fc-needle { top: -10px; width: 3px; height: 7px; }
+.fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-d-bar: 200px; --fc-bar: 8px; }
+.fw-week .fc-d-name { font-size: 17px; font-weight: 600; }
+.fw-week .fc-d-hi { font-weight: 500; }
+/* Clouds keep the open sky right of the lockup and above the line */
+.animated-weather-card[data-fw] :is(.clouds-layer, .stars-field) {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 56%), linear-gradient(90deg, transparent 52%, #000 70%);
+  mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 56%), linear-gradient(90deg, transparent 52%, #000 70%);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+.theme-colors .fw :is(.fw-clock, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }
+.theme-colors .fw-temp { color: var(--awc-hero-color, var(--primary-color)); }
+`;
+
+export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS + FCARD_CSS + VIEW_CSS + NIGHT_CSS + WALL_CSS;

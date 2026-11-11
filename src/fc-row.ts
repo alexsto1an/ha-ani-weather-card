@@ -125,13 +125,16 @@ export function createHourly(o: HourlyOptions): Hourly {
     // A flat day never draws a cliff: 8 °C (14.4 °F) is the least the travel shows
     const tSpan = Math.max(o.fahrenheit ? 14.4 : 8, tMax - tMin);
     const tMid = (tMin + tMax) / 2;
-    const travel = H - vh;
+    // On the line: half a figure above and below its travel; above it (the wall): the figure stands over the line's highest point
+    const tTop = o.above ? vh + (o.valueLift ?? 1) : vh / 2;
+    const tBottom = o.above ? H - 4 : H - vh / 2;
+    const travel = tBottom - tTop;
     const base = H - 2.5;
     const lift = H - 3 - vh;
     const aMax = Math.max(o.unit === 'in' ? 0.08 : 2, ...hrs.map(h => h.amount ?? 0));
     const yOf: Record<Metric, (h: HourRow) => number> = {
-        temp: h => vh / 2 + travel / 2 - (((h.temp ?? tMid) - tMid) / tSpan) * travel,
-        feels: h => vh / 2 + travel / 2 - (((h.feels ?? h.temp ?? tMid) - tMid) / tSpan) * travel,
+        temp: h => tTop + travel / 2 - (((h.temp ?? tMid) - tMid) / tSpan) * travel,
+        feels: h => tTop + travel / 2 - (((h.feels ?? h.temp ?? tMid) - tMid) / tSpan) * travel,
         chance: h => base - ((h.chance ?? 0) / 100) * lift,
         amount: h => base - ((h.amount ?? 0) / aMax) * lift,
     };
