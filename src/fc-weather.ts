@@ -20,7 +20,7 @@ import { Chips, Hourly, Noun, createChips, createHourly } from './fc-row';
 import { Tints, litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { TimeText, minuteTicker } from './fc-clock';
-import { openView } from './fc-view';
+import { dropView, openView, prepareView } from './fc-view';
 
 /** The share of a narrow card's height above which the row's first line can't sit (the light law) */
 const ROW_TOP_MIN = 0.43;
@@ -453,6 +453,26 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         attach();
     }
 
+    // ── The view that opens on tap is built on the first press, so the first open moves on the next frame ──
+    const prepare = () => {
+        if (!model?.tl || !forecastOn() || compact) return;
+        const a = host.config().tap_action?.action;
+        if (a && a !== 'forecast') return;
+        prepareView(host, { metric, slots: 0, chipsLevel: chips?.level() ?? 0, small: root });
+    };
+    info.addEventListener('pointerdown', prepare, { passive: true });
+    info.addEventListener('focusin', prepare);
+    // ...or sooner: once the card has been on screen a moment, when the page is idle
+    let prepTimer = 0;
+    const schedulePrepare = () => {
+        clearTimeout(prepTimer);
+        prepTimer = window.setTimeout(() => {
+            const run = () => { if (host.seen()) prepare(); };
+            const idle = (window as unknown as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+            if (idle) idle(run, { timeout: 2000 }); else run();
+        }, 1200);
+    };
+
     // ── The hour passing, and the clock ──
     let hour = Math.floor(Date.now() / HOUR);
     const ticker = minuteTicker(() => {
@@ -468,6 +488,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
     function rebuild() {
         build();
         host.fit();
+        schedulePrepare();
     }
 
     function keyOf(): string {
@@ -494,17 +515,21 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             rebuild();
         },
         seen(visible) {
-            if (visible) { tickClock(false); ticker.rearm(); }
+            if (visible) { tickClock(false); ticker.rearm(); schedulePrepare(); }
             else if (slide?.active()) slide.home(true);
             if (visible && pendingRebuild && !slide?.active()) { pendingRebuild = false; rebuild(); }
         },
         away: () => !!slide?.active(),
         conditionText: (state: string) => (forecastOn() ? conditionNoun(state, host.hass(), s => host.conditionName(s)) : null),
         open() {
-            if (!model) return;
+            if (!model?.tl) { host.moreInfo(); return; }
             openView(host, { model, metric, slots: slide?.slots() ?? 0, chipsLevel: chips?.level() ?? 0, small: root });
         },
         destroy() {
+            info.removeEventListener('pointerdown', prepare);
+            info.removeEventListener('focusin', prepare);
+            dropView(el);
+            clearTimeout(prepTimer);
             ticker.stop();
             clock?.finish();
             teardownForecast();

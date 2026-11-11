@@ -531,7 +531,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
         this.innerHTML = `
       <ha-card>
-        <div class="animated-weather-card no-transitions loading ${colorPalette === 'theme' ? 'theme-colors' : ''}"${this.config.spill_particles !== false ? ' data-spill' : ''}${compact ? ' data-variant="compact"' : ''} style="${escapeHtml(customColorStyles)}">
+        <div class="animated-weather-card no-transitions${this.surface === 'view' ? '' : ' loading'} ${colorPalette === 'theme' ? 'theme-colors' : ''}"${this.config.spill_particles !== false ? ' data-spill' : ''}${compact ? ' data-variant="compact"' : ''} style="${escapeHtml(customColorStyles)}">
           <div class="sky" aria-hidden="true"></div>
           <div class="weather-skeleton" aria-hidden="true">
             <div class="skeleton-line"></div>
@@ -1012,7 +1012,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
                     this.animationController.applyWeatherCondition(weatherClass);
                 }
                 this.startPlanes();
-            }, config.dev_mode ? 50 : 200);
+            }, config.dev_mode ? 50 : this.surface === 'view' ? 0 : 200);
         } finally {
             this.isInitializing = false;
         }

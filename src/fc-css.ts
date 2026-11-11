@@ -276,4 +276,83 @@ const FCARD_CSS = `
 .theme-colors .fc-sentence { color: var(--primary-text-color); }
 `;
 
-export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS + FCARD_CSS;
+/** The view's own look, inside the grown card */
+const VIEW_CSS = `
+.animated-weather-card[data-fc-view] .sky { --awc-sky-glow-layer: radial-gradient(64% 26% at 77% 10%, var(--awc-sky-glow), transparent 64%); }
+.animated-weather-card[data-fc-view] .weather-info { padding: 0; gap: 0; display: flex; flex-direction: column; min-height: 0; overflow: visible; }
+.animated-weather-card[data-fc-view] .weather-attributes { display: none !important; }
+.animated-weather-card[data-fc-view] .main-weather-info { clip-path: none; }
+.animated-weather-card[data-fc-view] .location { display: block !important; font-size: 17px; line-height: 22px; font-weight: 500; }
+.animated-weather-card[data-fc-view] .temperature { font-size: 112px !important; font-weight: 200 !important; margin-top: 4px; letter-spacing: -0.045em; }
+.animated-weather-card[data-fc-view] .awc-desc-row { height: 26px; margin-top: 10px !important; max-width: calc(76cqi - 24px); }
+.animated-weather-card[data-fc-view] .weather-desc { font-size: 20px; line-height: 26px; }
+.animated-weather-card[data-fc-view] .awc-companion { font-size: 17px; line-height: 22px; }
+.animated-weather-card[data-fc-view] .hero-meta { display: flex !important; margin-top: 4px; font-size: 20px; line-height: 26px; letter-spacing: -0.012em; }
+.fv-top { flex: none; position: relative; padding: 26px 24px 0; touch-action: pan-x pinch-zoom; }
+.fv-fc { flex: none; position: relative; margin: 20px 24px 0; --fc-bleed: 24px; --fc-cols-h: 42px; --fc-mid-h: 90px; }
+/* The list scrolls under a fixed sky; its top edge fades rather than cuts, and it ends above the home indicator, fading out */
+.fv-list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  padding: 16px 24px calc(env(safe-area-inset-bottom, 0px) + 28px); scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - env(safe-area-inset-bottom, 0px) - 24px), transparent calc(100% - env(safe-area-inset-bottom, 0px)));
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - env(safe-area-inset-bottom, 0px) - 24px), transparent calc(100% - env(safe-area-inset-bottom, 0px)));
+}
+.fv-list::-webkit-scrollbar { display: none; }
+.fv-list .fc-daily { --fc-d-row: 40px; --fc-d-bar: 180px; }
+.fv-now { margin-top: 22px; }
+.fv-head { margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.fv-readings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 14px; margin-top: 10px; }
+.fv-rd-l { display: block; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fv-rd strong { display: block; margin-top: 3px; font-size: 17px; line-height: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.fv-rd em { display: block; font-style: normal; font-size: 13px; line-height: 18px; opacity: 0.8; white-space: nowrap; }
+.fv-more {
+  margin-top: 26px; width: 100%; height: 50px; border: 0; border-radius: 14px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between;
+  font: 600 15px/20px var(--awc-font, inherit); color: inherit; background: rgba(255, 255, 255, 0.14); cursor: pointer; text-shadow: inherit;
+  transition: transform 110ms ${PRESS}, background-color 160ms ${PRESS};
+}
+.fv-more:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.2); }
+.fv-more:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.fv-more i { width: 7px; height: 7px; border-top: 1.75px solid currentColor; border-right: 1.75px solid currentColor; transform: rotate(45deg); margin-right: 3px; }
+.fv-close { position: absolute; z-index: 40; top: 14px; right: 12px; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; outline: none; }
+.fv-close::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; transition: transform 110ms ${PRESS}; background: linear-gradient(rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.16)), var(--awc-sky-top); }
+.fv-close:active::before { transform: scale(0.9); }
+.fv-close:focus-visible::before { box-shadow: 0 0 0 2px currentColor; }
+.fv-close i, .fv-close i::after { position: absolute; left: 50%; top: 50%; width: 12px; height: 1.75px; margin: -0.875px 0 0 -6px; border-radius: 1px; background: currentColor; transform: rotate(45deg); }
+.fv-close i::after { content: ''; left: 0; top: 0; margin: 0; transform: rotate(90deg); }
+.fv-grab { position: absolute; z-index: 40; top: 7px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: currentColor; opacity: 0.4; pointer-events: none; }
+.animated-weather-card[data-fc-view] :is(.sun, .moon-gsap) { top: 12%; left: 76%; }
+/* Clouds and stars keep the sky above the hero's lines, right of its text */
+.animated-weather-card[data-fc-view] :is(.clouds-layer, .stars-field) {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 18%, transparent 30%), linear-gradient(90deg, transparent 42%, #000 60%);
+  mask-image: linear-gradient(180deg, #000 0, #000 18%, transparent 30%), linear-gradient(90deg, transparent 42%, #000 60%);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+/* The tablet (900 px and up): the hero, the line, the hours and the chips on the left; the week, the readings and the way
+   to Home Assistant on the right. Nothing scrolls. */
+@container awc (min-width: 900px) {
+  .animated-weather-card[data-fc-view] .sky { --awc-sky-glow-layer: radial-gradient(14% 24% at 54% 2%, var(--awc-sky-glow), transparent 64%); }
+  .animated-weather-card[data-fc-view] .weather-info { display: grid; grid-template-columns: minmax(0, 1fr) 420px; grid-template-rows: minmax(0, 1fr) auto; column-gap: 64px; padding: 40px 48px 38px; }
+  .fv-top { grid-column: 1; grid-row: 1; padding: 0; display: flex; flex-direction: column; min-height: 0; }
+  .fv-top .main-weather-info { flex: 1; display: flex; flex-direction: column; align-items: stretch; }
+  .fv-fc { grid-column: 1; grid-row: 2; margin: 18px 0 0; --fc-chip-h: 36px; --fc-chip-size: 15px; --fc-chip-pad: 16px; --fc-chips-gap: 18px; }
+  .fv-list { grid-column: 2; grid-row: 1 / -1; padding: 6px 0 0; overflow: visible; -webkit-mask-image: none; mask-image: none; display: flex; flex-direction: column; }
+  .animated-weather-card[data-fc-view] .location { font-size: 21px; line-height: 26px; }
+  .animated-weather-card[data-fc-view] .temperature { font-size: 192px !important; line-height: 0.86; letter-spacing: -0.05em; margin-top: 8px; }
+  .animated-weather-card[data-fc-view] .awc-desc-row { height: 32px; max-width: none; margin-top: 14px !important; }
+  .animated-weather-card[data-fc-view] .weather-desc { font-size: 24px; line-height: 32px; }
+  .animated-weather-card[data-fc-view] .awc-companion { font-size: 21px; line-height: 26px; }
+  .animated-weather-card[data-fc-view] .hero-meta { margin-top: auto; font-size: 48px; line-height: 53px; letter-spacing: -0.02em; }
+  .animated-weather-card[data-fc-view] .hero-meta > .awc-line { font-weight: 400; white-space: normal; text-wrap: balance; }
+  .fv-list .fc-daily { --fc-d-row: 44px; --fc-d-bar: 200px; --fc-d-size: 17px; --fc-d-lh: 22px; --fc-d-day: 48px; }
+  .fv-readings { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; }
+  .fv-more { margin-top: auto; flex: none; }
+  .fv-close { top: 22px; right: 22px; }
+  .fv-grab { display: none; }
+  .animated-weather-card[data-fc-view] :is(.sun, .moon-gsap) { top: 9%; left: 54%; }
+}
+.theme-colors .fv-more { background: var(--secondary-background-color, rgba(127, 127, 127, 0.12)); }
+.theme-colors .fv-close::before { background: linear-gradient(rgba(127, 127, 127, 0.16), rgba(127, 127, 127, 0.16)), var(--ha-card-background, var(--card-background-color)); }
+.theme-colors :is(.fv-head, .fv-rd-l, .fv-rd em) { color: var(--secondary-text-color); opacity: 1; }
+`;
+
+export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS + FCARD_CSS + VIEW_CSS;
