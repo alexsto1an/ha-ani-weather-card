@@ -99,6 +99,19 @@ describe('the forecast on the weather card', () => {
         expect(more).toHaveBeenCalled();
     });
 
+    it('the nightstand is no button: a tap does nothing unless tap_action sets one', async () => {
+        const card = mount({ layout: 'nightstand' });
+        await settle();
+        const open = vi.spyOn(card, 'openForecast');
+        const info = card.querySelector('.weather-info') as HTMLElement;
+        expect(info.getAttribute('role')).not.toBe('button');
+        info.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(open).not.toHaveBeenCalled();
+        const own = mount({ layout: 'nightstand', tap_action: { action: 'more-info' } });
+        await settle();
+        expect((own.querySelector('.weather-info') as HTMLElement).getAttribute('role')).toBe('button');
+    });
+
     it('a chip or the Now control inside the card is its own tap, never the card\'s', async () => {
         const card = mount({ show_forecast: true });
         await settle();

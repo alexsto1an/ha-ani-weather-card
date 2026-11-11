@@ -13,7 +13,7 @@
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Lab, Timeline, clamp, cssOf, esc, isWet, labOf, wetKind, whole } from './fc-core';
-import { conditionNoun, dayName, timeParts, timeText, turningLine, week } from './fc-data';
+import { conditionNoun, dateText, dayName, timeParts, timeText, turningLine, week } from './fc-data';
 import { FcWords, fcWords, fill } from './fc-words';
 import { MINUTE, TimeText, minuteTicker } from './fc-clock';
 import { scaleGradient } from './fc-row';
@@ -46,8 +46,11 @@ export function nextAlarm(hass: HomeAssistant | undefined, entityId: string | un
     return new Date(t);
 }
 
-/** Something to know before morning, with numbers: severe weather, rain at 60%, gusts of 60 km/h, frost at the alarm */
-function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: HomeAssistant | undefined, W: FcWords): string | null {
+/** Something to know before morning, with numbers: severe weather, rain at 60%, gusts of 60 km/h or more, frost at the alarm */
+const KMH: Record<string, number> = { 'km/h': 1, 'mph': 1.609344, 'm/s': 3.6, 'kn': 1.852, 'ft/s': 1.09728 };
+const kmh = (v: number, unit: string): number => v * (KMH[unit] ?? 1);
+
+export function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: HomeAssistant | undefined, W: FcWords, entity?: { attributes?: Record<string, unknown> }): string | null {
     if (!tl || tl.unit !== 'hour') return null;
     const hours = tl.slots.filter(h => h.at.getTime() + HOUR > now.getTime() && h.at < new Date(wakeAt.getTime() + HOUR));
     const t = (d: Date) => timeText(d, hass, { sentence: true, bare: true });
@@ -61,10 +64,14 @@ function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: HomeAss
         if (hours[i].at <= now) return end ? fill(W.until, { k, b: t(end) }) : k;
         return end ? fill(W.from_to, { k, a: t(hours[i].at), b: t(end) }) : fill(W.from, { k, a: t(hours[i].at) });
     }
-    const gust = hours.find(h => (h.wind_gust_speed ?? 0) >= 60);
-    if (gust) return fill(W.gusts_to, { v: `${Math.round(gust.wind_gust_speed!)} km/h`, t: t(gust.at) });
+    // In the entity's own units: gusts of 60 km/h (37 mph, 17 m/s, 32 kn), frost at 0 °C (32 °F)
+    const a = entity?.attributes ?? {};
+    const windUnit = String(a.wind_speed_unit ?? 'km/h');
+    const gust = hours.find(h => kmh(h.wind_gust_speed ?? 0, windUnit) >= 60);
+    if (gust) return fill(W.gusts_to, { v: `${Math.round(gust.wind_gust_speed!)} ${windUnit}`, t: t(gust.at) });
+    const freezing = /F/.test(String(a.temperature_unit ?? '')) ? 32 : 0;
     const wake = hours.find(h => h.at >= new Date(wakeAt.getTime() - 30 * 60000));
-    if (wake && typeof wake.temperature === 'number' && wake.temperature <= 0) return fill(W.freezing, { v: `${whole(wake.temperature)}°`, t: t(wakeAt) });
+    if (wake && typeof wake.temperature === 'number' && wake.temperature <= freezing) return fill(W.freezing, { v: `${whole(wake.temperature)}°`, t: t(wakeAt) });
     return null;
 }
 
@@ -190,7 +197,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const alarmLine: Line = { k: 'alarm', html: `${esc(W.alarm)} ${alarm ? timeText(alarm, hass, { bare: true }) : ''}`, cls: 'qn-alarm' };
         if (state.night) {
             // At 3 a.m. the one question is whether anything is coming before you're up
-            const alert = alertBefore(tl, now, wakeAt, hass, W);
+            const alert = alertBefore(tl, now, wakeAt, hass, W, hass?.states[cfg().entity ?? '']);
             const until = tl ? new Timeline(tl.slots.filter(h => h.at < new Date(wakeAt.getTime() + HOUR)), 'hourly', now.getTime()) : null;
             const quiet = until?.length ? turningLine(until, hass, { bare: true }) : null;
             const h = now.getHours();
@@ -208,7 +215,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const range = rangeHtml(host, W, host.current());
         if (range) lines.push({ k: 'range', html: range, cls: 'qn-rangeline' });
         let date = '';
-        try { date = new Intl.DateTimeFormat(hass?.locale?.language || 'en', { weekday: 'long', day: 'numeric', month: 'long' }).format(now); } catch { date = dayName(now, hass, 'long'); }
+        try { date = dateText(now, hass, { weekday: 'long', day: 'numeric', month: 'long' }); } catch { date = dayName(now, hass, 'long'); }
         return { sub: lamp && alarm ? [alarmLine] : [{ k: 'date', html: esc(date), cls: 'qn-quiet' }], kind: 'column', lines, alert: null };
     }
 

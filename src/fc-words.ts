@@ -186,6 +186,12 @@ export function fcWords(hass?: LocaleSource): FcWords {
     return FC_WORDS[lang] ?? FC_WORDS[lang.split('-')[0]] ?? EN;
 }
 
+/** The profile's language is one of the forecast's own */
+export function hasFcWords(hass?: LocaleSource): boolean {
+    const lang = cardLanguage(hass).toLowerCase();
+    return Object.prototype.hasOwnProperty.call(FC_WORDS, lang) || Object.prototype.hasOwnProperty.call(FC_WORDS, lang.split('-')[0]);
+}
+
 /** Fill a template's {names}; a time after a word is bound to it with a no-break space */
 export function fill(template: string, vars: Record<string, string>): string {
     return template.replace(/ \{(a|b|t)\}/g, ' {$1}').replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? '');

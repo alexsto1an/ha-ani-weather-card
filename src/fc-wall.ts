@@ -11,7 +11,7 @@
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
-import { conditionNoun, dayName, relative, timeHtml, timeParts, week } from './fc-data';
+import { conditionNoun, dateText, dayName, relative, timeHtml, timeParts, week } from './fc-data';
 import { fcWords, fill } from './fc-words';
 import { Daily, Hourly, createDaily, createHourly } from './fc-row';
 import { litTints } from './fc-glyphs';
@@ -45,7 +45,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         const t = host.current();
         const feels = Number(s?.attributes?.apparent_temperature);
         let date = '';
-        try { date = new Intl.DateTimeFormat(hass?.locale?.language || 'en', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date()); } catch { /* none */ }
+        try { date = dateText(new Date(), hass, { weekday: 'short', day: 'numeric', month: 'short' }); } catch { /* none */ }
         fw.innerHTML = `<div class="fw-temp" aria-live="polite"><span class="fw-tv">${t !== undefined ? esc(host.temperature(t)) : ''}</span><span class="fw-deg">°</span></div>`
             + `<div class="fw-when"><span class="fw-clock"></span><span class="fw-away"><button type="button" class="awc-now awc-noclaim" aria-label="${esc(W.back)}"><i aria-hidden="true"></i>${esc(W.now)}</button><span class="fw-at"></span></span><span class="fw-date">${esc(date)}</span></div>`
             + `<div class="fw-today"><span class="fw-cond">${esc(s ? conditionNoun(s.state, hass, x => host.conditionName(x)) : '')}</span>`

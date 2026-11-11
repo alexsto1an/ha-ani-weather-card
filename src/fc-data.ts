@@ -7,7 +7,7 @@ import { cardLanguage, cardTimeZone, LocaleSource, useAmPm } from './localize';
 import { buildForecastModel, ForecastDay } from './forecast-model';
 import type { HomeAssistant } from './types';
 import { HOUR, NB, Slot, Timeline, esc, hourIn, sameDay, sunModel, wetKind, WetKind } from './fc-core';
-import { FcWords, fcWords, fill } from './fc-words';
+import { FcWords, fcWords, fill, hasFcWords } from './fc-words';
 
 // ── Times ──────────────────────────────────────────────────────────────────
 function format(hass: LocaleSource | undefined, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
@@ -16,6 +16,10 @@ function format(hass: LocaleSource | undefined, options: Intl.DateTimeFormatOpti
     if (amPm !== undefined) full.hourCycle = amPm ? 'h12' : 'h23';
     try { return new Intl.DateTimeFormat(cardLanguage(hass), full); }
     catch { return new Intl.DateTimeFormat('en', { ...full, timeZone: undefined }); }
+}
+/** A date in the profile's language and time zone, as every time on the card is */
+export function dateText(date: Date, hass: LocaleSource | undefined, options: Intl.DateTimeFormatOptions): string {
+    return format(hass, options).format(date);
 }
 const h12 = (hass?: LocaleSource): boolean => useAmPm(hass) ?? !!format(hass, { hour: 'numeric' }).resolvedOptions().hour12;
 
@@ -217,6 +221,8 @@ export function turningLine(tl: Timeline | null, hass?: LocaleSource, { bare = f
 
 /** The condition's noun ("Rain", "Clear"), else Home Assistant's own name for it */
 export function conditionNoun(condition: string, hass: LocaleSource | undefined, fallback: (c: string) => string): string {
+    // Outside the nine languages, Home Assistant's translated name beats an English noun
+    if (!hasFcWords(hass)) return fallback(condition);
     const W = fcWords(hass) as unknown as Record<string, string>;
     return Object.prototype.hasOwnProperty.call(W, condition) && typeof W[condition] === 'string' ? W[condition] : fallback(condition);
 }

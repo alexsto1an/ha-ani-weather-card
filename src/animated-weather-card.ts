@@ -189,8 +189,11 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     private actionsConfig(): ActionsConfig {
         if (this.config?.dev_mode || this.surface === 'view') return {};
         const actions = readActions(this.config, this.config?.entity);
-        // With the forecast on, a tap opens the forecast's own view; tap_action still changes that
-        return this.forecastOn() && !actions.tap_action ? { ...actions, tap_action: { action: 'forecast' } } : actions;
+        if (actions.tap_action) return actions;
+        // A bedside screen opens nothing bright on a tap; tap_action still sets one
+        if (this.config?.layout === 'nightstand' && this.surface === 'card') return { ...actions, tap_action: { action: 'none' } };
+        // With the forecast on, a tap opens the forecast's own view
+        return this.forecastOn() ? { ...actions, tap_action: { action: 'forecast' } } : actions;
     }
 
     /** The forecast is drawn on this card (show_forecast, or the forecast card) */

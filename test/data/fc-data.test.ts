@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun } from '../../src/fc-core';
-import { turningLine, timeParts, timeText, highLow, week, hours, available, relative } from '../../src/fc-data';
+import { turningLine, timeParts, timeText, highLow, week, hours, available, relative, dateText, conditionNoun } from '../../src/fc-data';
 import { FC_WORDS, fill } from '../../src/fc-words';
-import { nextAlarm } from '../../src/fc-night';
+import { nextAlarm, alertBefore } from '../../src/fc-night';
 import type { ForecastEntry } from '../../src/forecast-data';
 import type { HomeAssistant } from '../../src/types';
 
@@ -60,6 +60,13 @@ describe('times, as the card writes them', () => {
         const d = new Date('2026-11-11T12:00:00Z');
         const server = { language: 'en', locale: { language: 'en', time_format: '24', time_zone: 'server' }, config: { time_zone: 'Asia/Tokyo' } } as unknown as HomeAssistant;
         expect(timeText(d, server)).toBe('21:00');
+    });
+    it('dates in the profile\'s time zone too', () => {
+        const d = new Date('2026-11-11T20:00:00Z');
+        const server = { language: 'en', locale: { language: 'en', time_format: '24', time_zone: 'server' }, config: { time_zone: 'Asia/Tokyo' } } as unknown as HomeAssistant;
+        const text = dateText(d, server, { weekday: 'short', day: 'numeric' });
+        expect(text).toMatch(/Thu/);
+        expect(text).toMatch(/12/);
     });
     it('how far ahead, short', () => {
         expect(relative(3 * HOUR, hass())).toMatch(/3 hr/);
@@ -124,6 +131,22 @@ describe('the sun at any hour', () => {
     });
 });
 
+describe('before morning, on the nightstand', () => {
+    const night = today(23).getTime();
+    const wake = new Date(night + 8 * HOUR);
+    const slots = (extra: Partial<ForecastEntry>) => Array.from({ length: 10 }, (_, i) => ({ datetime: new Date(night + i * HOUR).toISOString(), condition: 'cloudy', temperature: 3, precipitation_probability: 0, ...extra }));
+    const W = FC_WORDS.en;
+    it('gusts in the entity\'s own unit: 40 mph is past 60 km/h, 30 mph is not', () => {
+        const mph = { attributes: { wind_speed_unit: 'mph', temperature_unit: '°F' } };
+        expect(alertBefore(new Timeline(slots({ wind_gust_speed: 40, temperature: 40 }), 'hourly', night), new Date(night), wake, hass(), W, mph)).toMatch(/40 mph/);
+        expect(alertBefore(new Timeline(slots({ wind_gust_speed: 30, temperature: 40 }), 'hourly', night), new Date(night), wake, hass(), W, mph)).toBeNull();
+    });
+    it('frost at the alarm: 0 °C, or 32 °F', () => {
+        expect(alertBefore(new Timeline(slots({ temperature: 30 }), 'hourly', night), new Date(night), wake, hass(), W, { attributes: { temperature_unit: '°F' } })).toMatch(/30°/);
+        expect(alertBefore(new Timeline(slots({ temperature: 3 }), 'hourly', night), new Date(night), wake, hass(), W, { attributes: { temperature_unit: '°C' } })).toBeNull();
+    });
+});
+
 describe('the next alarm', () => {
     it('a timestamp within 18 hours, or none', () => {
         const at = new Date(now + 5 * HOUR);
@@ -143,6 +166,10 @@ describe('the forecast\'s words', () => {
                 if (typeof value === 'string') expect(blanks(v as string), `${language}.${key}`).toBe(blanks(value));
             }
         }
+    });
+    it('outside the nine languages, the condition is Home Assistant\'s own name', () => {
+        expect(conditionNoun('rainy', hass('de'), () => 'HA')).toBe('Regen');
+        expect(conditionNoun('rainy', hass('ja'), () => '雨')).toBe('雨');
     });
     it('binds a time to the word before it', () => {
         expect(fill('{k} from {a}', { k: 'Rain', a: '17:00' })).toBe('Rain from 17:00');
