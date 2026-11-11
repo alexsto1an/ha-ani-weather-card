@@ -8,6 +8,7 @@
 
 import type { ForecastExtras, ForecastHost, ForecastViews } from './forecast-host';
 import { attachWeather } from './fc-weather';
+import { attachForecastCard } from './fc-fcard';
 import { FORECAST_CSS } from './fc-css';
 
 /** One style element per card for everything the forecast adds */
@@ -23,6 +24,7 @@ const views: ForecastViews = {
     version: 2,
     attach(host: ForecastHost): ForecastExtras {
         style(host);
+        if (host.surface === 'forecast') return attachForecastCard(host);
         return attachWeather(host);
     },
 };

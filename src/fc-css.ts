@@ -240,4 +240,40 @@ const CARD_CSS = `
 }
 `;
 
-export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS;
+/** The forecast card and its strip */
+const FCARD_CSS = `
+/* The forecast card has no hero, so the card's own text steps out. One sun per stack, so no disc here: its light stays in
+   the corner. Nothing with a core sits behind data: no clouds, no stars (the icons say them). Rain, snow and lightning pass behind. */
+.animated-weather-card[data-fc-card] .weather-info > :not(.fc-fcard) { display: none !important; }
+.animated-weather-card[data-fc-card] .weather-info { display: block; padding: 0; gap: 0; }
+.animated-weather-card[data-fc-card] :is(.sun-track, .clouds-container, .stars-field, .moon-gsap, .stars-container) { display: none !important; }
+/* The corner light: 30% × 34% at 94%, −8%, with a wider, fainter skirt so it has no edge */
+.animated-weather-card[data-fc-card] .sky { --awc-sky-glow-layer: radial-gradient(30% 34% at 94% -8%, var(--awc-sky-glow), transparent 70%), radial-gradient(52% 56% at 94% -8%, var(--awc-sky-glow), transparent 78%); }
+/* The strip sits under the compact weather card: the light is upstairs, and only spills over its top edge */
+.animated-weather-card[data-fc-card][data-variant="compact"] .sky { --awc-sky-glow-layer: radial-gradient(70% 120% at 84% -90%, var(--awc-sky-glow), transparent 72%); }
+.animated-weather-card[data-fc-card]:has(.fc-fcard[data-variant="wide"]) .sky { --awc-sky-glow-layer: radial-gradient(20% 70% at 55% -42%, var(--awc-sky-glow), transparent 72%); }
+.fc-fcard { position: relative; box-sizing: border-box; height: 100%; padding: 18px var(--awc-pad) 0; --fc-bleed: var(--awc-pad); --fc-mid-h: 110px; --fc-cols-h: 42px; overflow: hidden; }
+.fc-fcard[data-variant="regular"] { display: flex; flex-direction: column; }
+/* The lead: the turning line at the forecast card's size (20/26, weight 500, full strength). Away from now it leads
+   with the needle's hour, and the way home sits at its end. */
+.fc-lead { position: relative; display: flex; align-items: center; height: 26px; margin-bottom: 14px; white-space: nowrap; }
+.fc-sentence { font-size: 20px; line-height: 26px; font-weight: 500; letter-spacing: -0.012em; min-width: 0; overflow: hidden; }
+.fc-sentence .fc-at { font-weight: 600; font-variant-numeric: tabular-nums; margin-right: 0.5em; }
+.fc-sentence .awc-ampm { font-size: 0.7em; }
+.fc-lead .fc-now { position: absolute; right: 0; top: 2px; opacity: 0; visibility: hidden; transition: opacity 120ms ${OUT}, visibility 0s linear 120ms, transform 110ms ${PRESS}; }
+.fc-fcard.fc-away .fc-now { opacity: 1; visibility: visible; transition: opacity 160ms ${IN} 60ms, visibility 0s, transform 110ms ${PRESS}; }
+.fc-fcard .fc-daily { margin-top: 14px; }
+.fc-fcard[data-variant="regular"] .fc-daily { margin-top: auto; padding-bottom: 12px; }
+.fc-day[hidden] { display: none; }
+/* Wide: the hours on the left, the week on the right. Bars capped at 200 px: longer, a range reads as a progress bar. */
+.fc-fcard[data-variant="wide"] { display: grid; grid-template-columns: minmax(0, 1fr) 320px; column-gap: 44px; padding-top: 20px; padding-bottom: 14px; }
+.fc-fcard[data-variant="wide"] .fc-left { min-width: 0; --fc-bleed: 20px; }
+.fc-fcard[data-variant="wide"] .fc-daily { margin-top: 0; align-self: center; --fc-d-row: 30px; --fc-d-bar: 200px; }
+/* The strip: labels, icons and the line with its values. No chips, no words: the compact weather card above says now. */
+.fc-fcard[data-variant="strip"] { padding-top: 16px; --fc-glyph-gap: 4px; --fc-cols-h: 36px; --fc-plot-gap: 2px; --fc-mid-h: 84px; }
+.fc-fcard[data-variant="strip"] .fc-needle { top: -6px; }
+.fc-empty { margin: 0; padding: 24px var(--awc-pad); font-size: 15px; line-height: 20px; opacity: var(--awc-secondary, 0.8); }
+.theme-colors .fc-sentence { color: var(--primary-text-color); }
+`;
+
+export const FORECAST_CSS = PARTS + SLIDE_CSS + CARD_CSS + FCARD_CSS;
