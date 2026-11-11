@@ -347,6 +347,9 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             at.innerHTML = whenHtml(m, host, slot);
             rel.textContent = relative(slot.at.getTime() - Date.now(), host.hass(), m.tl?.unit === 'hour' ? 'hour' : 'day');
             if (locShown && loc && away.parentElement !== loc) loc.append(away);
+            // How far ahead is said only if it fits whole inside the line's tint limit
+            rel.hidden = false;
+            if (locShown && loc && away.getBoundingClientRect().right > loc.getBoundingClientRect().left + loc.clientWidth + 0.5) rel.hidden = true;
             else if (!locShown && descRow && away.parentElement !== descRow) descRow.prepend(away);
             else if (!locShown && !descRow) hero.prepend(away);
         }
@@ -445,8 +448,27 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             }
         }
     }
+    /** The turning line, whole or not at all, and only as far as the light allows: the long form, the short, or none; then what follows it */
+    function fitLine() {
+        if (!lineEl || !model || root.dataset.awcAway || !descRow) return;
+        const l = model.lineAt(0);
+        const meta = lineEl.parentElement as HTMLElement | null;
+        if (!l || !meta || !meta.getClientRects().length) return;
+        const mw = parseFloat(getComputedStyle(descRow).maxWidth);
+        const limit = meta.getBoundingClientRect().left + (isFinite(mw) ? mw : meta.clientWidth) - 4;
+        lineEl.style.display = '';
+        if (lineEl.innerHTML !== l.html) lineEl.innerHTML = l.html;
+        if (lineEl.getBoundingClientRect().right > limit) lineEl.innerHTML = l.shortHtml;
+        if (lineEl.getBoundingClientRect().right > limit) lineEl.style.display = 'none';
+        for (const e of [...meta.children] as HTMLElement[]) {
+            if (e === lineEl) continue;
+            e.style.display = '';
+            if (e.getBoundingClientRect().right > limit || e.offsetTop > lineEl.offsetTop + 4) e.style.display = 'none';
+        }
+    }
     function fitted() {
         fitCompanion();
+        fitLine();
         floor();
         hourly?.remeasure();
         chips?.fit();

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { localizeString, useAmPm, formatTime, formatDuration, timeHtml, cardLanguage, CARD_STRINGS } from '../../src/localize';
-import { FORECAST_STRINGS } from '../../src/forecast-strings';
+import { FC_WORDS } from '../../src/fc-words';
 
 // 19:12 local time, whatever zone the tests run in
 const evening = (() => { const d = new Date(2026, 9, 13, 19, 12); return d.toISOString(); })();
@@ -23,9 +23,9 @@ describe('card strings', () => {
     });
 
     it('has every forecast word in every language', () => {
-        const keys = Object.keys(FORECAST_STRINGS.en);
-        expect(Object.keys(FORECAST_STRINGS).sort()).toEqual(Object.keys(CARD_STRINGS).sort());
-        for (const [language, strings] of Object.entries(FORECAST_STRINGS)) {
+        const keys = Object.keys(FC_WORDS.en);
+        expect(Object.keys(FC_WORDS).sort()).toEqual(Object.keys(CARD_STRINGS).sort());
+        for (const [language, strings] of Object.entries(FC_WORDS)) {
             expect(Object.keys(strings).sort(), language).toEqual([...keys].sort());
             for (const key of keys) expect(strings[key as keyof typeof strings], `${language}.${key}`).toBeTruthy();
         }

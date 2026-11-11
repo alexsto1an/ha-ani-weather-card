@@ -591,7 +591,9 @@ export function attachSlide(o: SlideOptions): Slide {
             groupOpacity(null);
             root.classList.add('awc-dial');
             setRaw(k * pxs);
-            if (k === 0) { draw(0); leave(); return; }
+            // The words and the slider's value move with the key, at once; the sky follows on its own time
+            draw(0);
+            if (k === 0) { leave(); return; }
             park_();
             kick();
         } else if (e.key === 'Home' || e.key === 'Escape') {

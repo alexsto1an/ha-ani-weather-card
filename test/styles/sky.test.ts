@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-    SKY_CONDITIONS, SKY_PHASES, SKY_TEXT, SKY_TEXT_SECONDARY_ALPHA, SKY_GLOW, SKY_GLOW_WIDE, SKY_GLOW_COMPACT, SKY_GLOW_FORECAST, SKY_GLOW_FORECAST_WIDE,
+    SKY_CONDITIONS, SKY_PHASES, SKY_TEXT, SKY_TEXT_SECONDARY_ALPHA, SKY_GLOW, SKY_GLOW_WIDE, SKY_GLOW_COMPACT,
     sampleSky, sampleSkyAt, oklchToSrgb, composite, contrastRatio, skyColors, generateSkyCss, toHex,
     DISSOLVING_PROPERTIES, dissolveTransition, SKY_DISSOLVE_SEC, SKY_DISSOLVE_EASE,
 } from '../../src/sky';
@@ -176,83 +176,5 @@ describe('clouds over the top edge', () => {
 
     it('keep their positions relative to the card', () => {
         expect(css).toMatch(/\.clouds-layer \{[^}]*top: var\(--awc-cloud-overhang\)/);
-    });
-});
-
-describe('the forecast and the clock stay legible where they sit', () => {
-    const grid = (xs: number[], ys: number[]) => xs.flatMap(x => ys.map(y => [x, y] as const));
-    const range = (from: number, to: number, step: number) => Array.from({ length: Math.round((to - from) / step) + 1 }, (_, i) => +(from + i * step).toFixed(3));
-    const check = (name: string, points: readonly (readonly [number, number])[], glow: typeof SKY_GLOW, secondary: boolean) => {
-        for (const condition of SKY_CONDITIONS) {
-            for (const phase of SKY_PHASES) {
-                for (const [x, y] of points) {
-                    const bg = sampleSkyAt(condition, phase, x, y, glow);
-                    const ratio = contrastRatio(rendered(bg, secondary), bg);
-                    expect(ratio, `${name}: ${condition}/${phase} at x=${x}, y=${y}`).toBeGreaterThanOrEqual(4.5);
-                }
-            }
-        }
-    };
-
-    // The forecast section on a narrow card: its top is held at 0.43 of the
-    // card's height or lower (applySizeState), and its text runs the width
-    // at full strength: the line's labels, the columns, the sentence
-    it('the forecast on a narrow card, full strength across the width from 0.43 down', () => {
-        check('forecast, narrow', grid(range(0.02, 0.98, 0.04), range(0.43, 0.95, 0.04)), SKY_GLOW, false);
-    });
-
-    // On a wide card it's a full-width row under the hero and the metrics
-    it('the forecast on a wide card, tinted, from 0.6 down', () => {
-        check('forecast, wide', grid(range(0.02, 0.98, 0.04), range(0.6, 0.95, 0.05)), SKY_GLOW_WIDE, true);
-    });
-
-    // Today's high and low beside the temperature (hidden past 0.65 of the
-    // width) or on the condition's line (which stops at 0.65)
-    it('today\'s high and low, full strength, left of 0.65', () => {
-        check('high and low', grid(range(0.2, 0.65, 0.05), range(0.08, 0.36, 0.04)), SKY_GLOW, false);
-    });
-
-    // Clocks b and c: the first line, full strength, stopped at 0.62
-    it('the clock on the first line, full strength, left of 0.62', () => {
-        check('clock, first line', grid(range(0.05, 0.62, 0.03), [0.05, 0.08, 0.12, 0.16]), SKY_GLOW, false);
-    });
-
-    // Clock a: the hero's last line, tinted, its date dropped past 0.55
-    it('the closing-line clock, tinted, left of 0.55', () => {
-        check('clock, closing line', grid(range(0.05, 0.55, 0.05), range(0.3, 0.6, 0.05)), SKY_GLOW, true);
-    });
-
-    // A day row's tinted low ends by 0.55 on a narrow card (the fixed bar keeps it there)
-    it('a day\'s tinted low, left of 0.55, from 0.43 down', () => {
-        check('day lows', grid(range(0.3, 0.55, 0.05), range(0.43, 0.95, 0.04)), SKY_GLOW, true);
-    });
-
-    // The forecast card: its light from just above its top-right corner.
-    // Tinted text (the headline's eyebrow and quiet line, capped at 60% of
-    // the width; the axis; the lows) passes left of 0.7 at its top, and
-    // across the width from 0.3 down (0.8 and 0.2 on a wide card)
-    it('the forecast card, tinted, clear of its light', () => {
-        check('forecast card, top', grid(range(0.04, 0.7, 0.04), range(0.04, 0.3, 0.04)), SKY_GLOW_FORECAST, true);
-        check('forecast card', grid(range(0.04, 0.96, 0.04), range(0.3, 0.95, 0.05)), SKY_GLOW_FORECAST, true);
-        check('forecast card, wide, top', grid(range(0.03, 0.8, 0.04), range(0.04, 0.2, 0.04)), SKY_GLOW_FORECAST_WIDE, true);
-        check('forecast card, wide', grid(range(0.03, 0.97, 0.04), range(0.2, 0.95, 0.05)), SKY_GLOW_FORECAST_WIDE, true);
-    });
-
-    // The strip under a compact weather card: the sky from its mid tone to
-    // the horizon, with the scrim, no light of its own. Its text is full
-    // strength: the tint falls to 4.48 at its top in a sunny dawn
-    it('the forecast card\'s strip, full strength, anywhere', () => {
-        for (const condition of SKY_CONDITIONS) {
-            for (const phase of SKY_PHASES) {
-                const c = skyColors(condition, phase);
-                const hex = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
-                const [r, g, b, a] = (c.scrim.match(/[\d.]+/g) ?? []).map(Number);
-                for (const y of range(0, 1, 0.1)) {
-                    const base = composite(hex(c.mid), hex(c.bottom), y);
-                    const bg = composite(base, [r / 255, g / 255, b / 255], a * Math.max(0, (y - 0.4) / 0.6));
-                    expect(contrastRatio(rendered(bg, false), bg), `strip: ${condition}/${phase} at y=${y}`).toBeGreaterThanOrEqual(4.5);
-                }
-            }
-        }
     });
 });

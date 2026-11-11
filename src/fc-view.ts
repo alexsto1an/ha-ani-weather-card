@@ -315,7 +315,8 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     // Carry the card's state: the metric and the hour it's left at
     v.setMetric(state.metric);
     if (state.slots) v.park(state.slots);
-    const still = reducedMotion() || host.still();
+    // Reduced motion, animate: false, or a browser without Web Animations: the view is simply there
+    const still = reducedMotion() || host.still() || typeof o.sheet.animate !== 'function';
     const lastFocus = document.activeElement as HTMLElement | null;
     const keyboard = !!lastFocus?.matches?.(':focus-visible');
     // The words and parts that fly from the card
@@ -326,7 +327,8 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     const theme = groot.classList.contains('theme-colors');
     o.scrim.style.background = theme ? 'rgba(0, 0, 0, 0.45)' : `${mixHex('#05070c', mid, 0.32)}a6`;
     o.sheet.style.cssText = `left:${T.x}px;top:${T.y}px;width:${T.w}px;height:${T.h}px`;
-    o.dialog.showModal();
+    // A modal dialog in the top layer; without one (an old WebView), a plain open dialog over the page
+    if (typeof o.dialog.showModal === 'function') o.dialog.showModal(); else o.dialog.setAttribute('open', '');
     const pausable = o.card as unknown as { wasManuallyPaused: boolean; setAnimationsPaused(p: boolean): void };
     if (pausable.wasManuallyPaused) { pausable.wasManuallyPaused = false; pausable.setAnimationsPaused(false); }
     // The card's own clouds and readings ride the grow and hand over: the grown card's clouds wait, then come in on the sky's pace
@@ -346,7 +348,7 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     };
     const cloudClone = theme || still ? null : clone('.clouds-container', 'fv-clouds');
     const carry = still ? null : clone('.weather-attributes', 'fv-carry');
-    if (gClouds && cloudClone) { gClouds.getAnimations().forEach(a => a.cancel()); gClouds.style.opacity = '0'; }
+    if (gClouds && cloudClone) { gClouds.getAnimations?.().forEach(a => a.cancel()); gClouds.style.opacity = '0'; }
     for (const [, sel] of NAMES) {
         const a = small.querySelector(sel) as HTMLElement | null, b = groot.querySelector(sel) as HTMLElement | null;
         if (!b || !b.getClientRects().length) continue;
@@ -381,7 +383,7 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     };
     const setRest = (on: boolean, animate: boolean) => {
         rest.forEach((e, i) => {
-            e.getAnimations().forEach(a => a.cancel());
+            e.getAnimations?.().forEach(a => a.cancel());
             if (!animate || still) { e.style.opacity = on ? '' : '0'; return; }
             if (on) {
                 e.style.opacity = '';
@@ -418,8 +420,8 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     };
     if (still) {
         apply(1, 0, false); setRest(true, false); finishOpen(); if (gClouds) gClouds.style.opacity = '';
-        o.sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: IN });
-        o.scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: IN });
+        o.sheet.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: IN });
+        o.scrim.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: IN });
     } else {
         setRest(true, true);
         setTimeout(() => { if (phase === 'opening' || phase === 'open') v.daily?.arrive(); }, VIEW.restFrom);
@@ -461,13 +463,13 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
         const end = async () => {
             small.style.visibility = '';
             await frame(); await frame();
-            o.dialog.close();
+            if (typeof o.dialog.close === 'function') o.dialog.close(); else o.dialog.removeAttribute('open');
             o.dialog.style.visibility = 'hidden';
             for (const q of pairs) { q.el.style.transform = ''; q.el.style.opacity = ''; }
             if (sky) sky.style.transform = '';
             if (track) track.style.translate = '';
             for (const e of rest) e.style.translate = '';
-            o.sheet.getAnimations().forEach(a => a.cancel());
+            o.sheet.getAnimations?.().forEach(a => a.cancel());
             cloudClone?.remove(); carry?.remove();
             if (gClouds) gClouds.style.opacity = '';
             v.slide?.home(true);
@@ -478,9 +480,9 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
             (back as HTMLElement & { focus(o?: { preventScroll?: boolean; focusVisible?: boolean }): void } | null)?.focus({ preventScroll: true, focusVisible: keyboard || fromKeys });
         };
         if (still) {
-            const a = o.sheet.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: OUT, fill: 'forwards' });
-            o.scrim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: OUT, fill: 'forwards' });
-            a.finished.then(() => { void end(); }).catch(() => { void end(); });
+            const a = o.sheet.animate?.([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: OUT, fill: 'forwards' });
+            o.scrim.animate?.([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: OUT, fill: 'forwards' });
+            if (a) a.finished.then(() => { void end(); }).catch(() => { void end(); }); else void end();
             return;
         }
         animate(p0, 0, VIEW.shrink * Math.max(0.3, p0), dy0, () => { void end(); });

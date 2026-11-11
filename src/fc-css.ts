@@ -151,7 +151,8 @@ const SLIDE_CSS = `
 /** The weather card: the clock, the condition's line, the turning line, the section, the away line, the floor */
 const CARD_CSS = `
 /* ── The clock leads the location line: "13:10  Home". The time 15/20 weight 500 tabular at 0.94; the place weight 400 at 0.8, 8 px on, never nested. ── */
-.location:has(> .awc-clock) { opacity: 1; }
+/* The place is tinted, so the line stops at 0.57 of a narrow card, where the tint still holds 4.5:1 (forecast-contrast.test.ts) */
+.location:has(> .awc-clock) { opacity: 1; max-width: calc(57cqi - var(--awc-pad)); }
 .location > .awc-clock { font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; opacity: 0.94; }
 .location > .awc-clock:not(:empty) + .awc-place { margin-left: 8px; font-weight: 400; opacity: var(--awc-secondary, 0.8); }
 .awc-time { position: relative; display: inline-block; white-space: nowrap; vertical-align: baseline; }
@@ -165,7 +166,8 @@ const CARD_CSS = `
 .awc-away { display: none; }
 .animated-weather-card[data-awc-away] .awc-away { display: inline-flex; align-items: baseline; column-gap: 10px; white-space: nowrap; }
 .animated-weather-card[data-awc-away="location"] .location > :not(.awc-away) { display: none; }
-.animated-weather-card[data-awc-away="location"] .location { opacity: 1; overflow: visible; }
+.animated-weather-card[data-awc-away="location"] .location { opacity: 1; overflow: visible; max-width: calc(57cqi - var(--awc-pad)); }
+.awc-away .awc-rel[hidden] { display: none; }
 .animated-weather-card[data-awc-away="desc"] .awc-away { margin-right: 12px; font-size: 15px; line-height: 20px; }
 .awc-at { font-weight: 600; font-variant-numeric: tabular-nums; }
 .awc-rel { font-weight: 400; opacity: var(--awc-secondary, 0.8); }
@@ -247,8 +249,8 @@ const FCARD_CSS = `
 .animated-weather-card[data-fc-card] .weather-info > :not(.fc-fcard) { display: none !important; }
 .animated-weather-card[data-fc-card] .weather-info { display: block; padding: 0; gap: 0; }
 .animated-weather-card[data-fc-card] :is(.sun-track, .clouds-container, .stars-field, .moon-gsap, .stars-container) { display: none !important; }
-/* The corner light: 30% × 34% at 94%, −8%, with a wider, fainter skirt so it has no edge */
-.animated-weather-card[data-fc-card] .sky { --awc-sky-glow-layer: radial-gradient(30% 34% at 94% -8%, var(--awc-sky-glow), transparent 70%), radial-gradient(52% 56% at 94% -8%, var(--awc-sky-glow), transparent 78%); }
+/* The corner light: 30% × 34% at 94%, −12%, with a wider, fainter skirt so it has no edge */
+.animated-weather-card[data-fc-card] .sky { --awc-sky-glow-layer: radial-gradient(30% 34% at 94% -12%, var(--awc-sky-glow), transparent 70%), radial-gradient(52% 56% at 94% -12%, var(--awc-sky-glow), transparent 78%); }
 /* The strip sits under the compact weather card: the light is upstairs, and only spills over its top edge */
 .animated-weather-card[data-fc-card][data-variant="compact"] .sky { --awc-sky-glow-layer: radial-gradient(70% 120% at 84% -90%, var(--awc-sky-glow), transparent 72%); }
 .animated-weather-card[data-fc-card]:has(.fc-fcard[data-variant="wide"]) .sky { --awc-sky-glow-layer: radial-gradient(20% 70% at 55% -42%, var(--awc-sky-glow), transparent 72%); }
@@ -257,7 +259,8 @@ const FCARD_CSS = `
 /* The lead: the turning line at the forecast card's size (20/26, weight 500, full strength). Away from now it leads
    with the needle's hour, and the way home sits at its end. */
 .fc-lead { position: relative; display: flex; align-items: center; height: 26px; margin-bottom: 14px; white-space: nowrap; }
-.fc-sentence { font-size: 20px; line-height: 26px; font-weight: 500; letter-spacing: -0.012em; min-width: 0; overflow: hidden; }
+/* Full strength holds to 0.75 of the width under the corner light */
+.fc-sentence { font-size: 20px; line-height: 26px; font-weight: 500; letter-spacing: -0.012em; min-width: 0; max-width: calc(75cqi - var(--awc-pad)); overflow: hidden; }
 .fc-sentence .fc-at { font-weight: 600; font-variant-numeric: tabular-nums; margin-right: 0.5em; }
 .fc-sentence .awc-ampm { font-size: 0.7em; }
 .fc-lead .fc-now { position: absolute; right: 0; top: 2px; opacity: 0; visibility: hidden; transition: opacity 120ms ${OUT}, visibility 0s linear 120ms, transform 110ms ${PRESS}; }
@@ -278,13 +281,13 @@ const FCARD_CSS = `
 
 /** The view's own look, inside the grown card */
 const VIEW_CSS = `
-.animated-weather-card[data-fc-view] .sky { --awc-sky-glow-layer: radial-gradient(64% 26% at 77% 10%, var(--awc-sky-glow), transparent 64%); }
+.animated-weather-card[data-fc-view] .sky { --awc-sky-glow-layer: radial-gradient(48% 22% at 80% 5%, var(--awc-sky-glow), transparent 64%); }
 .animated-weather-card[data-fc-view] .weather-info { padding: 0; gap: 0; display: flex; flex-direction: column; min-height: 0; overflow: visible; }
 .animated-weather-card[data-fc-view] .weather-attributes { display: none !important; }
 .animated-weather-card[data-fc-view] .main-weather-info { clip-path: none; }
 .animated-weather-card[data-fc-view] .location { display: block !important; font-size: 17px; line-height: 22px; font-weight: 500; }
 .animated-weather-card[data-fc-view] .temperature { font-size: 112px !important; font-weight: 200 !important; margin-top: 4px; letter-spacing: -0.045em; }
-.animated-weather-card[data-fc-view] .awc-desc-row { height: 26px; margin-top: 10px !important; max-width: calc(76cqi - 24px); }
+.animated-weather-card[data-fc-view] .awc-desc-row { height: 26px; margin-top: 10px !important; max-width: calc(65cqi - 24px); }
 .animated-weather-card[data-fc-view] .weather-desc { font-size: 20px; line-height: 26px; }
 .animated-weather-card[data-fc-view] .awc-companion { font-size: 17px; line-height: 22px; }
 .animated-weather-card[data-fc-view] .hero-meta { display: flex !important; margin-top: 4px; font-size: 20px; line-height: 26px; letter-spacing: -0.012em; }

@@ -303,6 +303,51 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           </div>
         </div>
 
+        <!-- Forecast and clock ───────────────────────────────────────────── -->
+        <div class="section">
+          <div class="section-header" role="button" tabindex="0" data-section="forecast">
+            <ha-icon icon="mdi:clock-time-four-outline"></ha-icon>
+            <h3>Forecast and clock</h3>
+            <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
+          </div>
+          <div class="section-content">
+            <div class="option">
+              <label class="switch-label">
+                <ha-switch id="show_clock" ${this._config.show_clock ? 'checked' : ''}></ha-switch>
+                <span>The time, leading the location line</span>
+              </label>
+            </div>
+            <div class="option">
+              <label class="switch-label">
+                <ha-switch id="show_forecast" ${this._config.show_forecast ? 'checked' : ''}></ha-switch>
+                <span>The forecast: what turns, the hours ahead, and the slide through them</span>
+              </label>
+            </div>
+            <p class="section-note">Drag the card sideways and its sky, weather and readings go to the hour you stop at. It stays there until you tap Now, or until nobody has touched it for half a minute. Asks for eight rows in a sections view (five without an hourly forecast); a shorter frame gives up the chips, then the icons, then the row, before the temperature ever shrinks. A tap opens the whole forecast unless you choose something else under Interactions.</p>
+            <div class="option forecast-only">
+              <ha-select id="forecast_metric" label="The hours first show"></ha-select>
+            </div>
+            <div class="option">
+              <ha-select id="layout" label="Layout"></ha-select>
+            </div>
+            <div class="option nightstand-only">
+              <ha-entity-picker id="alarm_entity" label="Next alarm" value="${escapeHtml(this._config.alarm_entity || '')}" helper="A timestamp sensor, like the Companion app's next alarm, or an input_datetime" allow-custom-entity></ha-entity-picker>
+            </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'wake_time', label: 'Wake time', placeholder: '07:00', value: this._config.wake_time, hint: 'When you get up without an alarm' })}
+            </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'bed_time', label: 'Bed time', placeholder: '22:30', value: this._config.bed_time, hint: 'When night begins without a light sensor' })}
+            </div>
+            <div class="option nightstand-only">
+              <ha-select id="night" label="Night"></ha-select>
+            </div>
+            <div class="option nightstand-only">
+              <ha-entity-picker id="night_sensor" label="Light sensor" value="${escapeHtml(this._config.night_sensor || '')}" helper="An illuminance sensor beside it: night when the room is dark" allow-custom-entity></ha-entity-picker>
+            </div>
+          </div>
+        </div>
+
         <!-- Interactions ───────────────────────────────────────────────── -->
         <div class="section">
           <div class="section-header" role="button" tabindex="0" data-section="interactions">
@@ -621,6 +666,49 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             if (value >= 0) this._updateConfig('note_max_age', value);
         });
 
+        this.querySelector('#show_clock')?.addEventListener('change', (e) => {
+            this._updateConfig('show_clock', (e.target as HTMLInputElement).checked || undefined);
+        });
+        this.querySelector('#show_forecast')?.addEventListener('change', (e) => {
+            this._updateConfig('show_forecast', (e.target as HTMLInputElement).checked || undefined);
+            this.syncForecastOptions();
+        });
+        this._bindSelect('forecast_metric', [
+            { value: 'temp', label: 'Temperature' },
+            { value: 'feels', label: 'Feels like' },
+            { value: 'chance', label: 'Chance of rain' },
+            { value: 'amount', label: 'Rain amount' },
+        ], this._config?.forecast_metric || 'temp', (value) => {
+            this._updateConfig('forecast_metric', value === 'temp' ? undefined : value);
+        });
+        this._bindSelect('layout', [
+            { value: 'default', label: 'The weather card' },
+            { value: 'nightstand', label: 'Nightstand: the time as the hero' },
+        ], this._config?.layout || 'default', (value) => {
+            this._updateConfig('layout', value === 'default' ? undefined : value);
+            this.syncForecastOptions();
+        });
+        this._bindSelect('night', [
+            { value: 'auto', label: 'From the light sensor, else bed to wake time' },
+            { value: 'on', label: 'Always' },
+            { value: 'off', label: 'Never' },
+        ], this._config?.night || 'auto', (value) => {
+            this._updateConfig('night', value === 'auto' ? undefined : value);
+        });
+        this.querySelector('#alarm_entity')?.addEventListener('value-changed', (e) => {
+            this._updateConfig('alarm_entity', (e.target as HTMLInputElement).value || undefined);
+        });
+        this.querySelector('#night_sensor')?.addEventListener('value-changed', (e) => {
+            this._updateConfig('night_sensor', (e.target as HTMLInputElement).value || undefined);
+        });
+        for (const id of ['wake_time', 'bed_time'] as const) {
+            this.querySelector(`#${id}`)?.addEventListener('input', (e) => {
+                const v = ((e.target as HTMLInputElement).value || '').trim();
+                this._updateConfig(id, /^\d{1,2}:\d{2}$/.test(v) ? v : undefined);
+            });
+        }
+        this.syncForecastOptions();
+
         this.querySelector('#show_note')?.addEventListener('change', (e) => {
             this._updateConfig('show_note', (e.target as HTMLInputElement).checked || undefined);
             this.syncNoteOptions();
@@ -674,7 +762,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         if (actions) {
             mountActionsEditor(actions, this._hass, readActions(this._config, this._config?.entity), patch => {
                 for (const [key, value] of Object.entries(patch)) this._updateConfig(key, value);
-            });
+            }, { forecast: 'Forecast' });
         }
 
         this.querySelector('#animate')?.addEventListener('change', (e) => {
@@ -870,6 +958,13 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         }) as EventListener);
         // Keep the dropdown closing from bubbling up and closing HA's dialog
         select.addEventListener('closed', (e: Event) => e.stopPropagation());
+    }
+
+    /** The forecast's own options count only with it on; the nightstand's only with that layout */
+    private syncForecastOptions(): void {
+        const dim = (sel: string, on: boolean) => this.querySelectorAll<HTMLElement>(sel).forEach(o => { o.style.cssText = on ? '' : 'opacity: 0.5; pointer-events: none;'; });
+        dim('.forecast-only', !!this._config?.show_forecast);
+        this.querySelectorAll<HTMLElement>('.nightstand-only').forEach(o => { o.hidden = this._config?.layout !== 'nightstand'; });
     }
 
     /** The AI's controls count only with the switch on and no note entity; the status says what's missing. */

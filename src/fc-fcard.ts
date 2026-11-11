@@ -24,7 +24,7 @@ import { relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
 
 /** The corner light, as the forecast card paints it (fc-css.ts): its contrast is measured against this */
-export const FORECAST_GLOW = { rx: 0.30, ry: 0.34, cx: 0.94, cy: -0.08, fade: 0.70 };
+export const FORECAST_GLOW = { rx: 0.30, ry: 0.34, cx: 0.94, cy: -0.12, fade: 0.70 };
 
 export function attachForecastCard(host: ForecastHost): ForecastExtras {
     const el = host.element;
@@ -50,7 +50,8 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             ? (new Date(slot.at).toDateString() === new Date().toDateString() ? timeHtml(slot.at, hass) : `${esc(dayName(slot.at, hass))} ${timeHtml(slot.at, hass)}`)
             : esc(dayName(slot.at, hass, 'long'))) : '';
         const prefix = when ? `<span class="fc-at">${when}</span>` : '';
-        const room = lead.clientWidth - (slot && back ? back.offsetWidth + 12 : 0);
+        // Full strength holds to 0.75 of the width under the corner light, and the Now control takes its own room
+        const room = Math.min(lead.clientWidth - (slot && back ? back.offsetWidth + 12 : 0), root.clientWidth * 0.75 - lead.getBoundingClientRect().left + root.getBoundingClientRect().left);
         // Whole or not at all: the full line, else its short form
         const fits = (html: string) => { sentence!.innerHTML = html; return sentence!.scrollWidth <= room + 0.5; };
         if (!line) { sentence.innerHTML = prefix; return; }

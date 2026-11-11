@@ -67,11 +67,13 @@ const EDITOR_STYLES = `
     }
 `;
 
-const SHOWS = [
-    { value: 'hourly', label: 'The next hours' },
-    { value: 'daily', label: 'The next days' },
-    { value: 'both', label: 'Hours and days' },
+const METRICS = [
+    { value: 'temp', label: 'Temperature' },
+    { value: 'feels', label: 'Feels like' },
+    { value: 'chance', label: 'Chance of rain' },
+    { value: 'amount', label: 'Rain amount' },
 ];
+const DAYS = ['0', '3', '5', '7', '10'].map(v => ({ value: v, label: v === '0' ? 'No days' : `${v} days` }));
 
 export class AnimatedForecastCardEditor extends HTMLElement {
     private _config: ForecastCardConfig = {};
@@ -132,9 +134,11 @@ export class AnimatedForecastCardEditor extends HTMLElement {
             <div class="fc-editor">
                 <ha-entity-picker id="weather-picker" allow-custom-entity></ha-entity-picker>
                 <ha-entity-picker id="sun-picker" allow-custom-entity></ha-entity-picker>
-                <ha-select id="forecast" label="Show"></ha-select>
+                <ha-select id="forecast_metric" label="The hours first show"></ha-select>
+                <ha-select id="forecast_days" label="Days"></ha-select>
                 <div class="fc-switches">
-                    ${toggle('compact', 'Compact', 'One strip, to sit under the weather card', !!c.compact)}
+                    ${toggle('show_hours', 'The hours', 'The hourly row and its chips: drag it, and the sky goes there', c.show_hours !== false)}
+                    ${toggle('compact', 'Strip', 'The hours alone, to sit under the compact weather card', !!c.compact)}
                     ${toggle('theme_palette', 'Blend with dashboard theme', 'Use theme colors instead of the sky', c.color_palette === 'theme')}
                 </div>
                 <div class="fc-title">Interactions</div>
@@ -142,28 +146,30 @@ export class AnimatedForecastCardEditor extends HTMLElement {
             </div>
         `;
         this._updatePickers();
-        const select = this.querySelector('#forecast') as HTMLElement & { options: typeof SHOWS; value: string } | null;
-        if (select) {
-            const init = () => {
-                select.options = SHOWS;
-                select.value = c.forecast ?? 'hourly';
-            };
+        const bindSelect = (id: string, options: Array<{ value: string; label: string }>, current: string, apply: (v: string) => Partial<ForecastCardConfig>) => {
+            const select = this.querySelector(`#${id}`) as HTMLElement & { options: typeof options; value: string } | null;
+            if (!select) return;
+            const init = () => { select.options = options; select.value = current; };
             if (customElements.get('ha-select')) init();
             else customElements.whenDefined('ha-select').then(init);
             select.addEventListener('selected', ((e: CustomEvent) => {
                 const value = e.detail?.value as string | undefined;
-                if (!value || value === (this._config.forecast ?? 'hourly')) return;
-                this._update({ forecast: value === 'hourly' ? undefined : value as ForecastCardConfig['forecast'] });
+                if (!value || value === current) return;
+                current = value;
+                this._update(apply(value));
             }) as EventListener);
             // Its closing would close Home Assistant's edit dialog
             select.addEventListener('closed', (e: Event) => e.stopPropagation());
-        }
+        };
+        bindSelect('forecast_metric', METRICS, c.forecast_metric ?? 'temp', v => ({ forecast_metric: v === 'temp' ? undefined : v as ForecastCardConfig['forecast_metric'] }));
+        bindSelect('forecast_days', DAYS, String(c.forecast_days ?? 7), v => ({ forecast_days: v === '7' ? undefined : Number(v) }));
         const onSwitch = (id: string, apply: (checked: boolean) => Partial<ForecastCardConfig>) => {
             this.querySelector(`#${id}`)?.addEventListener('change', (e: Event) => {
                 this._update(apply((e.target as HTMLInputElement).checked));
             });
         };
         onSwitch('compact', checked => ({ compact: checked || undefined }));
+        onSwitch('show_hours', checked => ({ show_hours: checked ? undefined : false }));
         onSwitch('theme_palette', checked => ({ color_palette: checked ? 'theme' : undefined }));
         this.querySelector('#weather-picker')?.addEventListener('value-changed', (e: Event) => {
             this._update({ entity: (e as CustomEvent).detail.value || undefined });
@@ -171,7 +177,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
         this.querySelector('#sun-picker')?.addEventListener('value-changed', (e: Event) => {
             this._update({ sun_entity: (e as CustomEvent).detail.value || undefined });
         });
-        // A tap opens the forecast pop-up unless it's set to something else
+        // A tap opens the whole forecast unless it's set to something else
         const actions = readActions(this._config as Record<string, unknown>, this._config.entity);
         mountActionsEditor(this.querySelector('#fc-actions') as HTMLElement, this._hass,
             actions.tap_action ? actions : { ...actions, tap_action: { action: 'forecast' } },

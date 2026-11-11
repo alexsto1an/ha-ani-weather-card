@@ -159,7 +159,8 @@ export type Tints = Record<Tone, string>;
  */
 export function litTints(elevation: number, rising: boolean, skyLum: number): Tints {
     const w = phaseWeights(elevation, rising);
-    const min = skyLum > 0 ? GLYPH_CONTRAST * (skyLum + 0.05) - 0.05 : 0;
+    // A little over the mark, so it still holds once rounded to hex
+    const min = skyLum > 0 ? (GLYPH_CONTRAST + 0.05) * (skyLum + 0.05) - 0.05 : 0;
     const out = {} as Tints;
     for (const tone of Object.keys(TINT) as Tone[]) {
         let lab: Lab = [0, 0, 0, 0];
