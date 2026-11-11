@@ -161,7 +161,8 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
     let descRow: HTMLElement | null = null, companion: HTMLElement | null = null, lineEl: HTMLElement | null = null;
     let away: HTMLElement | null = null;
     let slide: Slide | null = null, rulerKind = '';
-    let metric: Metric = 'temp';
+    // forecast_metric picks the chip the row starts on; one the integration doesn't report falls back
+    let metric: Metric = (METRICS as readonly string[]).includes(String(host.config().forecast_metric)) ? host.config().forecast_metric as Metric : 'temp';
     let level = 'none';
     let tintsFor: ((i: number) => Tints | null) | null = null;
     let pendingRebuild = false;

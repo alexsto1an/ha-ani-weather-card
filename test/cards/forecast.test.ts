@@ -75,6 +75,13 @@ describe('the forecast on the weather card', () => {
         expect(card.querySelector('.weather-desc')?.textContent).toBe('Partly cloudy');
     });
 
+    it('starts the row on forecast_metric', async () => {
+        const card = mount({ show_forecast: true, forecast_metric: 'chance' });
+        await settle();
+        expect(card.querySelector('[data-fc-hourly]')?.getAttribute('data-metric')).toBe('chance');
+        expect(card.querySelector('[data-fc-chips] [data-metric="chance"]')?.getAttribute('aria-checked')).toBe('true');
+    });
+
     it('asks for eight rows with an hourly forecast, five without one, one more with a note; the nightstand six', () => {
         expect(mount({ show_forecast: true }).getGridOptions().rows).toBe(8);
         expect(mount({ show_forecast: true }, makeHass(1)).getGridOptions().rows).toBe(5);
