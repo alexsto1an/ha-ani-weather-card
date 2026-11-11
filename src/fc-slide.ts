@@ -31,7 +31,7 @@ export const SLIDE = {
     home: 0.38,                           // s: the way home, one spring on one progress
     wordsOutEnd: 0.66, wordsSwap: 0.68, wordsInEnd: 0.97,
     velocityWindow: 80,                   // ms
-    momentum: 0.32,                       // s: how far a flick carries (a list's deceleration)
+    momentum: 0.4,                        // s: how far a flick carries (a list's deceleration)
     wheelClamp: 60, wheelRest: 400,
     prewarmStop: 1600,                    // ms after the last touch
     idleHome: 30000,                      // ms: a card left at another hour comes home when nobody is reading it
@@ -477,7 +477,9 @@ export function attachSlide(o: SlideOptions): Slide {
         if ((e.target as HTMLElement).closest?.('a, .awc-noclaim')) return;
         const moving = state.active && !state.dragging && (rel || state.settling);
         if (moving) {
-            // Caught: it stops this frame, the needle's hour comes back, and it tracks from where it is
+            // Caught: it stops this frame, the needle's hour comes back, and it tracks from where it is.
+            // The press is the slide's, never a tap on the card (this listens before the card's actions do)
+            e.stopPropagation();
             rel = null; state.settling = false; state.settleTau = 0;
             state.dragging = true; state.v = 0; state.raw = state.offset; state.k = -1;
             groupOpacity(null);
@@ -491,7 +493,7 @@ export function attachSlide(o: SlideOptions): Slide {
         }
         start = { x: e.clientX, y: e.clientY, id: e.pointerId, claimed: false, base: state.parked ? state.offset : 0, slop: SLIDE.slopPx };
         void prewarm();
-    }) as EventListener);
+    }) as EventListener, true);
     on(gesture, 'pointermove', ((e: PointerEvent) => {
         if (!start || e.pointerId !== start.id) return;
         const dx = e.clientX - start.x, dy = e.clientY - start.y;
@@ -515,7 +517,12 @@ export function attachSlide(o: SlideOptions): Slide {
         if (start.claimed || start.caught) {
             // Velocity from the last 80 ms only: a lift after a rest starts at zero
             const t1 = e?.timeStamp ?? performance.now();
-            const recent = samples.filter(s => t1 - s.t <= SLIDE.velocityWindow);
+            let recent = samples.filter(s => t1 - s.t <= SLIDE.velocityWindow);
+            // Sparse events (a slow device, a busy page): the last two, if the finger was still moving at the lift
+            if (recent.length < 2 && samples.length >= 2) {
+                const [p, q] = samples.slice(-2);
+                if (t1 - q.t <= SLIDE.velocityWindow && q.t - p.t <= 100) recent = [p, q];
+            }
             const a = recent[0], b = recent[recent.length - 1];
             const v = a && b && b.t - a.t > 8 ? -(b.x - a.x) / ((b.t - a.t) / 1000) : 0;
             release(v);

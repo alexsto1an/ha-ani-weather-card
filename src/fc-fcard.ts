@@ -20,6 +20,7 @@ import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { minuteTicker } from './fc-clock';
 import { Model, buildModel, iconTints, valueText } from './fc-weather';
+import { dropView, openView, prepareView } from './fc-view';
 import { relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
 
@@ -119,6 +120,9 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         writeLead(0, null);
         attach();
     }
+    // The view is built on the first press, so it opens on the next frame
+    const prepare = () => { if (model?.tl) prepareView(host, { metric, slots: 0, chipsLevel: chips?.level() ?? 0, small: root }); };
+    info.addEventListener('pointerdown', prepare, { passive: true });
     function attach() {
         if (!model?.tl || !hourly || hourly.empty) return;
         const m = model;
@@ -186,7 +190,10 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         seen(visible) { if (!visible && slide?.active()) slide.home(true); },
         away: () => !!slide?.active(),
         conditionText: () => null,
-        open() { host.moreInfo(); },
-        destroy() { ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); teardown(); card.remove(); delete root.dataset.fcCard; },
+        open() {
+            if (!model?.tl) { host.moreInfo(); return; }
+            openView(host, { model, metric, slots: slide?.slots() ?? 0, chipsLevel: chips?.level() ?? 0, small: root });
+        },
+        destroy() { info.removeEventListener('pointerdown', prepare); dropView(el); ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); teardown(); card.remove(); delete root.dataset.fcCard; },
     };
 }
