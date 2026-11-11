@@ -16,7 +16,7 @@ The README's [troubleshooting](README.md#troubleshooting) section covers the com
 
 **Suggest an idea.** Open an issue that describes what you'd like the card to do and why. [PRODUCT.md](PRODUCT.md) explains what the card is aiming for, so it's worth a read first.
 
-**Translate.** Home Assistant already translates the condition names, the metric labels and the moon phase. The cards' own few words, such as "Feels like", "Indoors" and the sun tracker's labels, live in [`src/localize.ts`](src/localize.ts). To add a language, add a block with every key. A test checks that no key is missing.
+**Translate.** Home Assistant already translates the condition names, the metric labels and the moon phase. The cards' own few words, such as "Feels like", "Indoors" and the sun tracker's labels, live in [`src/localize.ts`](src/localize.ts), and the forecast's, such as "Rain from 17:00 to 19:00" and the chips, in [`src/fc-words.ts`](src/fc-words.ts) and [`src/fc-words-more.ts`](src/fc-words-more.ts). To add a language, add a block with every key to each. Tests check that no key is missing and that every language fills the same blanks.
 
 **Fix or build something.** Read on.
 
@@ -30,7 +30,7 @@ npm install
 
 | Command | What it does |
 | --- | --- |
-| `npm run build` | Builds the five bundles into the repository root |
+| `npm run build` | Builds the six bundles into the repository root |
 | `npm run dev` | Rebuilds on every change |
 | `npm run demo` | Builds the card and assembles the live demo in `_site/` |
 | `npm run type-check` | Runs strict TypeScript checks |
@@ -43,7 +43,7 @@ For a quick look without Home Assistant, run `npm run demo` and serve the `_site
 
 ## Try a change in Home Assistant
 
-1. **Copy the bundles.** Copy the five `animated-weather-card*.js` files to your `config/www/` folder. They must sit together: the card loads the other four from its own folder.
+1. **Copy the bundles.** Copy the six `animated-weather-card*.js` files to your `config/www/` folder. They must sit together: the card loads the other five from its own folder.
 2. **Add the resource.** Add `/local/animated-weather-card.js?v=1` as a JavaScript module resource. Raise the `?v=` after each copy so the browser fetches the new build.
 3. **Turn on developer mode.** Add `dev_mode: true` to a card. You get sample data, so no real weather entity is needed, and a developer panel with:
    - every condition
@@ -57,21 +57,34 @@ If you also have the card installed through HACS, remove one of the two resource
 
 ## How the code is organised
 
-The card ships as five bundles:
+The card ships as six bundles:
 
 | Bundle | When it loads |
 | --- | --- |
-| `animated-weather-card.js` | Always. It holds both cards |
-| `animated-weather-card-editor.js` | The first time someone opens the card's settings |
+| `animated-weather-card.js` | Always. It holds the three cards, their skies and weather, and the page's forecast subscriptions |
+| `animated-weather-card-editor.js` | The first time someone opens a card's settings |
+| `animated-weather-card-forecast.js` | Only for cards with `show_forecast`, `show_clock` or `layout: nightstand`, and for the forecast card. It draws the forecast, the clock, the slide, the forecast card, the view that opens on tap, the nightstand and the wall |
 | `animated-weather-card-note.js` | Only for cards that write their own note (`show_note`) |
 | `animated-weather-card-planes.js` | Only for cards with a flights sensor (`flights_entity`), or `dev_mode` |
 | `animated-weather-card-dev.js` | Only for cards with `dev_mode: true` |
 
+The forecast bundle reaches the card only through `ForecastHost` and gives back `ForecastExtras`, both in `src/forecast-host.ts`, with plain names on both sides. The page keeps one forecast subscription per weather entity (`src/forecast-data.ts`), which the weather card, the forecast card, the view and the note writer share.
+
+**The fit ladder.** In a frame shorter than the card wants, the forecast gives way before the temperature ever shrinks: first the chips, then the icons, then the row (it folds back to the line on what turns and a rail on the divider), then that line. Only then does the card's own ladder (compact, short, tight, minimal) move, and with a note, the note shortens to its one line first. A level is kept only while the row's first line sits at 0.43 of a narrow card's height or lower, where its text stays readable over the sun's glow. The levels live in `src/fc-weather.ts`; the card asks them in `applySizeState`.
+
+**The slide.** Dragging the card sideways moves the row under a fixed needle, and the card's sky, weather and readings go to the hour under it. Letting go leaves it there: a slow lift settles on the nearest hour, a flick carries on like a list. It comes home on the Now control, Home or Escape, half a minute without a touch, the card going out of sight, or a new forecast, on one spring of 0.38 s. While it's away, the card's own live updates wait, and the card reads the entity again when it's home. It lives in `src/fc-slide.ts`, and `test/cards/forecast.test.ts` holds its gestures and returns.
+
 ```
 src/
-├── animated-weather-card.ts        # The weather card
-├── sun-tracker-card.ts             # The sun tracker card and its editor
+├── animated-weather-card.ts        # The weather card and the forecast card
+├── sun-tracker-card.ts             # The sun tracker card
 ├── config-editor.ts                # Visual editor for the weather card
+├── forecast-card-editor.ts         # Visual editor for the forecast card
+├── sun-tracker-editor.ts           # Visual editor for the sun tracker
+├── forecast-host.ts                # What the main bundle and the forecast bundle hand each other
+├── forecast-data.ts                # The page's forecast subscriptions
+├── fc-*.ts                         # The forecast, the slide, the clock, the icons, the forecast card,
+│                                   # the view on tap, the nightstand and the wall
 ├── dev-panel.ts                    # Developer panel (dev_mode)
 ├── note-generator.ts               # Writes the note with Home Assistant's AI Task
 ├── planes-animation.ts, aircraft.ts # Plane fly-overs, each flight drawn as its aircraft
@@ -90,6 +103,7 @@ src/
 - how the bundles load each other
 - how the sky follows the sun
 - how the card fits its frame
+- how the forecast bundle draws on the card, and the slide
 - the editor's quirks
 - why the developer panel's interface avoids `_` names
 
@@ -121,10 +135,10 @@ src/
   - The card fits any frame.
   - Motion is weather, not UI.
   - Everything that moves is real.
-- **Readability.** Text must stay readable on every sky. `test/styles/sky.test.ts` checks WCAG AA contrast for every condition at every time of day, and has to keep passing.
+- **Readability.** Text must stay readable on every sky. `test/styles/sky.test.ts` checks WCAG AA contrast for every condition at every time of day, and `test/styles/forecast-contrast.test.ts` does the same for everything the forecast and the clock add, where it sits. Both have to keep passing.
 - **Motion and accessibility.** Respect reduced motion: no moving weather when it's on. Keep decorative layers hidden from screen readers.
 - **Dependencies.** Add no new runtime dependencies. GSAP, bundled into the main file, is the only one.
-- **Bundle size.** Keep the main bundle lean. Code that only the editor, the note writer, the planes or the developer panel needs belongs in its own bundle. Keep names the bundles share plain, without a leading `_`. The build doesn't rename properties, because the bundled GSAP relies on its own names.
+- **Bundle size.** Keep the main bundle lean. Code that only the editor, the forecast, the note writer, the planes or the developer panel needs belongs in its own bundle. Keep names the bundles share plain, without a leading `_`. The build doesn't rename properties, because the bundled GSAP relies on its own names.
 - **Safety.** Escape text that comes from entities, and validate colours before they reach CSS.
 - **Writing.** In comments, the CHANGELOG and the docs, say plainly what the code does and why.
 
@@ -147,10 +161,10 @@ This section is for maintainers. A release starts from a pushed `vX.Y.Z` tag, an
 The workflow then:
 
 1. Checks that the tag, `package.json` and `CARD_VERSION` agree.
-2. Builds the five bundles.
-3. Publishes a GitHub release with the five `.js` files attached.
+2. Builds the six bundles.
+3. Publishes a GitHub release with the six `.js` files attached.
 
-HACS reads `hacs.json` at the tag and shows the tag as the version. It finds `animated-weather-card.js` (the `filename`) among the release's files, registers it as the dashboard resource, and downloads every attached file into `<config>/www/community/ha-ani-weather-card/`. So a release carries the five bundles and nothing else. Don't set `zip_release`: HACS would then download the file `filename` names and try to unzip it.
+HACS reads `hacs.json` at the tag and shows the tag as the version. It finds `animated-weather-card.js` (the `filename`) among the release's files, registers it as the dashboard resource, and downloads every attached file into `<config>/www/community/ha-ani-weather-card/`. So a release carries the six bundles and nothing else. Don't set `zip_release`: HACS would then download the file `filename` names and try to unzip it.
 
 ## License
 

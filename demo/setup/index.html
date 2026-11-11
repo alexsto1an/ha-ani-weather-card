@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Set up · Animated Weather Card</title>
-    <meta name="description" content="Put the Animated Weather Card on your Home Assistant dashboard in four steps, then set up the weather note, your own sensors, planes and the moon.">
+    <meta name="description" content="Put the Animated Weather Card on your Home Assistant dashboard in four steps, then set up the forecast and the clock, the weather note, your own sensors, planes and the moon.">
     <meta name="theme-color" content="#16131c">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Set up the Animated Weather Card">
@@ -47,7 +47,7 @@
                     <span class="line"><span>Set it up.</span></span>
                     <span class="line line-quiet"><span>Then make it yours.</span></span>
                 </h1>
-                <p class="lede">Four steps put the card on your dashboard. The rest of this page is everything after: your own sensors, the weather note, planes, the moon, and what to check when something doesn't show.</p>
+                <p class="lede">Four steps put the card on your dashboard. The rest of this page is everything after: the forecast and the clock, the weather note, your own sensors, planes, the moon, and what to check when something doesn't show.</p>
             </div>
             <figure class="guide-card">
                 <div class="guide-window">
@@ -89,7 +89,7 @@ entity: weather.forecast_home</code></pre>
                 </li>
                 <li class="step">
                     <h3>Make it yours</h3>
-                    <p>Have <a href="#note">your AI write a note</a> about the hours ahead, wire in <a href="#sensors">your own sensors</a>, pair it with <a href="#tracker">the sun tracker</a>, or watch <a href="#planes">real planes</a> cross it.</p>
+                    <p>Add <a href="#forecast">the forecast and the clock</a>, have <a href="#note">your AI write a note</a> about the hours ahead, wire in <a href="#sensors">your own sensors</a>, pair it with <a href="#tracker">the sun tracker</a>, or watch <a href="#planes">real planes</a> cross it.</p>
                 </li>
             </ol>
         </section>
@@ -100,6 +100,7 @@ entity: weather.forecast_home</code></pre>
                 <ol>
                     <li><a href="#install">Install</a></li>
                     <li><a href="#first-card">Your first card</a></li>
+                    <li><a href="#forecast">The forecast</a></li>
                     <li><a href="#note">The weather note</a></li>
                     <li><a href="#extras">Extras</a></li>
                     <li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -128,16 +129,16 @@ entity: weather.forecast_home</code></pre>
 
                     <h3 id="manual">By hand</h3>
                     <p>The card is six files that sit in the same folder. Only the first is a dashboard resource; it loads the others when it needs them.</p>
-                    <p>It's split so each screen downloads only what it uses. Every phone and wall tablet that shows your dashboard loads the card, but few of them ever open the editor, and only some cards write a note, fly planes or run in developer mode. Those parts wait in files of their own until a card needs one. Each is fetched from the folder the first file came from, so keep all six together.</p>
+                    <p>It's split so each screen downloads only what it uses. Every phone and wall tablet that shows your dashboard loads the card, but few of them ever open the editor, and only some cards show the forecast or the clock, write a note, fly planes or run in developer mode. Those parts wait in files of their own until a card needs one. Each is fetched from the folder the first file came from, so keep all six together.</p>
                     <div class="table-scroll">
                         <table class="files">
                             <thead><tr><th scope="col">File</th><th scope="col">What it is</th></tr></thead>
                             <tbody>
-                                <tr><td><code>animated-weather-card.js</code></td><td>Both cards. The only resource you add.</td></tr>
-                                <tr><td><code>animated-weather-card-editor.js</code></td><td>The visual editors for both cards, loaded the first time you open a card's settings.</td></tr>
+                                <tr><td><code>animated-weather-card.js</code></td><td>The cards. The only resource you add.</td></tr>
+                                <tr><td><code>animated-weather-card-editor.js</code></td><td>The visual editors for the cards, loaded the first time you open a card's settings.</td></tr>
                                 <tr><td><code>animated-weather-card-note.js</code></td><td>The note writer, loaded only by cards that write their own note.</td></tr>
                                 <tr><td><code>animated-weather-card-planes.js</code></td><td>The planes, loaded only by cards with a flights sensor.</td></tr>
-                                <tr><td><code>animated-weather-card-forecast.js</code></td><td>The forecast's drawings and its pop-up, loaded only by cards that show a forecast.</td></tr>
+                                <tr><td><code>animated-weather-card-forecast.js</code></td><td>The forecast, the clock, the forecast card, the nightstand and the view that opens on tap, loaded only by cards that use one of them.</td></tr>
                                 <tr><td><code>animated-weather-card-dev.js</code></td><td>The developer panel, loaded only with <code>dev_mode: true</code>. You can leave it out.</td></tr>
                             </tbody>
                         </table>
@@ -162,8 +163,8 @@ entity: weather.forecast_home</code></pre>
                     <h2 id="first-card-title"><a class="anchor" href="#first-card">Your first card</a></h2>
 
                     <h3 id="editor">In the editor</h3>
-                    <p>Add the card and it's working: it starts on your weather entity. If you have more than one, pick the one you want. Everything else is in the editor's sections: <b>Entities</b>, <b>Display</b>, <b>Interactions</b>, <b>Weather note</b>, <b>Day and night</b>, <b>Advanced</b>, <b>Weather engine</b> and <b>Colors</b>.</p>
-                    <p>In Home Assistant 2026.6 and later, the <b>By entity</b> tab suggests the card too. Pick your weather entity, and it's under <b>Community</b>, regular and compact.</p>
+                    <p>Add the card and it's working: it starts on your weather entity. If you have more than one, pick the one you want. Everything else is in the editor's sections: <b>Entities</b>, <b>Display</b>, <b>Forecast and clock</b>, <b>Interactions</b>, <b>Weather note</b>, <b>Day and night</b>, <b>Advanced</b>, <b>Weather engine</b> and <b>Colors</b>.</p>
+                    <p>In Home Assistant 2026.6 and later, the <b>By entity</b> tab suggests the card too. Pick your weather entity, and it's under <b>Community</b>, regular and compact, with the forecast card and its strip beside it.</p>
 
                     <h3 id="yaml">In YAML</h3>
                     <p>A weather entity is the one thing the card needs. The sun entity is optional: it adds the next sunset, or sunrise, to the metrics. The sky follows <code>sun.sun</code> either way.</p>
@@ -182,11 +183,14 @@ sun_entity: sun.sun</code></pre>
                             <tbody>
                                 <tr><td>Default</td><td>12 × 4</td><td>The temperature, the condition and the metrics, with their labels. The location and the line under the condition give way.</td></tr>
                                 <tr><td>With a note</td><td>12 × 5</td><td>All of it, with a smaller temperature and the note on one line. Give it six rows for the whole note.</td></tr>
+                                <tr><td>With the forecast</td><td>12 × 8</td><td>All of it, with the hours ahead under the hero. Five rows without an hourly forecast, and one more with a note.</td></tr>
+                                <tr><td>Nightstand</td><td>12 × 6</td><td>The time as the hero, the weather beside it or under it.</td></tr>
                                 <tr><td>Compact</td><td>12 × 2</td><td>One line: the temperature and the condition.</td></tr>
+                                <tr><td>Forecast card</td><td>12 × 7</td><td>The hours and the week. Five with three days or fewer; the strip takes two.</td></tr>
                             </tbody>
                         </table>
                     </div>
-                    <p>In a masonry view, the card grows to fit its content. On a wall tablet, a panel view gives it the whole screen, and from 640 px wide the metrics move beside a larger temperature.</p>
+                    <p>In a masonry view, the card grows to fit its content. On a wall tablet, a panel view gives it the whole screen, and from 640 px wide the metrics move beside a larger temperature. With <a href="#forecast">the forecast</a> on and at least 640 × 540 px, it lays itself out for reading across the room: a larger temperature, the clock with the date, the hours in two-hour steps and five days beside them.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">A panel view, for a wall tablet</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>title: Weather
@@ -196,6 +200,77 @@ cards:
     entity: weather.forecast_home
     sun_entity: sun.sun</code></pre>
                     </div>
+                </section>
+
+                <section class="chapter" id="forecast" aria-labelledby="forecast-title">
+                    <h2 id="forecast-title"><a class="anchor" href="#forecast">The forecast</a></h2>
+                    <p>Two switches in the editor's <b>Forecast and clock</b> section. The clock puts the time at the start of the location line. The forecast adds today's high and low beside the condition, a line on what turns (<i>Rain from 17:00 to 19:00</i>, <i>Dry all day</i>), and the next hours in a row under the temperature. Both read the forecast your weather integration already provides; there's nothing else to set up.</p>
+
+                    <h3 id="forecast-on">Turn it on</h3>
+                    <p>The clock follows your profile's 12- or 24-hour setting and its time zone, and adds no rows. The row shows the temperature first; <code>forecast_metric</code> picks something else.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+sun_entity: sun.sun
+show_clock: true
+show_forecast: true
+# Optional
+forecast_metric: chance  # temp, feels, chance or amount</code></pre>
+                    </div>
+
+                    <h3 id="slide">Drag through the hours</h3>
+                    <ul>
+                        <li><b>The card goes there.</b> Drag the card sideways and the row moves under a fixed needle. The sky, its light, the rain or snow, the temperature, the condition and the readings go to the hour under it. Stop on an hour of rain and the rain falls behind the numbers.</li>
+                        <li><b>It stays where you leave it.</b> A slow lift settles on the nearest hour; a flick carries on and lands on the hour it was heading for. The next drag continues from there. While it shows another hour, the location line says which, and how far ahead.</li>
+                        <li><b>It comes home</b> when you tap <b>Now</b>, after half a minute without a touch, at once when the card scrolls away or the page is hidden, and when a new forecast arrives.</li>
+                        <li><b>The page still scrolls.</b> A drag up or down scrolls the dashboard. On a trackpad, swipe sideways with two fingers.</li>
+                        <li><b>Keys and screen readers.</b> Tab to the hours: the arrows step an hour, Page Up and Page Down three, Home or Escape comes back to now. A screen reader hears the hour, the condition, the temperature and the chance of rain.</li>
+                        <li><b>The chips</b> under the row switch what it shows: temperature, feels like, the chance of rain and the amount. A metric your integration doesn't report has no chip.</li>
+                        <li><b>With reduced motion,</b> the sky is still and steps with the hour, and the way home is a short fade.</li>
+                    </ul>
+
+                    <h3 id="forecast-rows">How big, with the forecast</h3>
+                    <p>With an hourly forecast, the card asks the sections view for eight rows. In fewer, the chips give way first, then the icons, then the row, which leaves the line on what turns and a thin rail to drag; only then does the temperature shrink. An integration with only a daily forecast has no row: the card asks for five rows, and the rail steps through days.</p>
+
+                    <h3 id="forecast-view">A tap opens the whole forecast</h3>
+                    <p>With the forecast on, a tap grows the card's sky into the screen: the hours, the chips, seven days with their ranges, and every reading your weather entity reports. <b>History and settings</b> opens Home Assistant's own dialog. Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone. To have a tap do something else, set it under <b>Interactions</b>.</p>
+
+                    <h3 id="forecast-card">The forecast card</h3>
+                    <p>The hours and the week on a card of their own, on your weather entity's sky: the line on what turns, the row with its chips, and the days with their ranges on one scale for the week. Search for <b>Animated Forecast</b>, or pick it under <b>By entity</b>. Its row works the same way: leave it at an hour and its sky goes there.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-forecast-card
+entity: weather.forecast_home
+# Optional
+forecast_days: 5  # 0 to 10</code></pre>
+                    </div>
+                    <p>As a strip, it sits under the compact weather card: the hours alone, lined up with the card's text.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">A vertical stack</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: vertical-stack
+cards:
+  - type: custom:animated-weather-card
+    entity: weather.forecast_home
+    compact: true
+  - type: custom:animated-forecast-card
+    entity: weather.forecast_home
+    compact: true</code></pre>
+                    </div>
+
+                    <h3 id="nightstand">The nightstand</h3>
+                    <p>For a tablet or an old phone by the bed, <code>layout: nightstand</code> makes the time the hero. At night it turns its sky down and keeps two dim, warm colours: the time, your alarm, and one line on whether anything is coming before you're up. By day it shows the date, the temperature, the condition and the day's range. Night comes from a light sensor beside it, or else runs from bed time to your alarm.</p>
+                    <div class="code" data-lang="yaml">
+                        <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
+                        <pre><code>type: custom:animated-weather-card
+entity: weather.forecast_home
+layout: nightstand
+# Optional
+alarm_entity: sensor.phone_next_alarm      # the Companion app's next alarm
+night_sensor: sensor.bedroom_illuminance   # night when the room is dark
+wake_time: "07:00"                         # without an alarm</code></pre>
+                    </div>
+                    <p>The alarm can be any timestamp sensor: the Android Companion app's next alarm sensor, or an input_datetime that an iOS Shortcut sets. It counts when it's within 18 hours.</p>
                 </section>
 
                 <section class="chapter" id="note" aria-labelledby="note-title">
@@ -338,6 +413,10 @@ color_palette: theme</code></pre>
                         <div>
                             <dt>“name has already been used” in the browser console</dt>
                             <dd>The card is loaded twice, usually from both <code>/hacsfiles/</code> and <code>/local/</code>. Remove one of the resources.</dd>
+                        </div>
+                        <div>
+                            <dt>No forecast on the card</dt>
+                            <dd>The row needs an hourly forecast; with only a daily one, the card shows the line on what turns and a rail that steps through days. With no forecast at all, the weather card shows today alone, and the forecast card says <i>This weather entity has no forecast</i>. On a copy of your own, <code>animated-weather-card-forecast.js</code> has to be in the same folder as <code>animated-weather-card.js</code>.</dd>
                         </div>
                         <div>
                             <dt>No note</dt>

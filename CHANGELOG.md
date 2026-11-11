@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A clock on the weather card: `show_clock` puts the time at the start of the location line, "13:10  Home". It changes only on the minute, and only the figures that change fade. It follows your profile's 12- or 24-hour setting and time zone, adds no rows, and on the compact strip leads the quiet line.
+- The forecast on the weather card: `show_forecast` adds today's high and low beside the condition, a line on what turns under it ("Rain from 17:00 to 19:00", "Dry all day"), and the next hours in a row, an hour to a column with an icon every hour and the value on one line. Chips under the row switch it between the temperature, feels like, the chance of rain and the amount (`forecast_metric` picks the first), and a metric your integration doesn't report has no chip. The card asks the sections view for eight rows, five without an hourly forecast, and in a shorter frame the chips, the icons and the row give way before the temperature shrinks.
+- The slide through the hours: drag the card sideways and its real sky, light, sun, clouds, rain, snow and lightning, the temperature, the condition and the readings go to the hour under the needle. It stays where you leave it, a flick carries on the way a list does, and the location line says which hour it is and how far ahead. It comes home when you tap Now, press Home or Escape, leave it for half a minute, scroll it away or hide the page, and when a new forecast arrives. A vertical drag still scrolls the dashboard. The hours are a slider for the keyboard and screen readers, and with reduced motion the sky steps with the hour instead of moving.
+- One small set of icons for the forecast, flat and lit by the light of their own hour: white by day, rose at dawn, peach at dusk and slate at night, each lightened until it holds 3.2:1 against the brightest sky it can sit over. On the theme palette they take Home Assistant's icon colour.
+- The forecast card, `custom:animated-forecast-card`: the line on what turns, the hourly row with its chips, and up to ten days with their ranges on one scale for the week, on your weather entity's sky. Its row slides like the weather card's, and the card's real weather goes to the hour you leave it at. As a strip (`compact: true`) it sits under the compact weather card, its labels on the card's text edges. The card picker suggests it, as Forecast and Forecast strip, for a weather entity.
+- The view that opens on tap: with the forecast on, a tap grows the card's sky into the screen, with the hours and chips, seven days, every reading the entity reports, and History and settings for Home Assistant's own dialog. It closes with ×, Escape, Back, a tap outside or a swipe down, and moves focus in and back like any dialog.
+- A nightstand: `layout: nightstand` makes the weather card a bedside clock, with the time as the hero. At night it turns its sky down and keeps two dim, warm colours for the time, the next alarm (`alarm_entity`) and one line on what's coming before you're up. Night comes from a light sensor beside it (`night_sensor`), or runs from `bed_time` to the alarm or `wake_time`, or is set with `night`.
+- The wall: the weather card with the forecast, at 640 × 540 px or larger, lays itself out for reading across the room, with a 192 px temperature, the clock and the date, the line on what turns at 48 px, six two-hour columns and five days.
+- A Forecast and clock section in the weather card's visual editor, with every new option, and a visual editor for the forecast card.
+- The forecast's words, from "Rain until 19:00" to the chips and the days, in all nine of the card's languages.
+
+### Changed
+
+- With `show_forecast` on, a tap on the weather card opens the forecast view instead of the entity's details. `tap_action` still sets it to anything else.
+- The times on the cards follow your profile's time zone setting, the server's or the device's: the sun tracker's times and its sun's place on the path, the weather card's sunset or sunrise, and the new clock. They always followed the device's time zone before.
+- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 2.7 KB gzipped, to about 79 KB.
+
 ## [1.2.0] - 2026-11-06
 
 ### Added
