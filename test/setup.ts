@@ -47,6 +47,7 @@ export function installGsapStub(): void {
         delayedCall: vi.fn((_delay: number, callback: () => void) => timelineFactory({ onComplete: callback })),
         killTweensOf: vi.fn(),
         getTweensOf: vi.fn(() => []),
+        getProperty: vi.fn(() => 0),
     };
 }
 

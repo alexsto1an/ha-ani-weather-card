@@ -130,8 +130,10 @@ export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: (
         }
     };
 
+    // A control inside the target (a chip, the Now button, the slider) is its own tap
+    const own = (e: Event) => e.target !== target && !!(e.target as Element | null)?.closest?.('button, a, input, [role="slider"], [role="radio"]');
     target.addEventListener('pointerdown', (e: PointerEvent) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || own(e)) return;
         start = { x: e.clientX, y: e.clientY };
         held = false;
         stopHold();
@@ -154,7 +156,7 @@ export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: (
     target.addEventListener('pointercancel', cancel);
     target.addEventListener('pointerleave', cancel);
     target.addEventListener('keydown', (e: KeyboardEvent) => {
-        if ((e.key !== 'Enter' && e.key !== ' ') || !tapDoesSomething(getConfig())) return;
+        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== target || !tapDoesSomething(getConfig())) return;
         e.preventDefault();
         fireAction(host, getConfig(), 'tap', local);
     });

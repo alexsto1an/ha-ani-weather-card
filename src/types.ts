@@ -241,14 +241,27 @@ export interface AnimatedWeatherCardConfig {
     /** What a double tap does (default: nothing) */
     double_tap_action?: import('./actions').ActionConfig;
     show_sun?: boolean;
-    /** The time, in the quiet tier (and today's date with it) */
+    /** The time, leading the location line */
     show_clock?: boolean;
-    /** The forecast on the card: the next hours, the next days, or both (default none) */
-    forecast?: 'hourly' | 'daily' | 'both' | 'none';
-    /** Review only, while the variants are compared: which design to draw */
-    review_clock?: string;
-    review_forecast?: string;
-    review_popup?: string;
+    /** The forecast on the card: today's high and low, the turning line, the hourly row and its chips, and the slide through the hours */
+    show_forecast?: boolean;
+    /** The metric the row shows first: temp, feels, chance or amount */
+    forecast_metric?: 'temp' | 'feels' | 'chance' | 'amount';
+    /** The forecast card: how many days its list shows (0 to 10, default 7) */
+    forecast_days?: number;
+    /** The forecast card: the hourly row (default true) */
+    show_hours?: boolean;
+    /** The card's layout: the regular card, or the nightstand (the time as the hero) */
+    layout?: 'default' | 'nightstand';
+    /** The nightstand: a sensor with the next alarm (a timestamp, or an input_datetime) */
+    alarm_entity?: string;
+    /** The nightstand: when you get up without an alarm, and when you go to bed ("07:00", "22:30") */
+    wake_time?: string;
+    bed_time?: string;
+    /** The nightstand: the dark night (auto: from the light sensor, else from bed to wake time) */
+    night?: 'auto' | 'on' | 'off';
+    /** The nightstand: an illuminance sensor beside it */
+    night_sensor?: string;
     animate?: boolean;
     auto_pause?: boolean;
     dev_mode?: boolean;
@@ -411,6 +424,8 @@ export interface GSAP {
     timeline(vars?: Record<string, any>): GSAPTimeline;
     killTweensOf(target: any): void;
     getTweensOf(target: any, onlyActive?: boolean): GSAPAnimation[];
+    /** A tweened property's current value (the forecast reads a cloud track's height to move it above its words) */
+    getProperty(target: any, property: string): number | string;
     globalTimeline: GSAPTimeline;
     ticker: {
         add(callback: () => void): void;
@@ -490,7 +505,7 @@ declare global {
         /** Set by the planes bundle (animated-weather-card-planes.js) when it loads */
         AnimatedWeatherCardPlanes?: typeof import('./planes-animation').PlanesAnimation;
         /** Set by the forecast bundle (animated-weather-card-forecast.js) when it loads: the forecast's drawings */
-        AnimatedWeatherCardForecast?: import('./forecast-views-api').ForecastViews;
+        AnimatedWeatherCardForecast?: import('./forecast-host').ForecastViews;
         /** The page's forecast subscriptions, made by the first bundle that asks (forecast-data.ts) */
         AnimatedWeatherCardForecasts?: import('./forecast-data').ForecastHub;
         animatedWeatherCardBannerShown?: boolean;

@@ -303,33 +303,6 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           </div>
         </div>
 
-        <!-- Clock and forecast ─────────────────────────────────────────── -->
-        <div class="section">
-          <div class="section-header" role="button" tabindex="0" data-section="forecast">
-            <ha-icon icon="mdi:calendar-clock"></ha-icon>
-            <h3>Clock and forecast</h3>
-            <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
-          </div>
-          <div class="section-content">
-            <div class="option">
-              <label class="switch-label">
-                <ha-switch id="show_clock" ${this._config.show_clock ? 'checked' : ''}></ha-switch>
-                <span>Clock: the time and today's date, quiet beside the temperature</span>
-              </label>
-            </div>
-            <div class="option">
-              <ha-select id="forecast" label="Forecast on the card"></ha-select>
-            </div>
-            <p class="section-note">The forecast asks for more rows in a sections view; a shorter frame shows less of it, then none. The compact strip has no room for it.</p>
-            <div class="option">
-              <label class="switch-label">
-                <ha-switch id="forecast_tap" ${this._config.tap_action?.action === 'forecast' ? 'checked' : ''}></ha-switch>
-                <span>A tap opens the forecast in detail</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
         <!-- Interactions ───────────────────────────────────────────────── -->
         <div class="section">
           <div class="section-header" role="button" tabindex="0" data-section="interactions">
@@ -698,32 +671,11 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         });
 
         const actions = this.querySelector('#actions-editor') as HTMLElement | null;
-        const mountActions = () => {
-            if (!actions) return;
+        if (actions) {
             mountActionsEditor(actions, this._hass, readActions(this._config, this._config?.entity), patch => {
                 for (const [key, value] of Object.entries(patch)) this._updateConfig(key, value);
-                const tap = this.querySelector('#forecast_tap') as HTMLInputElement | null;
-                if (tap && 'tap_action' in patch) tap.checked = patch.tap_action?.action === 'forecast';
-            }, { forecast: 'Forecast' });
-        };
-        mountActions();
-
-        this.querySelector('#show_clock')?.addEventListener('change', (e) => {
-            this._updateConfig('show_clock', (e.target as HTMLInputElement).checked || undefined);
-        });
-        this._bindSelect('forecast', [
-            { value: 'none', label: 'None' },
-            { value: 'hourly', label: 'The next hours' },
-            { value: 'daily', label: 'The next days' },
-            { value: 'both', label: 'Hours and days' },
-        ], this._config?.forecast || 'none', (value) => {
-            this._updateConfig('forecast', value === 'none' ? undefined : value);
-        });
-        this.querySelector('#forecast_tap')?.addEventListener('change', (e) => {
-            const checked = (e.target as HTMLInputElement).checked;
-            this._updateConfig('tap_action', checked ? { action: 'forecast' } : undefined);
-            mountActions();
-        });
+            });
+        }
 
         this.querySelector('#animate')?.addEventListener('change', (e) => {
             this._updateConfig('animate', (e.target as HTMLInputElement).checked);

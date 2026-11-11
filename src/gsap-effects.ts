@@ -354,6 +354,8 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             ];
             
             const topPosition = heightVariations[layerIndex][i - 1] || (15 + layerIndex * 10);
+            // With the forecast on, clouds are born in the open sky above its words (data-cloud-band, px)
+            const band = Number(cardElement.dataset?.cloudBand);
             
             // Start and end fully outside the card, by this much
             const margin = Math.max(150 + layerIndex * 50, extent + CLOUD_BLUR_PAD_PX);
@@ -372,7 +374,7 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             window.AnimatedWeatherCardGsap.set(track, {
                 xPercent: 0,
                 x: -margin,
-                y: (cardHeight * topPosition) / 100,
+                y: band > 0 ? Math.min(1, topPosition / 45) * band : (cardHeight * topPosition) / 100,
             });
 
             cloudLayer.appendChild(track);

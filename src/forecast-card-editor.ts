@@ -5,7 +5,7 @@
 import { HomeAssistant } from './types';
 import { readActions } from './actions';
 import { mountActionsEditor, updateActionsEditor } from './action-editor';
-import type { ForecastCardConfig } from './forecast-card';
+import type { AnimatedWeatherCardConfig as ForecastCardConfig } from './types';
 
 const EDITOR_STYLES = `
     .fc-editor {
