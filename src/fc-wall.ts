@@ -10,7 +10,7 @@
 // reaches. The row is the slide's ruler, and the card stays where it's left.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
-import { HOUR, Slot, esc } from './fc-core';
+import { HOUR, Slot, esc, ownControl } from './fc-core';
 import { conditionNoun, dayName, relative, timeHtml, timeParts, week } from './fc-data';
 import { fcWords, fill } from './fc-words';
 import { Daily, Hourly, createDaily, createHourly } from './fc-row';
@@ -55,9 +55,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
             + `<div class="fw-next"><p class="fw-turn">${m.lineAt(0)?.html ?? ''}</p><div class="fw-band"><div class="fw-hours"></div><div class="fw-week"></div></div></div>`;
         clock = new TimeText(fw.querySelector('.fw-clock') as HTMLElement);
         tick();
-        const now = fw.querySelector('.awc-now') as HTMLElement;
-        for (const ev of ['pointerdown', 'pointerup']) now.addEventListener(ev, e => e.stopPropagation());
-        now.addEventListener('click', e => { e.stopPropagation(); slide?.home(); });
+        ownControl(fw.querySelector('.awc-now') as HTMLElement, () => slide?.home());
         const hoursBox = fw.querySelector('.fw-hours') as HTMLElement;
         if (m.hours.length) {
             const w = hoursBox.clientWidth || 429;

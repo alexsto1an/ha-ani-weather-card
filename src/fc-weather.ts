@@ -13,7 +13,7 @@
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { SKY_GLOW, SKY_GLOW_WIDE, sampleSkyAt, relativeLuminance, type SkyCondition, type SkyPhase } from './sky';
-import { HOUR, Slot, Timeline, classOf, clamp, esc, num, sunModel, wetNoun, phaseWeights } from './fc-core';
+import { HOUR, Slot, Timeline, classOf, clamp, esc, num, ownControl, sunModel, wetNoun, phaseWeights } from './fc-core';
 import { HourRow, METRICS, Metric, TurningLine, available, conditionNoun, highLow, hours, relative, timeHtml, timeParts, timeText, turningLine, dayName } from './fc-data';
 import { FcWords, fcWords, fill } from './fc-words';
 import { Chips, Hourly, Noun, createChips, createHourly } from './fc-row';
@@ -238,9 +238,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         away = document.createElement('span');
         away.className = 'awc-away';
         away.innerHTML = `<button type="button" class="awc-now awc-noclaim" aria-label="${esc(W.back)}"><i aria-hidden="true"></i>${esc(W.now)}</button><span class="awc-at"></span><span class="awc-rel"></span>`;
-        const now = away.querySelector('.awc-now') as HTMLElement;
-        for (const ev of ['pointerdown', 'pointerup', 'click']) now.addEventListener(ev, e => e.stopPropagation());
-        now.addEventListener('click', () => slide?.home());
+        ownControl(away.querySelector('.awc-now') as HTMLElement, () => slide?.home());
         restDesc();
         measureCondition();
     }

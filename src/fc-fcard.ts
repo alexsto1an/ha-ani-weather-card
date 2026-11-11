@@ -12,7 +12,7 @@
 // and a new forecast: one spring, the same as the weather card's.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
-import { HOUR, Slot, esc } from './fc-core';
+import { HOUR, Slot, esc, ownControl } from './fc-core';
 import { conditionNoun, dayName, timeHtml, week } from './fc-data';
 import { fcWords } from './fc-words';
 import { Chips, Daily, Hourly, createChips, createDaily, createHourly } from './fc-row';
@@ -79,8 +79,7 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             left.append(lead);
             sentence = lead.querySelector('.fc-sentence');
             back = lead.querySelector('.fc-now');
-            back!.addEventListener('click', e => { e.stopPropagation(); slide?.home(); });
-            for (const ev of ['pointerdown', 'pointerup']) back!.addEventListener(ev, e => e.stopPropagation());
+            ownControl(back!, () => slide?.home());
         }
         const showHours = cfg().show_hours !== false || strip;
         if (showHours && m.hours.length) {

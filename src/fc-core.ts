@@ -264,6 +264,21 @@ export function num(value: number, lang: string, digits = 0): string {
 }
 /** Whole degrees with a true minus, as the row and the bars write them */
 export const whole = (v: number): string => `${Math.round(v) < 0 ? MINUS : ''}${Math.abs(Math.round(v))}`;
+/**
+ * A control the slide never claims (the Now control): it acts on its own
+ * pointer release, since iOS can drop the click when the line beside it
+ * changes under the finger, and on click for the keys. Its presses never
+ * reach the card's own tap.
+ */
+export function ownControl(el: HTMLElement, act: () => void): void {
+    let pressed = false;
+    el.addEventListener('pointerdown', e => { e.stopPropagation(); pressed = true; });
+    el.addEventListener('pointerleave', () => { pressed = false; });
+    el.addEventListener('pointercancel', () => { pressed = false; });
+    el.addEventListener('pointerup', e => { e.stopPropagation(); if (!pressed) return; pressed = false; act(); });
+    el.addEventListener('click', e => { e.stopPropagation(); if (e.detail === 0) act(); });
+}
+
 /** Haptics: Home Assistant's own window event, which the Companion apps turn into real ones. At most one per 55 ms. */
 let lastHaptic = 0;
 export function haptic(kind: 'selection' | 'light'): void {

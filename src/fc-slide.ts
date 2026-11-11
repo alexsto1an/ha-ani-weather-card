@@ -474,7 +474,8 @@ export function attachSlide(o: SlideOptions): Slide {
     let samples: Array<{ x: number; t: number }> = [];
     on(gesture, 'pointerdown', ((e: PointerEvent) => {
         if (!e.isPrimary || e.button > 0 || start || o.disabled?.()) return;
-        if ((e.target as HTMLElement).closest?.('a, .awc-noclaim')) return;
+        // A control of its own (the Now control, a link): never the slide's, even while it moves
+        if (e.composedPath().some(n => n instanceof Element && n.matches('a, .awc-noclaim'))) return;
         const moving = state.active && !state.dragging && (rel || state.settling);
         if (moving) {
             // Caught: it stops this frame, the needle's hour comes back, and it tracks from where it is.
