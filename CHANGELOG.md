@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The wall: the weather card with the forecast, at 640 × 540 px or larger, lays itself out for reading across the room, with a 192 px temperature, the clock and the date, the line on what turns at 48 px, six two-hour columns and five days.
 - A Forecast and clock section in the weather card's visual editor, with every new option, and a visual editor for the forecast card.
 - The forecast's words, from "Rain until 19:00" to the chips and the days, in all nine of the card's languages.
+- The live demo has a forecast section: the weather card with the forecast and the clock, the forecast card, and the compact card over its strip, on 48 hours and 10 days of sample forecast, or your own when you show the demo your weather.
 
 ### Changed
 

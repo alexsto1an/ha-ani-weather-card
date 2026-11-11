@@ -158,6 +158,73 @@
             </div>
         </section>
 
+        <section class="ahead" id="ahead" aria-labelledby="ahead-title">
+            <h2 class="section-title ahead-title" id="ahead-title">
+                <span>Drag the sky into tomorrow.</span>
+                <span class="title-quiet">The forecast and the clock, on the card's own sky.</span>
+            </h2>
+            <div class="ahead-copy">
+                <p class="section-lede">Turn on the forecast and the card adds today's high and low, when the rain starts and stops, and the hours ahead in a row. Drag it sideways and its sky, its weather and its numbers go to that hour. The forecast card holds the hours and the week, and its strip sits under the compact card.</p>
+            </div>
+
+            <div class="ahead-stage" id="ahead-stage" role="region" aria-label="Live preview of the forecast">
+                <figure class="ahead-slot room" id="ahead-hours" data-slot="hours" data-dashboard="dark">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="ahead-scenes"></div>
+                    <figcaption class="frame-caption ahead-caption"><span class="caption-text">Drag it through the hours. It stays where you leave it, and Now brings it home.</span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="ahead-hours-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></figcaption>
+                    <div class="snippet-slot" id="ahead-hours-code">
+                        <div class="code-fold">
+                            <div class="code-fold-inner">
+                            <div class="snippet">
+                                <div class="snippet-bar">
+                                    <span class="code-name">forecast.yaml</span>
+                                    <button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                                </div>
+                                <pre><code></code></pre>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+                <figure class="ahead-slot room" id="ahead-card" data-slot="card" data-dashboard="dark">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="ahead-scenes"></div>
+                    <figcaption class="frame-caption ahead-caption"><span class="caption-text">The forecast card: the hours and the week, on the same sky.</span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="ahead-card-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></figcaption>
+                    <div class="snippet-slot" id="ahead-card-code">
+                        <div class="code-fold">
+                            <div class="code-fold-inner">
+                            <div class="snippet">
+                                <div class="snippet-bar">
+                                    <span class="code-name">forecast-card.yaml</span>
+                                    <button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                                </div>
+                                <pre><code></code></pre>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+                <figure class="ahead-slot room" id="ahead-strip" data-slot="strip" data-dashboard="dark">
+                    <div class="stage-light" aria-hidden="true"></div>
+                    <div class="ahead-scenes"></div>
+                    <figcaption class="frame-caption ahead-caption"><span class="caption-text">Its strip, under the compact card.</span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="ahead-strip-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></figcaption>
+                    <div class="snippet-slot" id="ahead-strip-code">
+                        <div class="code-fold">
+                            <div class="code-fold-inner">
+                            <div class="snippet">
+                                <div class="snippet-bar">
+                                    <span class="code-name">strip.yaml</span>
+                                    <button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
+                                </div>
+                                <pre><code></code></pre>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+            </div>
+        </section>
+
         <section class="lab note-lab" id="note" aria-labelledby="note-title">
             <h2 class="section-title lab-title" id="note-title">
                 <span>Your AI writes the note.</span>
@@ -394,6 +461,7 @@
                 <h3>Works with what you have</h3>
                 <dl>
                     <div><dt>Weather</dt><dd>Any weather integration. A new Home Assistant install sets one up.</dd></div>
+                    <div><dt>Forecast</dt><dd>The one your weather integration already has. Hourly gives the row and the slide; a daily one alone gives the days.</dd></div>
                     <div><dt>The sun</dt><dd><code>sun.sun</code>, built in and on by default.</dd></div>
                     <div><dt>Your sensors</dt><dd>Any sensor entities, from any integration.</dd></div>
                 </dl>
@@ -410,7 +478,9 @@
          then the card, which brings its own GSAP: GSAP reads the clock as it
          loads, so the card comes before the demo's settable clock. The demo's
          clock jumps between times of day, and GSAP would stall after a jump
-         back. The card reads the time as it draws, so it follows the demo's. -->
+         back. The card reads the time as it draws, so it follows the demo's.
+         The forecast's bundle isn't here: the forecast section's cards fetch
+         it as they mount, as on a dashboard. It has no GSAP of its own. -->
     <script src="./icons.js"></script>
     <script src="./ha-elements.js"></script>
     <script src="./animated-weather-card-note.js"></script>

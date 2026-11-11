@@ -5,10 +5,10 @@
 // over the old one. Each room is lit by its card's own sky.
 
 import {
-    CARD_ROWS, CONDITIONS, DASHBOARD, DEVICES, ENGINE, ENTITIES, NOTE_FORECASTS, NOTE_VOICES, PAINTS, PALETTES, PHASES, QUIET,
-    STATION, SUN_TIMES, buildHass, colorsYaml, conditionIcon, configYaml, customColors, dashboardLayout, dashboardYaml,
+    AHEAD_ROWS, CARD_ROWS, CONDITIONS, DASHBOARD, DEVICES, ENGINE, ENTITIES, NOTE_FORECASTS, NOTE_VOICES, OPEN_METEO, PAINTS, PALETTES, PHASES, QUIET,
+    STATION, SUN_TIMES, aheadYaml, buildHass, colorsYaml, conditionIcon, configYaml, customColors, dashboardLayout, dashboardYaml,
     engineSettings, engineYaml, forgetNotes, formatEngineValue, liveReading, minutesFor, nextFlight, noteYaml, paletteOf,
-    phaseForHour, phaseForSun, placeName, quietOptions,
+    phaseForHour, phaseForSun, placeName, quietOptions, rowsHeight,
     solarAt, solarTimes, stationStates, sunAt, trackerYaml, weatherState, wmoCondition,
 } from './scene.mjs';
 import { copyButton, highlight, svgIcon } from './code.mjs';
@@ -219,12 +219,14 @@ function feed(scene, current = hass()) {
 /**
  * Resolves once every weather card in the scene has drawn its first sky,
  * or, for a tracker on its own, once the tracker has drawn (it renders in
- * its own shadow DOM, so this checks each frame), or `limit` ms on.
+ * its own shadow DOM, so this checks each frame), or `limit` ms on. `drawn`
+ * can ask for more, such as the forecast on the forecast's cards.
  */
-function whenReady(scene, isCancelled, limit = 600) {
+function whenReady(scene, isCancelled, limit = 600, drawn = () => true) {
     return new Promise((resolve) => {
         const started = performance.now();
         const ready = () => {
+            if (!drawn(scene)) return false;
             const skies = [...scene.el.querySelectorAll('.animated-weather-card')];
             if (skies.length) return skies.every(sky => !sky.classList.contains('loading'));
             return !!scene.el.querySelector('animated-sun-tracker-card')?.shadowRoot?.querySelector('.st-card');
@@ -338,7 +340,7 @@ function reveal(scene) {
 function update() {
     const data = hass();
     for (const scene of document.querySelectorAll('.scene:not(.lab-scene)')) {
-        for (const card of scene.querySelectorAll('animated-weather-card, animated-sun-tracker-card')) card.hass = data;
+        for (const card of scene.querySelectorAll('animated-weather-card, animated-forecast-card, animated-sun-tracker-card')) card.hass = data;
     }
     for (const lab of labs) lab.refresh();
     watchSky();
@@ -407,7 +409,8 @@ function followSky(now) {
     for (const room of rooms) {
         const sky = room.sky();
         if (!sky || sky.classList.contains('loading')) continue;
-        const mid = getComputedStyle(sky).getPropertyValue('--awc-sky-mid').trim();
+        // The sky layer's own colour: it's the card's, and the hour's while a forecast card shows another hour
+        const mid = getComputedStyle(sky.querySelector(':scope > .sky') ?? sky).getPropertyValue('--awc-sky-mid').trim();
         if (mid) setVar(room.stage, '--room-sky', mid);
         if (mid && room.page) setVar(document.documentElement, '--page-sky', mid);
         const storm = room.storm() && !reduceMotion;
@@ -1352,6 +1355,170 @@ const dash = (() => {
     return { stage, mount, renderYaml };
 })();
 
+// ── The hours ahead: the forecast and the clock ────────────────────────
+// Three cards at the size a phone's sections view gives them (AHEAD_ROWS),
+// on the hero's weather and clock, each with its YAML: the weather card
+// with the forecast and the clock, the forecast card, and the compact card
+// over the forecast's strip. They're set up afresh when the palette
+// changes or your weather arrives or leaves: the new cards mount hidden,
+// wait until each has drawn its sky and its forecast (the forecast's
+// bundle loads with the first of them), then dissolve over the old ones.
+// Each card lights its own patch of wall, and the light follows its sky
+// as you drag it through the hours.
+const ahead = (() => {
+    const section = $('#ahead');
+    const stage = section.querySelector('.ahead-stage');
+    const slots = [...stage.querySelectorAll('.ahead-slot')].map((el) => {
+        const code = el.querySelector('code');
+        const slot = { id: el.dataset.slot, el, scenesEl: el.querySelector('.ahead-scenes'), light: el.querySelector('.stage-light'), current: null, text: '', render: snippetRenderer(code) };
+        copyButton(el.querySelector('.copy'), () => slot.text, code);
+        return slot;
+    });
+    const view = { near: false, visible: false, revealed: false, stale: true, job: null };
+    const lit = (scene) => scene.el.querySelector('.cards');
+
+    /**
+     * One slot's cards, set up as its YAML says, each in a box as tall as
+     * the rows it asks for, as a section's grid gives it (the card fills
+     * the box it's given).
+     */
+    function build(slot) {
+        const palette = state.colors === 'sky' ? 'default' : 'theme';
+        const el = document.createElement('div');
+        el.className = 'scene ahead-scene';
+        el.innerHTML = '<div class="cards"></div>';
+        // The cards the forecast's bundle draws on: the forecast cards, and the weather card with the forecast
+        const drawn = [];
+        const make = (tag, rows, options = {}) => {
+            const box = document.createElement('div');
+            box.className = 'ahead-box';
+            box.style.height = `${rowsHeight(rows)}px`;
+            const card = document.createElement(tag);
+            card.setConfig({ type: `custom:${tag}`, entity: ENTITIES.weather, sun_entity: ENTITIES.sun, color_palette: palette, ...options });
+            if (tag === 'animated-forecast-card' || options.show_forecast || options.show_clock) drawn.push(card);
+            box.append(card);
+            el.firstElementChild.append(box);
+            return card;
+        };
+        const cards = slot.id === 'hours' ? [make('animated-weather-card', AHEAD_ROWS.hours, { show_forecast: true, show_clock: true })]
+            : slot.id === 'card' ? [make('animated-forecast-card', AHEAD_ROWS.card)]
+                : [make('animated-weather-card', AHEAD_ROWS.compact, { compact: true }), make('animated-forecast-card', AHEAD_ROWS.strip, { compact: true })];
+        return { el, cards, drawn, weather: cards[0] };
+    }
+    /** The forecast's bundle has drawn its part on every card that has one. */
+    const forecastDrawn = (scene) => scene.drawn.every(card => card.querySelector(':scope > style.awc-fc-css'));
+
+    function renderYaml() {
+        for (const slot of slots) {
+            slot.text = aheadYaml(slot.id, { colors: state.colors === 'sky' ? 'sky' : 'theme' });
+            slot.render(slot.text);
+        }
+    }
+    const place = (instant = false) => {
+        for (const slot of slots) if (slot.current) lightCard(slot.light, lit(slot.current), slot.el, instant);
+    };
+
+    /** Set the cards up again. Far from view it only notes that they're out of date. */
+    function mount() {
+        if (!view.near) {
+            view.stale = true;
+            return;
+        }
+        view.stale = false;
+        if (view.job) {
+            view.job.cancelled = true;
+            for (const scene of view.job.scenes) scene.el.remove();
+        }
+        const data = hass();
+        const scenes = slots.map((slot) => {
+            const scene = build(slot);
+            scene.el.style.opacity = '0';
+            scene.el.inert = true;
+            feed(scene, data);
+            slot.scenesEl.append(scene.el);
+            return scene;
+        });
+        const job = { scenes, cancelled: false };
+        view.job = job;
+        // The first setup fetches the forecast's bundle: give it time
+        Promise.all(scenes.map(scene => whenReady(scene, () => job.cancelled, 4000, forecastDrawn))).then(() => {
+            view.job = null;
+            show(scenes);
+        });
+    }
+    function show(scenes) {
+        slots.forEach((slot, i) => {
+            const scene = scenes[i];
+            const old = slot.current;
+            slot.current = scene;
+            scene.el.inert = false;
+            if (old) old.el.inert = true;
+            if (!view.revealed) {
+                old?.el.remove();
+                return;
+            }
+            scene.el.style.opacity = '';
+            const remove = () => old?.el.remove();
+            if (reduceMotion) {
+                scene.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+                old?.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).finished.then(remove, remove);
+                return;
+            }
+            scene.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: EASE.outQuart }).onfinish = () => {
+                old?.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: EASE.inSoft, fill: 'forwards' }).finished.then(remove, remove);
+            };
+        });
+        if (view.revealed) {
+            place();
+            watchSky();
+        } else {
+            reveal();
+        }
+    }
+    /** Once, when the stage starts to come into view and its cards have drawn: they rise in, one after another, and their light comes up. */
+    function reveal() {
+        if (view.revealed || !view.visible || slots.some(slot => !slot.current)) return;
+        view.revealed = true;
+        place(true);
+        stage.classList.add('is-shown');
+        watchSky();
+        slots.forEach((slot, i) => {
+            const { el } = slot.current;
+            el.style.opacity = '';
+            if (reduceMotion) {
+                el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+                return;
+            }
+            const delay = i * 90;
+            el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay, easing: EASE.outQuart, fill: 'backwards' });
+            el.animate([{ transform: 'translateY(16px)' }, { transform: 'none' }], { duration: 1000, delay, easing: EASE.outExpo, fill: 'backwards' });
+        });
+    }
+
+    // The cards mount half a screen before you reach them, so they're drawn by then
+    new IntersectionObserver(([entry]) => {
+        view.near = entry.isIntersecting;
+        if (view.near && view.stale) mount();
+    }, { rootMargin: '0px 0px 50% 0px' }).observe(stage);
+    new IntersectionObserver(([entry]) => {
+        view.visible = entry.intersectionRatio >= 0.15;
+        reveal();
+    }, { threshold: [0, 0.15] }).observe(stage);
+    new ResizeObserver(() => place()).observe(stage);
+    // Each hour the slide shows changes the card's sky: the light on the wall follows it, home included
+    new MutationObserver(() => watchSky()).observe(stage, { subtree: true, attributes: true, attributeFilter: ['aria-valuenow'] });
+
+    for (const slot of slots) {
+        addRoom({
+            stage: slot.el,
+            sky: () => slot.current?.weather.querySelector('.animated-weather-card'),
+            storm: () => !!slot.current && state.conditionId === 'lightning-rainy',
+        });
+    }
+    renderYaml();
+    return { rooms: slots.map(slot => slot.el), mount, renderYaml };
+})();
+
 // ── The sun tracker: its sizes, and the day under your finger ─────────
 // The tracker in a frame of its own, at each size, with the page's one
 // clock under it. The card draws the sun from the clock, so dragging the
@@ -1696,18 +1863,20 @@ form.addEventListener('change', (event) => {
         // Between the two themes only the theme's variables change.
         const wasSky = state.colors === 'sky';
         state.colors = value;
-        for (const room of [stage, dash.stage, sunFrame.stage, tuneLab.stage]) {
+        for (const room of [stage, dash.stage, sunFrame.stage, tuneLab.stage, ...ahead.rooms]) {
             room.dataset.colors = value === 'sky' ? 'sky' : 'theme';
             room.dataset.dashboard = value === 'light' ? 'light' : 'dark';
         }
         if (wasSky !== (value === 'sky')) {
             mountScene();
             dash.mount();
+            ahead.mount();
             sunFrame.mount();
             tuneLab.mount();
         }
         renderYaml();
         dash.renderYaml();
+        ahead.renderYaml();
     }
 });
 
@@ -2121,15 +2290,17 @@ async function fetchPlace({ latitude, longitude }) {
     }
 }
 /**
- * The forecast where you are, in your units: Fahrenheit and mph for a
- * browser set to American English in an American time zone. Language
- * alone would hand Fahrenheit to everyone with an English browser.
+ * The weather where you are, now and for the hours and days ahead (one
+ * call), in your units: Fahrenheit, mph and inches for a browser set to
+ * American English in an American time zone. Language alone would hand
+ * Fahrenheit to everyone with an English browser.
  */
 async function fetchForecast({ latitude, longitude }) {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
     const american = navigator.language === 'en-US' && (zone.startsWith('America/') || zone.startsWith('Pacific/Honolulu'));
-    const units = american ? '&temperature_unit=fahrenheit&wind_speed_unit=mph' : '';
-    const url = `${FORECAST}?latitude=${round(latitude)}&longitude=${round(longitude)}&current=${CURRENT}${units}`;
+    const units = american ? '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch' : '';
+    const hours = `&hourly=${OPEN_METEO.hourly}&daily=${OPEN_METEO.daily}&${OPEN_METEO.extra}`;
+    const url = `${FORECAST}?latitude=${round(latitude)}&longitude=${round(longitude)}&current=${CURRENT}${hours}${units}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Open-Meteo answered ${response.status}`);
     return response.json();
@@ -2168,6 +2339,7 @@ function showLive(data, { first = false } = {}) {
 function remountFollowers() {
     mountScene();
     dash.mount();
+    ahead.mount();
     sunFrame.mount();
 }
 async function goLive() {

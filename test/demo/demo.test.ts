@@ -8,8 +8,8 @@ import { VOICES } from '../../src/note-generator';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-    CARD_ROWS, CONDITIONS, DASHBOARD, DEVICES, ENGINE, ENTITIES, HA, NOTES, NOTE_FORECASTS, NOTE_VOICES, PAINTS, PALETTES, PHASES,
-    QUIET, STATION, VOICE_NOTES, buildHass, forgetNotes, noteYaml,
+    AHEAD_ROWS, CARD_ROWS, CONDITIONS, DASHBOARD, DEVICES, ENGINE, ENTITIES, HA, NOTES, NOTE_FORECASTS, NOTE_VOICES, OPEN_METEO, PAINTS, PALETTES, PHASES,
+    QUIET, STATION, VOICE_NOTES, aheadYaml, buildHass, forgetNotes, liveForecast, noteYaml, rowsHeight,
     colorsYaml, conditionIcon, configYaml, customColors, dashboardLayout, dashboardYaml, engineSettings, engineYaml,
     formatEngineValue, liveReading, minutesFor, moonPhase, nextFlight, paletteOf, phaseForHour, phaseForSun, placeName,
     noteFor, quietOptions, solarAt, solarElevation, solarTimes, stationStates, sunAt, sunAttributes, trackerYaml, weatherState,
@@ -147,8 +147,9 @@ describe('the demo\'s sample world', () => {
         const forecasts: any[] = [];
         await hass.connection.subscribeMessage((m: any) => forecasts.push(m), { type: 'weather/subscribe_forecast', entity_id: ENTITIES.weather, forecast_type: 'hourly' });
         expect(forecasts[0].type).toBe('hourly');
-        expect(forecasts[0].forecast).toHaveLength(12);
-        expect(forecasts[0].forecast[0].precipitation_probability).toBe(80);
+        expect(forecasts[0].forecast).toHaveLength(48);
+        expect(forecasts[0].forecast[0]).toMatchObject({ condition: 'rainy', temperature: hass.states[ENTITIES.weather].attributes.temperature });
+        expect(forecasts[0].forecast[0].precipitation_probability).toBeGreaterThanOrEqual(50);
 
         // One store for every card on the page, as for every screen of a user
         const seen: any[] = [];
@@ -431,6 +432,212 @@ describe('the demo\'s sample world', () => {
             }
         }
         expect(dashboardYaml({ colors: 'theme' }).split('\n').filter(line => line.endsWith('color_palette: theme'))).toHaveLength(3);
+    });
+
+    /** The forecast a hass answers with, as the cards subscribe to it. */
+    const forecastOf = async (hass: any, entityId = ENTITIES.weather) => {
+        const got: Record<string, any> = {};
+        for (const type of ['hourly', 'daily', 'twice_daily']) {
+            await hass.connection.subscribeMessage((m: any) => { got[type] = m.forecast; }, { type: 'weather/subscribe_forecast', entity_id: entityId, forecast_type: type });
+        }
+        return got;
+    };
+    const HOUR = 3600_000;
+
+    it('forecasts 48 hours and ten days that agree with the card and with each other', async () => {
+        const now = new Date(2026, 10, 11, 13, 10);
+        const hass = buildHass({ conditionId: 'partlycloudy', phase: 'day', sun: sunAt(minutesFor('day')), now });
+        const weather = hass.states[ENTITIES.weather];
+        // Hourly and daily, as most integrations have; no twice-daily
+        expect(weather.attributes.supported_features & 3).toBe(3);
+        expect(weather.attributes.supported_features & 4).toBe(0);
+        const { hourly, daily, twice_daily } = await forecastOf(hass);
+        expect(twice_daily).toBeNull();
+
+        // The hour under way is now, and reads what the card shows
+        expect(hourly).toHaveLength(48);
+        expect(Date.parse(hourly[0].datetime)).toBe(new Date(2026, 10, 11, 13).getTime());
+        hourly.forEach((h: any, i: number) => { if (i) expect(Date.parse(h.datetime) - Date.parse(hourly[i - 1].datetime)).toBe(HOUR); });
+        expect(hourly[0]).toMatchObject({
+            condition: weather.state, temperature: weather.attributes.temperature, apparent_temperature: weather.attributes.apparent_temperature,
+            humidity: weather.attributes.humidity, wind_speed: weather.attributes.wind_speed, pressure: weather.attributes.pressure,
+        });
+        for (const h of hourly) {
+            for (const field of ['temperature', 'apparent_temperature', 'precipitation_probability', 'precipitation', 'wind_speed', 'wind_gust_speed',
+                'wind_bearing', 'humidity', 'dew_point', 'pressure', 'cloud_coverage', 'uv_index', 'is_daytime']) expect(h, field).toHaveProperty(field);
+            expect(h.dew_point).toBeLessThanOrEqual(h.temperature);
+            expect(h.wind_gust_speed).toBeGreaterThan(h.wind_speed);
+            // Day by the sun's times: no UV and no sunny hours after dark
+            const at = new Date(h.datetime);
+            const minute = at.getHours() * 60;
+            expect(h.is_daytime).toBe(minute >= SUN_TIMES.rise[0] * 60 + SUN_TIMES.rise[1] && minute < SUN_TIMES.set[0] * 60 + SUN_TIMES.set[1]);
+            if (!h.is_daytime) expect([h.uv_index, h.condition === 'sunny']).toEqual([0, false]);
+        }
+        // The temperature follows the day: warmest in the afternoon, coolest before dawn
+        const tomorrow = hourly.filter((h: any) => new Date(h.datetime).getDate() === 12);
+        const warmest = tomorrow.reduce((a: any, b: any) => (b.temperature > a.temperature ? b : a));
+        const coolest = tomorrow.reduce((a: any, b: any) => (b.temperature < a.temperature ? b : a));
+        expect(new Date(warmest.datetime).getHours()).toBeGreaterThanOrEqual(11);
+        expect(new Date(coolest.datetime).getHours()).toBeLessThanOrEqual(7);
+
+        // A rain band: its chance builds before it and tails off after it, and the rain is heaviest inside it
+        const chance = hourly.map((h: any) => h.precipitation_probability);
+        const first = chance.findIndex((c: number) => c >= 50);
+        let last = first;
+        while (chance[last + 1] >= 50) last++;
+        expect(first).toBeGreaterThan(1);
+        expect(last).toBeGreaterThan(first);
+        expect(chance[first - 2]).toBeLessThan(chance[first - 1]);
+        expect(chance[first - 1]).toBeLessThan(chance[first]);
+        expect(chance[last + 1]).toBeLessThan(chance[last]);
+        expect(chance[last + 2]).toBeLessThanOrEqual(chance[last + 1]);
+        const band = hourly.slice(first, last + 1).map((h: any) => h.precipitation);
+        expect(Math.min(...band)).toBeGreaterThan(0);
+        expect(Math.max(...band)).toBeGreaterThan(band[0]);
+        expect(hourly[first - 3].precipitation).toBe(0);
+        // It feels its own way: not always a fixed step from the temperature
+        expect(new Set(hourly.map((h: any) => Math.round((h.temperature - h.apparent_temperature) * 10))).size).toBeGreaterThan(3);
+
+        // Ten days from today, each one read off its own hours
+        expect(daily).toHaveLength(10);
+        expect(Date.parse(daily[0].datetime)).toBe(new Date(2026, 10, 11).getTime());
+        for (const day of daily) {
+            const date = new Date(day.datetime);
+            const own = hourly.filter((h: any) => new Date(h.datetime).toDateString() === date.toDateString());
+            for (const h of own) {
+                expect(h.temperature).toBeLessThanOrEqual(day.temperature);
+                expect(h.temperature).toBeGreaterThanOrEqual(day.templow);
+                expect(h.precipitation_probability).toBeLessThanOrEqual(day.precipitation_probability);
+            }
+            expect(day.templow).toBeLessThan(day.temperature);
+        }
+        expect(weather.attributes.temperature).toBeLessThanOrEqual(daily[0].temperature);
+        expect(new Set(daily.map((d: any) => d.condition)).size).toBeGreaterThan(3);
+        expect(daily.some((d: any) => d.precipitation_probability >= 50 && d.precipitation > 0)).toBe(true);
+
+        // The week reads the same at any time of day: only today's own hours move with the clock
+        const night = await forecastOf(buildHass({ conditionId: 'partlycloudy', phase: 'night', sun: sunAt(minutesFor('night')), now: new Date(2026, 10, 11, 23, 15) }));
+        daily.forEach((day: any, d: number) => {
+            const other = night.daily[d];
+            expect(other.datetime).toBe(day.datetime);
+            if (d < 3) return;
+            expect(other.condition).toBe(day.condition);
+            expect(other.temperature).toBeCloseTo(day.temperature, 0);
+            expect(other.templow).toBeCloseTo(day.templow, 0);
+        });
+        expect(Math.abs(night.daily[0].temperature - daily[0].temperature)).toBeLessThanOrEqual(1);
+    });
+
+    it('tells a story that suits each weather, and turns cold rain into snow', async () => {
+        const now = new Date(2026, 10, 11, 13, 10);
+        for (const condition of CONDITIONS) {
+            const hass = buildHass({ conditionId: condition.id, phase: 'day', sun: sunAt(minutesFor('day')), now });
+            const { hourly, daily } = await forecastOf(hass);
+            expect(hourly[0].condition, condition.id).toBe(hass.states[ENTITIES.weather].state);
+            const wet = ['rainy', 'pouring', 'lightning-rainy', 'snowy', 'snowy-rainy', 'hail'].includes(condition.id);
+            expect(hourly[0].precipitation_probability >= 50, condition.id).toBe(wet);
+            expect(daily.every((d: any) => d.templow <= condition.temp + 12 && d.temperature >= condition.temp - 12), condition.id).toBe(true);
+        }
+        const snow = await forecastOf(buildHass({ conditionId: 'snowy', phase: 'day', sun: sunAt(minutesFor('day')), now }));
+        const conditions = new Set([...snow.hourly, ...snow.daily].map((e: any) => e.condition));
+        for (const warm of ['rainy', 'pouring', 'lightning-rainy']) expect(conditions.has(warm), warm).toBe(false);
+    });
+
+    it('keeps one forecast connection per world, so a card left at another hour stays there', async () => {
+        const now = new Date(2026, 10, 11, 13, 10);
+        const world = { conditionId: 'partlycloudy', phase: 'day', sun: sunAt(minutesFor('day')), now };
+        const hass = buildHass(world);
+        // A plane, or another push of the same world: the same connection, so nothing resubscribes
+        expect(buildHass({ ...world, flights: [nextFlight(0)] }).connection).toBe(hass.connection);
+        expect(buildHass({ ...world, now: new Date(2026, 10, 11, 13, 50) }).connection).toBe(hass.connection);
+        // Another weather, another hour, the note lab's own entity: a new forecast, on a connection of its own
+        expect(buildHass({ ...world, conditionId: 'rainy' }).connection).not.toBe(hass.connection);
+        expect(buildHass({ ...world, now: new Date(2026, 10, 11, 14, 5) }).connection).not.toBe(hass.connection);
+        expect(buildHass({ ...world, weatherEntity: ENTITIES.noteWeather }).connection).not.toBe(hass.connection);
+        // The station's world shares the entity, never its forecast
+        const station = buildHass({ ...world, conditionId: 'clear' });
+        const [mine, theirs] = await Promise.all([forecastOf(hass), forecastOf(station)]);
+        expect(mine.hourly[0].condition).toBe('partlycloudy');
+        expect(theirs.hourly[0].condition).toBe('sunny');
+    });
+
+    it('gives the cards your own forecast from the same Open-Meteo call, now on your reading', async () => {
+        // Every field the page asks for, an hour apart from the hour under way
+        const start = Date.UTC(2026, 10, 11, 21) / 1000;
+        const fields = OPEN_METEO.hourly.split(',');
+        const hourlyData: Record<string, unknown[]> = { time: [start, start + 3600, start + 7200] };
+        for (const field of fields) hourlyData[field] = [1, 2, null];
+        Object.assign(hourlyData, { weather_code: [0, 61, 3], is_day: [1, 0, 0], precipitation_probability: [0, 80, null] });
+        const dailyData: Record<string, unknown[]> = { time: [start - 21 * 3600] };
+        for (const field of OPEN_METEO.daily.split(',')) dailyData[field] = [5];
+        dailyData.weather_code = [95];
+        const data = {
+            ...forecast, hourly: hourlyData, hourly_units: { precipitation: 'inch' }, daily: dailyData,
+        };
+        const mapped = liveForecast(data)!;
+        expect(mapped.hourly.map((h: any) => h.condition)).toEqual(['sunny', 'rainy', 'cloudy']);
+        expect(mapped.hourly[0].datetime).toBe(new Date(start * 1000).toISOString());
+        // Each requested field lands in its Home Assistant field; what Open-Meteo leaves null is left out
+        expect(Object.keys(mapped.hourly[0]).length).toBe(fields.length + 1);
+        expect(mapped.hourly[2]).not.toHaveProperty('temperature');
+        expect(mapped.hourly[1]).toMatchObject({ is_daytime: false, precipitation_probability: 80 });
+        expect(mapped.daily![0]).toMatchObject({ condition: 'lightning-rainy', temperature: 5, templow: 5, precipitation: 5, uv_index: 5 });
+        expect(liveForecast(forecast)).toBeNull();
+
+        const live = liveReading(data, 'Lisbon');
+        expect(live.units.precipitation).toBe('in');
+        // Ten minutes into the first hour: that hour is now, and reads the reading, under the sky the card shows
+        const hass = buildHass({ conditionId: wmoCondition(live.code), phase: 'night', live, now: new Date((start + 600) * 1000) });
+        expect(hass.states[ENTITIES.weather].attributes.precipitation_unit).toBe('in');
+        const { hourly, daily } = await forecastOf(hass);
+        expect(hourly).toHaveLength(3);
+        expect(hourly[0]).toMatchObject({ condition: 'cloudy', temperature: live.temp, apparent_temperature: live.feels, humidity: live.humidity });
+        expect(hourly[1].condition).toBe('rainy');
+        expect(daily).toEqual(mapped.daily);
+        // An hour on, the one that's over is gone
+        const later = await forecastOf(buildHass({ conditionId: wmoCondition(live.code), phase: 'night', live, now: new Date((start + 3600 + 600) * 1000) }));
+        expect(later.hourly).toHaveLength(2);
+    });
+
+    it('sizes the forecast section\'s cards by the rows they ask for, at a phone\'s width', () => {
+        type Sized = HTMLElement & { setConfig(c: object): void; getGridOptions(): { rows: number } };
+        const rowsOf = (type: string, config: object) => {
+            const card = document.createElement(type) as Sized;
+            card.setConfig({ entity: 'weather.home', ...config });
+            return card.getGridOptions().rows;
+        };
+        expect(rowsOf('animated-weather-card', { show_forecast: true, show_clock: true })).toBe(AHEAD_ROWS.hours);
+        expect(rowsOf('animated-forecast-card', {})).toBe(AHEAD_ROWS.card);
+        expect(rowsOf('animated-weather-card', { compact: true })).toBe(AHEAD_ROWS.compact);
+        expect(rowsOf('animated-forecast-card', { compact: true })).toBe(AHEAD_ROWS.strip);
+        // A sections view's rows and gaps: eight rows on a phone is 504 px
+        expect(rowsHeight(AHEAD_ROWS.hours)).toBe(504);
+        expect(rowsHeight(AHEAD_ROWS.card)).toBe(440);
+        expect(rowsHeight(2)).toBe(120);
+    });
+
+    it('writes the forecast section\'s YAML with options the cards really have', () => {
+        const types = readFileSync(join(process.cwd(), 'src/types.ts'), 'utf8');
+        const hours = aheadYaml('hours');
+        expect(hours.split('\n')[0]).toBe('type: custom:animated-weather-card');
+        expect(hours).toContain('show_forecast: true');
+        expect(hours).toContain('show_clock: true');
+        expect(aheadYaml('card').split('\n')[0]).toBe('type: custom:animated-forecast-card');
+        const strip = aheadYaml('strip');
+        expect(strip.split('\n').slice(0, 2)).toEqual(['type: vertical-stack', 'cards:']);
+        expect(strip).toContain('  - type: custom:animated-weather-card');
+        expect(strip).toContain('  - type: custom:animated-forecast-card');
+        expect(strip.match(/compact: true/g)).toHaveLength(2);
+        for (const slot of ['hours', 'card', 'strip']) {
+            for (const colors of ['sky', 'theme']) {
+                const yaml = aheadYaml(slot, { colors });
+                expect(yaml.includes('color_palette: theme'), `${slot} ${colors}`).toBe(colors === 'theme');
+                for (const [, key] of yaml.matchAll(/^\s*(?:- )?([a-z_]+):/gm)) {
+                    if (key === 'type' || key === 'cards') continue;
+                    expect(types, `${key} in ${slot}`).toContain(`${key}?:`);
+                }
+            }
+        }
     });
 
     it('maps WMO weather codes to the keys Home Assistant\'s Open-Meteo integration would', () => {
