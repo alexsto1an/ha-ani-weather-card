@@ -84,7 +84,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
 - **Respects reduced motion.** If reduced motion is on in your system settings, the sky stays still: the same colour and light, with no moving weather.
 - **Readable in every sky.** Text sits above the weather, and every built-in sky is tested to meet WCAG AA contrast for the card's text. Screen readers hear temperature and condition changes, and decorative layers are hidden from them.
-- **Light to load.** The card is about 79 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
+- **Light to load.** The card is about 80 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
 - **Set up visually.** Every weather card option is in the visual editor. YAML is there when you want it.
 
 ## Built with AI.
@@ -215,7 +215,7 @@ indoor_humidity_entity: sensor.living_room_humidity
 
 ### Weather and sun tracker
 
-This is the pairing in the screenshot above. `show_sun: false` leaves the next sunset to the tracker, which frees a slot so the weather card's three remaining metrics can share one row. `weather_entity` gives the tracker the weather card's sky.
+This is the pairing in the screenshot above. `show_sun: false` leaves the next sunset to the tracker, which frees a slot so the weather card's three remaining metrics can share one row. `weather_entity` gives the tracker the weather card's sky. With the forecast on, drag the weather card through the hours and the tracker's sun goes there too.
 
 ```yaml
 type: vertical-stack
@@ -343,6 +343,7 @@ forecast_metric: chance  # temp, feels, chance or amount
 - **It says so.** While the card shows another hour, the location line becomes "‹ Now  16:00  in 3 hr.": the Now control, the hour, and how far ahead it is. Today's high and low step out, and the hour's chance of rain takes their place.
 - **Coming home.** The card comes back to now when you tap **Now**, press Home or Escape, leave it alone for half a minute, scroll it off screen or hide the page, and when a new forecast arrives. It comes home on one quick spring: the row, the sky and every layer of weather go straight from the hour you left to now.
 - **You can catch it.** A press while it moves stops it where it is. Nothing changes when your finger first lands.
+- **The other cards follow.** A sun tracker on the same sun moves its sun to the hour you're on and counts its next sunrise or sunset from there; with the same `weather_entity`, it takes the card's sky too. A forecast card on the same weather shows the day the hour falls in: its name in bold, a dot on its bar at that hour's temperature, and the other days stepping back. They come back to now with the card.
 - **The page still scrolls.** A drag up or down scrolls the dashboard; the card takes only a drag that's clearly sideways. On a trackpad, swipe sideways with two fingers.
 - **Keyboard and screen readers.** The hours are a slider you can Tab to: the arrows step an hour, Page Up and Page Down three, and Home or Escape come back to now. A screen reader hears "16:00, in 3 hr.: Cloudy, 22°, 40% chance". The row also has a list of the next 24 hours for screen readers, and the chips are a group of choices with their full names, such as "Chance of rain".
 - **Reduced motion.** With reduced motion, or `animate: false`, the sky stays still and steps with the hour, the row still follows your finger, the chips swap without moving, and the way home is a short fade.
@@ -421,7 +422,7 @@ wake_time: "07:00"
 
 `type: custom:animated-forecast-card`
 
-The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
+The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. While you drag a weather card on the same entity, its days show the day the hour falls in, and dragging its own row moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
 
 ```yaml
 type: custom:animated-forecast-card

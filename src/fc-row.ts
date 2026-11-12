@@ -10,6 +10,7 @@
 // fixed temperature scale.
 
 import { CURVE, HOUR, clamp, css, ease, esc, num, reducedMotion, spring, whole } from './fc-core';
+import { dayKey } from './localize';
 import { HourRow, METRICS, Metric, Week, dayName } from './fc-data';
 import { FcWords, fill } from './fc-words';
 import { Tints, glyph, glyphSignature } from './fc-glyphs';
@@ -473,6 +474,11 @@ export interface Daily {
     empty: boolean;
     arrive(): void;
     setNow(temp: number | null, o?: { animate?: boolean }): void;
+    /**
+     * Another card's needle, at a time (ms) and the temperature there: its day stands out, the others step back, and
+     * the dot rides that day's bar at that temperature. null: back to now.
+     */
+    follow(at: { at: number; temperature: number | null } | null): void;
     draw(): void;
     destroy(): void;
 }
@@ -484,7 +490,7 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
     el.setAttribute('role', 'list');
     el.setAttribute('aria-label', W.daily);
     const days = week.days.filter(d => d.high !== undefined || d.low !== undefined);
-    if (!days.length) { el.hidden = true; return { el, empty: true, arrive() {}, setNow() {}, draw() {}, destroy() { el.remove(); } }; }
+    if (!days.length) { el.hidden = true; return { el, empty: true, arrive() {}, setNow() {}, follow() {}, draw() {}, destroy() { el.remove(); } }; }
     const ring = o.ring ?? 5.5;
     const today = days[0].isToday ? days[0] : null;
     let now: number | null = today && o.current !== undefined && isFinite(o.current) ? clamp(o.current, today.low ?? o.current, today.high ?? o.current) : null;
@@ -502,7 +508,11 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
     const rows = [...el.querySelectorAll<HTMLElement>('.fc-day')];
     const fills = rows.map(r => r.querySelector('.fc-fill') as HTMLElement);
     const inks = rows.map(r => r.querySelector('.fc-d-ink') as HTMLElement);
-    const dot = el.querySelector('.fc-dot') as HTMLElement | null;
+    let dot = el.querySelector('.fc-dot') as HTMLElement | null;
+    /** The row the dot is on: today's, or the day another card's needle is in */
+    let dotRow = 0;
+    /** Now, to come back to after following another card's needle */
+    const home = { now, row: 0, dot: !!dot };
     const st = { min: week.min, max: week.max, edge: 1, nowX: 0, nowV: 0, dotOp: 1 };
     const frac = (t: number) => (t - st.min) / (st.max - st.min);
     function draw() {
@@ -519,7 +529,7 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
             if (right <= left + 0.0005) { fills[i].style.opacity = '0'; return; }
             fills[i].style.opacity = '';
             // Beside the dot a sliver of fill shorter than the ring is noise: the fill ends at the ring
-            if (i === 0 && dot && now !== null) {
+            if (i === dotRow && dot && now !== null) {
                 const r = (ring + 8.5) / bw;
                 if (right > st.nowX && right - st.nowX < r) right = Math.min(right, st.nowX);
                 if (st.nowX > left && st.nowX - left < r) left = Math.max(left, st.nowX);
@@ -536,8 +546,10 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
             dot.style.opacity = st.dotOp.toFixed(3);
             // The ring: the sky shows through the track and the fill around the dot
             const m = st.dotOp > 0.01 ? `radial-gradient(circle at ${x.toFixed(2)}px 50%, transparent ${ring}px, #000 ${ring + 0.75}px)` : 'none';
-            inks[0].style.setProperty('-webkit-mask-image', m);
-            inks[0].style.maskImage = m;
+            inks.forEach((ink, i) => {
+                const v = i === dotRow ? m : '';
+                if (ink.style.maskImage !== v) { ink.style.setProperty('-webkit-mask-image', v); ink.style.maskImage = v; }
+            });
         }
     }
     st.nowX = now !== null ? clamp(frac(now)) : 0;
@@ -568,7 +580,10 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
     /** The reading changed (or the needle moved through today): the dot goes there on the flex spring */
     function setNow(temp: number | null, { animate = true } = {}) {
         if (!dot || !today || temp === null) return;
-        now = clamp(temp, today.low ?? temp, today.high ?? temp);
+        home.now = clamp(temp, today.low ?? temp, today.high ?? temp);
+        // Following another card's needle, the dot is there; it comes back to this
+        if (el.dataset.fcFollow !== undefined) return;
+        now = home.now;
         const to = clamp(frac(now));
         if (!animate || reducedMotion()) { st.nowX = to; st.nowV = 0; draw(); return; }
         stop();
@@ -583,11 +598,52 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
         };
         raf = requestAnimationFrame(f);
     }
+    // ── Another card's needle ──
+    // Each frame asks which day the needle is in: the days' keys once, and the needle's once a quarter hour
+    // (a day can start on a quarter hour where the zone is offset by one)
+    let keys: string[] | null = null;
+    const dayOf = { q: NaN, i: -1 };
+    function dayIndex(at: number): number {
+        const q = Math.floor(at / (HOUR / 4));
+        if (q === dayOf.q) return dayOf.i;
+        keys ??= days.map(d => dayKey(d.date, o.hass));
+        dayOf.q = q;
+        dayOf.i = keys.indexOf(dayKey(new Date(at), o.hass));
+        return dayOf.i;
+    }
+    function follow(at: { at: number; temperature: number | null } | null) {
+        const i = at ? dayIndex(at.at) : -1;
+        const day = i >= 0 && !rows[i].hidden ? days[i] : null;
+        if (!at || !day) {
+            if (el.dataset.fcFollow === undefined) return;
+            delete el.dataset.fcFollow;
+            rows.forEach(r => { delete r.dataset.fcAt; });
+            // Back to now: today's dot where the reading is, or none
+            dotRow = home.row;
+            if (dot && dot.parentElement !== rows[dotRow].querySelector('.fc-d-bar')) rows[dotRow].querySelector('.fc-d-bar')!.append(dot);
+            if (dot && !home.dot) { dot.remove(); dot = null; inks.forEach(ink => { ink.style.setProperty('-webkit-mask-image', ''); ink.style.maskImage = ''; }); }
+            now = home.now;
+            if (now !== null) st.nowX = clamp(frac(now));
+            draw();
+            return;
+        }
+        stop();
+        st.edge = 1; st.dotOp = 1;
+        el.dataset.fcFollow = '';
+        rows.forEach((r, j) => { if (j === i) r.dataset.fcAt = ''; else delete r.dataset.fcAt; });
+        // The dot rides the needle's day, at the temperature there (within that day's range)
+        const t = at.temperature ?? (day.high !== undefined && day.low !== undefined ? (day.high + day.low) / 2 : day.high ?? day.low!);
+        now = clamp(t, day.low ?? t, day.high ?? t);
+        if (!dot) { dot = document.createElement('b'); dot.className = 'fc-dot'; }
+        if (dotRow !== i || !dot.isConnected) { dotRow = i; rows[i].querySelector('.fc-d-bar')!.append(dot); }
+        st.nowX = clamp(frac(now));
+        draw();
+    }
     draw();
     let roRaf = 0;
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { cancelAnimationFrame(roRaf); roRaf = requestAnimationFrame(() => { if (el.isConnected && !raf) draw(); }); }) : null;
     ro?.observe(el);
-    return { el, empty: false, arrive, setNow, draw, destroy() { stop(); cancelAnimationFrame(roRaf); ro?.disconnect(); el.remove(); } };
+    return { el, empty: false, arrive, setNow, follow, draw, destroy() { stop(); cancelAnimationFrame(roRaf); ro?.disconnect(); el.remove(); } };
 }
 
 void HOUR;

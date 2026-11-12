@@ -17,9 +17,15 @@
 // from where it is. Touch-down is invisible: the layers an hour ahead needs
 // are pre-warmed with their transition off. Velocity comes from the last
 // 80 ms only. A vertical drag stays the page's (touch-action: pan-y).
+//
+// The page follows the needle (hour-link.ts): every frame it moves, the
+// slide says which time it's on, the temperature there and the sky it shows,
+// and once it's home it says so. The view doesn't, and neither does a slide
+// that steps by days.
 
 import type { ForecastHost } from './forecast-host';
 import type { SkyCondition, SkyPhase } from './sky';
+import { sendHour } from './hour-link';
 import {
     CONTAINER, LAYER_NAMES, LAYER_OF, Lab, Slot, Timeline, clamp, cssOf, haptic, isWet, labOf, phaseWeights, reducedMotion,
     rubber, smooth, spring, sunDrop, sunModel,
@@ -322,6 +328,8 @@ export function attachSlide(o: SlideOptions): Slide {
 
     // ── Drawing ──
     let vis: Picture | null = null, delta = 0;
+    /** The sky as written, for the page */
+    let skyCss: Record<string, string> | null = null;
     const snapshot = (src: Picture): Picture => ({
         sky: Object.fromEntries(SKY_KEYS.map(k => [k, [...src.sky[k]] as Lab])),
         cols: Object.fromEntries(Object.keys(COLOR_VARS).map(k => [k, [...src.cols[k]] as Lab])),
@@ -341,7 +349,11 @@ export function attachSlide(o: SlideOptions): Slide {
     }
     function write() {
         if (!vis) return;
-        if (sky) for (const k of SKY_KEYS) sky.style.setProperty(`--awc-sky-${k}`, cssOf(vis.sky[k]));
+        skyCss = {};
+        for (const k of SKY_KEYS) {
+            skyCss[k] = cssOf(vis.sky[k]);
+            if (sky) sky.style.setProperty(`--awc-sky-${k}`, skyCss[k]);
+        }
         const top = cssOf(vis.sky.top);
         for (const el of o.mirror?.() ?? []) el.style.setProperty('--awc-sky-top', top);
         for (const [k, v] of Object.entries(COLOR_VARS)) root.style.setProperty(v, cssOf(vis.cols[k]));
@@ -375,6 +387,33 @@ export function attachSlide(o: SlideOptions): Slide {
         delta = d;
         write();
     }
+    // ── The page follows the needle: the time under it, the temperature there, the sky ──
+    const link = host.surface !== 'view' && tl.unit === 'hour'
+        ? { entity: host.config().entity ?? '', sun: host.config().sun_entity || 'sun.sun' } : null;
+    let linked = false;
+    /** Between now's reading and the next hour's value in the first hour, between two hours' values after it */
+    function temperatureAt(h: number): number | null {
+        const lo = Math.floor(h), f = h - lo;
+        const now = host.current();
+        const a = lo === 0 && typeof now === 'number' ? now : tl.slots[lo]?.temperature;
+        const b = tl.slots[Math.min(tl.length - 1, lo + 1)]?.temperature;
+        if (typeof a !== 'number') return null;
+        return typeof b === 'number' ? a + (b - a) * f : a;
+    }
+    function emit() {
+        if (!link) return;
+        const h = slotsAt(state.offset);
+        linked = true;
+        sendHour({
+            source: host.element, ...link, at: Date.now() + h * tl.slotMs, temperature: temperatureAt(h),
+            sky: host.config().color_palette === 'theme' ? null : skyCss,
+        });
+    }
+    function emitHome() {
+        if (!link || !linked) return;
+        linked = false;
+        sendHour({ source: host.element, ...link, at: null, temperature: null, sky: null });
+    }
     const groupOpacity = (v: number | null) => { for (const el of o.group()) el.style.opacity = v === null ? '' : v.toFixed(3); };
     function showSlot(k: number) {
         const s = k === 0 ? null : tl.slots[k];
@@ -387,6 +426,7 @@ export function attachSlide(o: SlideOptions): Slide {
         if (ext) ext.setOffset(state.offset);
         else if (railRuler) railRuler.style.transform = `translate3d(${(-state.offset).toFixed(2)}px, 0, 0)`;
         stepSky(dt);
+        emit();
         // The readout follows the needle: while held, while settling, and on the keys
         if (!rel) {
             const k = slotOf(state.offset);
@@ -415,9 +455,11 @@ export function attachSlide(o: SlideOptions): Slide {
         for (const el of root.querySelectorAll<HTMLElement>('.stars-field, .moon-gsap')) el.style.opacity = started.includes('stars') ? '0' : '';
         vis = null;
         home = null;
+        skyCss = null;
         groupOpacity(null);
         clearTimeout(state.idleTimer);
         schedulePrewarmStop();
+        emitHome();
         o.onAway?.(false);
         o.onHome?.();
     }

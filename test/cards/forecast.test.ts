@@ -10,6 +10,7 @@ import { hours } from '../../src/fc-data';
 import { FC_WORDS } from '../../src/fc-words';
 import type { ForecastExtras, ForecastHost } from '../../src/forecast-host';
 import type { ForecastEntry } from '../../src/forecast-data';
+import { HOUR_EVENT, sendHour, type HourLink } from '../../src/hour-link';
 
 const HOUR = 3600_000;
 const today = (h: number, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d; };
@@ -410,5 +411,66 @@ describe('the clock', () => {
         expect(t.set({ text: '1:11', period: 'PM' }, { animate: true })).toBe(true);
         expect(el.textContent).toBe('1:11PM');
         expect(el.querySelector('.awc-ampm')?.textContent).toBe('PM');
+    });
+});
+
+describe('one needle across the page', () => {
+    const heard: HourLink[] = [];
+    const listen = (e: Event) => heard.push((e as CustomEvent<HourLink>).detail);
+    beforeEach(() => { heard.length = 0; window.addEventListener(HOUR_EVENT, listen); });
+    afterEach(() => window.removeEventListener(HOUR_EVENT, listen));
+
+    it('the weather card says where its needle is while it moves, and once when it\'s home', async () => {
+        const card = mount({ show_forecast: true });
+        await settle();
+        const slider = card.querySelector('[role="slider"]') as HTMLElement;
+        const t0 = Date.now();
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        const moved = heard.filter(l => l.at !== null);
+        expect(moved.length).toBeGreaterThan(0);
+        const last = moved[moved.length - 1];
+        expect(last.source).toBe(card);
+        expect(last.entity).toBe('weather.home');
+        expect(last.sun).toBe('sun.sun');
+        expect(last.at! - t0).toBeGreaterThanOrEqual(HOUR - 1000);
+        expect(last.at! - t0).toBeLessThan(HOUR + 5000);
+        // The hour's own temperature, an hour on
+        expect(last.temperature).toBeCloseTo(20.7, 5);
+        expect(last.sky && Object.keys(last.sky).sort()).toEqual(['bottom', 'glow', 'mid', 'scrim', 'top']);
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        await settle();
+        await new Promise(r => setTimeout(r, 700));
+        expect(heard[heard.length - 1].at).toBeNull();
+        expect(heard.filter(l => l.at === null)).toHaveLength(1);
+    });
+
+    it('the forecast card shows the day the needle is in, and comes back to now', async () => {
+        const fc = mount({}, makeHass(), 'animated-forecast-card');
+        await settle();
+        const rows = [...fc.querySelectorAll<HTMLElement>('[data-fc-day]')];
+        const list = fc.querySelector('[data-fc-daily]') as HTMLElement;
+        const other = document.createElement('div');
+        // Tomorrow at noon, 23°
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: today(12).getTime() + 24 * HOUR, temperature: 23, sky: null });
+        expect(list.hasAttribute('data-fc-follow')).toBe(true);
+        expect(rows.map(r => r.hasAttribute('data-fc-at'))).toEqual([false, true, false, false, false, false, false]);
+        expect(rows[1].querySelector('.fc-dot')).not.toBeNull();
+        expect(rows[0].querySelector('.fc-dot')).toBeNull();
+        // Another weather's needle is not this card's
+        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at: today(12).getTime() + 48 * HOUR, temperature: 20, sky: null });
+        expect(rows[2].hasAttribute('data-fc-at')).toBe(false);
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        expect(list.hasAttribute('data-fc-follow')).toBe(false);
+        expect(rows.some(r => r.hasAttribute('data-fc-at'))).toBe(false);
+        expect(rows[0].querySelector('.fc-dot')).not.toBeNull();
+    });
+
+    it('the forecast card doesn\'t follow while it shows an hour of its own', async () => {
+        const fc = mount({}, makeHass(), 'animated-forecast-card');
+        await settle();
+        const own = fc.querySelector('[role="slider"]') as HTMLElement;
+        own.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: today(12).getTime() + 24 * HOUR, temperature: 23, sky: null });
+        expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(false);
     });
 });

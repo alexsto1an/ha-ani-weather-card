@@ -81,6 +81,11 @@ const PARTS = `
 }
 .fc-d-name { font-weight: 500; overflow: hidden; }
 .fc-day[data-today] .fc-d-name { font-weight: 700; }
+/* Another card's needle: its day stands out, named in bold with the dot on its bar; the others step back */
+.fc-day { transition: opacity 160ms ${OUT}; }
+.fc-daily[data-fc-follow] .fc-day:not([data-fc-at]) { opacity: 0.5; }
+.fc-daily[data-fc-follow] .fc-day[data-today]:not([data-fc-at]) .fc-d-name { font-weight: 500; }
+.fc-daily[data-fc-follow] .fc-day[data-fc-at] .fc-d-name { font-weight: 700; }
 .fc-d-g { line-height: 0; }
 .fc-d-lo { text-align: right; font-weight: 400; opacity: var(--fc-quiet, 0.8); }
 .fc-d-hi { text-align: right; font-weight: 600; }
@@ -244,7 +249,7 @@ const CARD_CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fc-chips-sel, .fc-chip > span, .fc-needle, .awc-needle, .awc-tick, .awc-now { transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
+  .fc-day, .fc-chips-sel, .fc-chip > span, .fc-needle, .awc-needle, .awc-tick, .awc-now { transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
 }
 `;
 

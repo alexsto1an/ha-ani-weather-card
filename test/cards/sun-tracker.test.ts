@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { pathElevation, detailColumns } from '../../src/sun-tracker-card';
 import { skyPhaseFromSun, skyColors } from '../../src/sky';
+import { sendHour } from '../../src/hour-link';
+import { hourOfDay } from '../../src/localize';
 
 describe('sun path', () => {
     const rise = 6.5;
@@ -217,6 +219,51 @@ describe('sun tracker card', () => {
         expect(skyPhaseFromSun(6, false, true)).toBe('day');
         expect(skyPhaseFromSun(null, false, false)).toBe('night');
     });
+
+    it('follows a weather card\'s needle on the same sun, and comes home with it', () => {
+        const tracker = mount({ weather_entity: 'weather.home' });
+        tracker.hass = { ...sunHass(30), states: { ...sunHass(30).states, 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: {} } } };
+        const st = card(tracker);
+        const dot = () => st.querySelector('.st-dot') as HTMLElement;
+        const before = dot().style.left;
+        const source = document.createElement('div');
+        // An hour after sunset: the sun below the horizon, the headline on the next sunrise
+        const at = Date.parse('2026-10-13T18:12:00Z');
+        const sky = { top: '#101820', mid: '#203040', bottom: '#304050', glow: 'rgba(1, 2, 3, 0.5)', scrim: 'rgba(0, 0, 0, 0.2)' };
+        sendHour({ source, entity: 'weather.home', sun: 'sun.sun', at, temperature: 14, sky });
+        expect(st.classList.contains('following')).toBe(true);
+        expect(dot().style.left).toBe(`${((hourOfDay(new Date(at)) / 24) * 100).toFixed(2)}%`);
+        expect(dot().classList.contains('below')).toBe(true);
+        expect(st.style.getPropertyValue('--awc-sky-top')).toBe('#101820');
+        expect(st.querySelector('.st-eyebrow span')?.textContent).toBe('Sunrise');
+        expect(st.querySelector('.st-countdown')?.textContent).toMatch(/11/);
+        // The minute's render keeps the needle's hour
+        tracker.hass = { ...sunHass(31), states: { ...sunHass(31).states, 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: {} } } };
+        expect(card(tracker).querySelector('.st-dot')?.classList.contains('below')).toBe(true);
+        // Another sun is another tracker's
+        sendHour({ source, entity: 'weather.home', sun: 'sun.elsewhere', at: at + 6 * 3600_000, temperature: 14, sky });
+        expect(dot().classList.contains('below')).toBe(true);
+        // Home
+        sendHour({ source, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        expect(st.classList.contains('following')).toBe(false);
+        expect(dot().style.left).toBe(before);
+        expect(st.style.getPropertyValue('--awc-sky-top')).not.toBe('#101820');
+        tracker.remove();
+    });
+
+    it('takes the needle\'s sky only from its own weather', () => {
+        const tracker = mount();
+        tracker.hass = sunHass(30);
+        const st = card(tracker);
+        const own = st.style.getPropertyValue('--awc-sky-top');
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky: { top: '#101820', mid: '#203040', bottom: '#304050', glow: '#000000', scrim: '#000000' } });
+        expect(st.classList.contains('following')).toBe(true);
+        expect(st.style.getPropertyValue('--awc-sky-top')).toBe(own);
+        tracker.remove();
+        // Gone from the page, it stops listening
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+    });
+
 });
 
 describe('the tracker in the profile\'s time zone', () => {

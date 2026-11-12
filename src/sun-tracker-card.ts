@@ -6,6 +6,11 @@
  * next sunrise or sunset as the headline, and the day's facts in a quiet
  * grid below. The card's sky follows the sun's real elevation, in the same
  * palette as the weather card.
+ *
+ * It follows a weather card's needle on the same sun (hour-link.ts): while
+ * one is dragged through the hours, the sun goes to that time on its path,
+ * the headline counts from it, and with the same weather_entity the sky is
+ * the weather card's own. When the card comes home, so does the tracker.
  */
 
 import { SunData } from './weather-data';
@@ -15,6 +20,7 @@ import { HomeAssistant } from './types';
 import { escapeHtml, getWeatherClass, lookup } from './utils';
 import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
 import { loadEditorBundle } from './bundles';
+import { HourLink, onHour } from './hour-link';
 import {
     skyColors, skyPhaseFromSun, oklchToSrgb, toHex, registerSkyProperties, SKY_CONDITIONS,
     type SkyCondition, type SkyPhase,
@@ -238,6 +244,8 @@ ${iconBoxCss('')}
         /* Same registered colors and curve as the weather card's sky */
         transition: ${SKY_COLOR_PROPERTIES.map(name => `${name} ${SKY_DISSOLVE_SEC}s ${SKY_DISSOLVE_EASE}`).join(', ')};
     }
+    /* Following a weather card's needle, its sky is the card's, frame by frame */
+    .st-card.following { transition: none; }
 
     /* ── Headline: the next sunrise or sunset ── */
     .st-hero {
@@ -546,6 +554,13 @@ class AnimatedSunTrackerCard extends HTMLElement {
     private _shadow: ShadowRoot;
     private _clock?: ReturnType<typeof setInterval>;
     private _resizeObserver?: ResizeObserver;
+    /** The path as last drawn, so a followed time can be placed on it */
+    private _path: { riseH: number; setH: number; geo: PathGeometry } | null = null;
+    /** A weather card's needle this tracker follows, and the way to stop listening */
+    private _link: HourLink | null = null;
+    private _unlink?: () => void;
+    /** The followed headline as last written: it changes only when its words do */
+    private _linkHead = '';
 
     constructor() {
         super();
@@ -587,6 +602,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
     connectedCallback(): void {
         // The "now" dot and the countdown move with the clock, not with HA.
         if (!this._clock) this._clock = setInterval(() => this._render(), 60_000);
+        this._unlink ??= onHour(link => this._follow(link));
         if (!this._resizeObserver && typeof ResizeObserver !== 'undefined') {
             this._resizeObserver = new ResizeObserver(() => this._fit());
             this._resizeObserver.observe(this);
@@ -596,6 +612,9 @@ class AnimatedSunTrackerCard extends HTMLElement {
     disconnectedCallback(): void {
         if (this._clock) clearInterval(this._clock);
         this._clock = undefined;
+        this._unlink?.();
+        this._unlink = undefined;
+        this._link = null;
         this._resizeObserver?.disconnect();
         this._resizeObserver = undefined;
     }
@@ -708,6 +727,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const colorized = this.config.color_palette !== 'theme';
 
         if (!sun || !sun.sunrise || !sun.sunset) {
+            this._path = null;
             this._mount('<div class="st-no-data">No sun data yet.<br>Choose a sun entity, usually sun.sun.</div>', null);
             return;
         }
@@ -741,6 +761,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
 
         // Sun path
         const geo = this.config.compact ? COMPACT_PATH : REGULAR_PATH;
+        this._path = { riseH, setH, geo };
         const path = sunPath(riseH, setH, geo);
         const dayFill = `${path} L${VW},${geo.horizon} L0,${geo.horizon} Z`;
         const nowElevation = pathElevation(nowHour, riseH, setH);
@@ -845,7 +866,84 @@ class AnimatedSunTrackerCard extends HTMLElement {
             else card.style.removeProperty(name);
         }
         card.innerHTML = content;
+        this._linkHead = '';
+        // Following a needle, the minute's render keeps its hour
+        if (this._link) this._applyLink();
         this._fit();
+    }
+
+    /** A weather card's needle moved, or came home */
+    private _follow(link: HourLink): void {
+        if (link.sun !== this.config.sun_entity) return;
+        if (link.at === null) {
+            if (!this._link) return;
+            this._link = null;
+            // Now again: the sky dissolves back as it always does
+            this._shadow.querySelector('.st-card')?.classList.remove('following');
+            this._render();
+            return;
+        }
+        this._link = link;
+        this._applyLink();
+    }
+
+    /** The sun, the now line and the headline at the needle's time; the weather card's sky when it's the same weather */
+    private _applyLink(): void {
+        const link = this._link, p = this._path;
+        const card = this._shadow.querySelector('.st-card') as HTMLElement | null;
+        if (!link || link.at === null || !p || !card) return;
+        card.classList.add('following');
+        const at = new Date(link.at);
+        const hour = hourOfDay(at, this._hass);
+        const elevation = pathElevation(hour, p.riseH, p.setH);
+        const dot = card.querySelector('.st-dot') as HTMLElement | null;
+        if (dot) {
+            dot.style.left = `${((hour / 24) * 100).toFixed(2)}%`;
+            dot.style.top = `${((yFor(elevation, p.geo) / VH) * 100).toFixed(2)}%`;
+            dot.classList.toggle('below', elevation < 0);
+        }
+        const line = card.querySelector('.st-now-line');
+        if (line) { const x = xFor(hour).toFixed(1); line.setAttribute('x1', x); line.setAttribute('x2', x); }
+        if (link.sky && card.classList.contains('sky') && this.config.weather_entity && this.config.weather_entity === link.entity) {
+            for (const name of SKY_COLOR_PROPERTIES) {
+                const v = link.sky[name.replace('--awc-sky-', '')];
+                if (v && card.style.getPropertyValue(name) !== v) card.style.setProperty(name, v);
+            }
+        }
+        this._linkHeadline(link.at);
+    }
+
+    /** The headline from the needle's time: the next sunrise or sunset after it, and how long until it */
+    private _linkHeadline(at: number): void {
+        const sun = this._getSunData();
+        const card = this._shadow.querySelector('.st-card');
+        if (!sun?.sunrise || !sun.sunset || !card) return;
+        const DAY = 86_400_000;
+        // The next one after the needle: today's times carried by whole days (the clock time barely moves in two days)
+        const after = (iso: string) => { let t = Date.parse(iso); while (t <= at) t += DAY; while (t - DAY > at) t -= DAY; return t; };
+        const rise = after(sun.sunrise), set = after(sun.sunset);
+        const nextIsSunset = set < rise;
+        const hass = this._hass;
+        const iso = (t: number) => new Date(t).toISOString();
+        const next = nextIsSunset ? set : rise, other = nextIsSunset ? rise : set;
+        const timeNext = formatTime(iso(next), hass), timeOther = formatTime(iso(other), hass);
+        const until = localizeString(hass, 'in_duration', { duration: formatDuration((next - at) / 3600000, hass) });
+        const key = `${nextIsSunset}|${timeNext}|${timeOther}|${until}`;
+        if (key === this._linkHead) return;
+        this._linkHead = key;
+        const t = (k: 'sunset' | 'sunrise') => escapeHtml(localizeString(hass, k));
+        card.querySelector('.st-eyebrow ha-icon')?.setAttribute('icon', nextIsSunset ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up');
+        const word = card.querySelector('.st-eyebrow span');
+        if (word) word.textContent = localizeString(hass, nextIsSunset ? 'sunset' : 'sunrise');
+        const time = card.querySelector('.st-time');
+        if (time) time.innerHTML = timeHtml(timeNext);
+        let countdown = card.querySelector('.st-countdown');
+        // At the render the event may have just passed, with no countdown drawn
+        if (!countdown && time) { countdown = document.createElement('div'); countdown.className = 'st-countdown'; time.after(countdown); }
+        if (countdown) countdown.textContent = until;
+        // Compact: the other one, in the chart's open sky
+        const note = card.querySelector('.st-chart-note');
+        if (note) note.innerHTML = `${t(nextIsSunset ? 'sunrise' : 'sunset')}<span class="st-chart-note-time">${timeHtml(timeOther)}</span>`;
     }
 }
 
