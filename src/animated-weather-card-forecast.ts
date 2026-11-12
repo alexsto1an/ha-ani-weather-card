@@ -13,6 +13,7 @@ import { attachView } from './fc-view';
 import { attachNightstand } from './fc-night';
 import { attachWall, isWall } from './fc-wall';
 import { FORECAST_CSS } from './fc-css';
+import { followTracker } from './fc-tracker';
 
 /** One style element per card for everything the forecast adds */
 function style(host: ForecastHost): void {
@@ -54,6 +55,7 @@ const views: ForecastViews = {
         if (host.config().layout === 'nightstand') return attachNightstand(host);
         return attachCard(host);
     },
+    followTracker,
 };
 
 window.AnimatedWeatherCardForecast = views;

@@ -13,6 +13,7 @@
 import type { AnimatedWeatherCardConfig, HomeAssistant } from './types';
 import type { ForecastEntry, ForecastType } from './forecast-data';
 import type { SkyColors, SkyCondition, SkyPhase } from './sky';
+import type { HourLink } from './hour-link';
 
 /** Which surface a card instance is */
 export type Surface = 'card' | 'forecast' | 'view';
@@ -80,8 +81,23 @@ export interface ForecastExtras {
     destroy(): void;
 }
 
+/** A sun tracker, as the forecast bundle sees it when it follows another card's needle */
+export interface TrackerLink {
+    /** Its .st-card, in its shadow root */
+    card: HTMLElement;
+    hass: HomeAssistant | undefined;
+    /** Its weather entity: the needle's sky is its sky only on the same weather */
+    weather: string | undefined;
+    /** Sunrise and sunset as hours of the day, as its path is drawn, and whether that's the compact path */
+    riseH: number;
+    setH: number;
+    compact: boolean;
+}
+
 export interface ForecastViews {
     /** Bumped when this interface changes in a way an older main bundle can't use */
     version: 2;
     attach(host: ForecastHost): ForecastExtras;
+    /** Put a sun tracker at another card's needle (an older forecast bundle has none) */
+    followTracker?(tracker: TrackerLink, link: HourLink): void;
 }

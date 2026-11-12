@@ -19,14 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The wall: the weather card with the forecast, at 640 × 540 px or larger, lays itself out for reading across the room, with a 192 px temperature, the clock and the date, the line on what turns at 48 px, six two-hour columns and five days.
 - A Forecast and clock section in the weather card's visual editor, with every new option, and a visual editor for the forecast card.
 - The forecast's words, from "Rain until 19:00" to the chips and the days, in all nine of the card's languages.
-- One needle across the dashboard: while you drag the weather card through the hours, the other cards follow. A sun tracker on the same sun moves its sun to that time, counts its next sunrise or sunset from it, and with the same `weather_entity` takes the card's sky. A forecast card on the same weather shows the day the hour falls in, named in bold with a dot on its bar at that hour's temperature, the other days stepping back. Dragging the forecast card moves the tracker too. They come back to now with the card.
+- One needle across the dashboard: while you drag the weather card through the hours, the other cards follow. A sun tracker on the same sun moves its sun to that time, and with the same `weather_entity` takes the card's sky. A forecast card on the same weather shows the day the hour falls in, named in bold with a dot on its bar at that hour's temperature, the other days stepping back. Dragging the forecast card moves the tracker too. They come back to now with the card.
 - The live demo has a forecast section: the weather card with the forecast and the clock, the forecast card, and the compact card over its strip, on 48 hours and 10 days of sample forecast, or your own when you show the demo your weather.
 
 ### Changed
 
 - With `show_forecast` on, a tap on the weather card opens the forecast view instead of the entity's details. `tap_action` still sets it to anything else.
 - The times on the cards follow your profile's time zone setting, the server's or the device's: the sun tracker's times and its sun's place on the path, the weather card's sunset or sunrise, and the new clock. They always followed the device's time zone before.
-- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 3.5 KB gzipped, to about 80 KB.
+- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 3 KB gzipped, to about 80 KB.
 
 ## [1.2.0] - 2026-11-06
 

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { pathElevation, detailColumns } from '../../src/sun-tracker-card';
 import { skyPhaseFromSun, skyColors } from '../../src/sky';
 import { sendHour } from '../../src/hour-link';
+// The forecast bundle moves a tracker that follows a needle
+import '../../src/animated-weather-card-forecast';
 import { hourOfDay } from '../../src/localize';
 
 describe('sun path', () => {
@@ -227,7 +229,7 @@ describe('sun tracker card', () => {
         const dot = () => st.querySelector('.st-dot') as HTMLElement;
         const before = dot().style.left;
         const source = document.createElement('div');
-        // An hour after sunset: the sun below the horizon, the headline on the next sunrise
+        // An hour after sunset: the sun below the horizon
         const at = Date.parse('2026-10-13T18:12:00Z');
         const sky = { top: '#101820', mid: '#203040', bottom: '#304050', glow: 'rgba(1, 2, 3, 0.5)', scrim: 'rgba(0, 0, 0, 0.2)' };
         sendHour({ source, entity: 'weather.home', sun: 'sun.sun', at, temperature: 14, sky });
@@ -235,8 +237,8 @@ describe('sun tracker card', () => {
         expect(dot().style.left).toBe(`${((hourOfDay(new Date(at)) / 24) * 100).toFixed(2)}%`);
         expect(dot().classList.contains('below')).toBe(true);
         expect(st.style.getPropertyValue('--awc-sky-top')).toBe('#101820');
-        expect(st.querySelector('.st-eyebrow span')?.textContent).toBe('Sunrise');
-        expect(st.querySelector('.st-countdown')?.textContent).toMatch(/11/);
+        // The headline stays on the real next sunrise or sunset, as the weather card's own sunset reading does
+        expect(st.querySelector('.st-eyebrow span')?.textContent).toBe('Sunset');
         // The minute's render keeps the needle's hour
         tracker.hass = { ...sunHass(31), states: { ...sunHass(31).states, 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: {} } } };
         expect(card(tracker).querySelector('.st-dot')?.classList.contains('below')).toBe(true);
