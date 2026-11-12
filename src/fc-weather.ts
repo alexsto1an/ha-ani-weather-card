@@ -1,8 +1,9 @@
 // The forecast and the clock on the weather card: the time leading the
 // location line, today's high and low beside the condition, the turning
-// line under it, the hourly row and its chips between the hero and the
-// readings, and the slide through the hours, with the row (or, where it
-// has given way, the divider's rail) as its ruler.
+// line under it, the hourly row and its chips at the card's foot, under the
+// readings (now above, the hours ahead below), and the slide through the
+// hours, with the row (or, where it has given way, the divider's rail) as
+// its ruler.
 //
 // The fit gives way in this order, before the temperature ever shrinks:
 // the chips, then the icons, then the row (it folds back to the turning
@@ -216,12 +217,12 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             meta.prepend(lineEl);
             writeLine(0);
         }
-        // The section: the hourly row and its chips. Narrow: between the hero and the readings; wide: in the hero's column.
+        // The section: the hourly row and its chips. Narrow: at the card's foot, under the readings; wide: in the hero's column.
         metric = m.metrics.includes(metric) ? metric : (m.metrics[0] ?? 'temp');
         if (m.hours.length && !compact) {
             sec = document.createElement('div');
             sec.className = 'fc-section';
-            if (wide()) hero.append(sec); else hero.after(sec);
+            if (wide()) hero.append(sec); else info.append(sec);
             const pad = parseFloat(getComputedStyle(info).paddingLeft) || 20;
             const w = wide() ? Math.min(hero.clientWidth || 448, 448) : (root.clientWidth || 353) - 2 * pad;
             if (wide()) sec.style.width = `${w}px`;
@@ -425,10 +426,17 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         if (fits('hl')) return;
         companion.dataset.show = 'none';
     }
-    /** No cloud and no star behind the row: they roam the whole sky above it, behind the hero's text as on today's card. With no row, today's sky */
+    /**
+     * No cloud and no star behind the data: they roam the whole sky above it, behind the hero's text as on today's
+     * card. Narrow, the row sits under the readings, so the floor is the readings' divider; wide, the readings stand
+     * beside the hero and the floor is the row's top. With no row, today's sky
+     */
     function floor() {
         if (compact || !forecastOn() || !sec || !['full', 'glyphs', 'row'].includes(level) || !sec.getClientRects().length) { cloudFloor(root, null); return; }
-        const top = sec.getBoundingClientRect().top + (parseFloat(getComputedStyle(sec).paddingTop) || 0);
+        const readings = wide() ? null : root.querySelector('.weather-attributes') as HTMLElement | null;
+        const top = readings?.getClientRects().length
+            ? readings.getBoundingClientRect().top
+            : sec.getBoundingClientRect().top + (parseFloat(getComputedStyle(sec).paddingTop) || 0);
         cloudFloor(root, top - root.getBoundingClientRect().top - 6);
     }
     /** The turning line, whole or not at all, and only as far as the light allows: the long form, the short, or none; then what follows it */

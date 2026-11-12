@@ -75,19 +75,37 @@ describe('the forecast on the weather card', () => {
         expect(card.querySelector('.weather-desc')?.textContent).toBe('Partly cloudy');
     });
 
-    it('keeps the clouds above the row, and with no row gives the card today\'s sky', async () => {
+    it('puts the row at the card\'s foot, under the readings', async () => {
+        const card = mount({ show_forecast: true });
+        await settle();
+        const info = card.querySelector('.weather-info') as HTMLElement;
+        const sec = info.querySelector('.fc-section') as HTMLElement;
+        expect(sec.parentElement).toBe(info);
+        expect(info.lastElementChild).toBe(sec);
+        expect(sec.previousElementSibling?.classList.contains('weather-attributes')).toBe(true);
+    });
+
+    it('keeps the clouds above the readings, and with no row gives the card today\'s sky', async () => {
         const card = mount({ show_forecast: true });
         await settle();
         const root = card.querySelector('.animated-weather-card') as HTMLElement;
         const sec = root.querySelector('.fc-section') as HTMLElement;
+        const readings = root.querySelector('.weather-attributes') as HTMLElement;
         const extras = (card as unknown as { extras: ForecastExtras }).extras;
-        // jsdom lays nothing out: the row starts 232 px down the card
-        vi.spyOn(sec, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
-        vi.spyOn(sec, 'getBoundingClientRect').mockReturnValue({ top: 232, left: 0, right: 353, bottom: 360, width: 353, height: 128 } as DOMRect);
+        // jsdom lays nothing out: the readings' divider is 232 px down the card, the row under them
+        const box = (top: number, height: number) => ({ top, left: 0, right: 353, bottom: top + height, width: 353, height }) as DOMRect;
+        for (const [e, b] of [[sec, box(380, 122)], [readings, box(232, 128)]] as const) {
+            vi.spyOn(e, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+            vi.spyOn(e, 'getBoundingClientRect').mockReturnValue(b);
+        }
         extras.setLevel('full');
         extras.fitted();
         expect(root.dataset.cloudBand).toBe('226');
         expect(root.style.getPropertyValue('--fc-floor-c')).toBe('226px');
+        // With no readings, the row's own top
+        vi.spyOn(readings, 'getClientRects').mockReturnValue([] as unknown as DOMRectList);
+        extras.fitted();
+        expect(root.dataset.cloudBand).toBe('374');
         extras.setLevel('none');
         extras.fitted();
         expect(root.dataset.cloudBand).toBeUndefined();

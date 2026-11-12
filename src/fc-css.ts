@@ -217,15 +217,16 @@ const CARD_CSS = `
 .animated-weather-card[data-fc]:is([data-fc="row"], [data-fc="bare"]) .hero-meta { display: none !important; }
 .theme-colors .hero-meta > .awc-line { color: var(--primary-text-color); }
 
-/* ── The section: the hourly row and its chips, between the hero and the readings ── */
+/* ── The section: the hourly row and its chips at the card's foot, under the readings: now above, the hours ahead
+   below. The readings keep today's place (pushed to the bottom); the section follows them at the card's gap, and
+   takes the free space itself only when there are no readings. ── */
 .fc-section { position: relative; flex: none; margin-top: auto; padding-top: var(--fc-sec-top, 0px); --fc-cols-h: 42px; --fc-mid-h: 90px; }
+.weather-attributes ~ .fc-section { margin-top: 0; }
 @container awc (min-width: 640px) { .fc-section { margin-top: 16px; align-self: flex-start; --fc-bleed: 20px; } }
 .animated-weather-card:is([data-fc="none"], [data-fc="bare"]) .fc-section { display: none; }
 .animated-weather-card:is([data-fc="row"], [data-fc="glyphs"]) .fc-section .fc-chips { display: none; }
 .animated-weather-card[data-fc="row"] .fc-section .fc-g { display: none; }
 .animated-weather-card[data-fc="row"] .fc-section { --fc-cols-h: 14px; }
-/* With the row on, the readings lose their divider's gap to it: the row is the divider */
-.animated-weather-card:is([data-fc="full"], [data-fc="glyphs"], [data-fc="row"]) .fc-section + .weather-attributes { margin-top: -4px; }
 
 /* ── The floor: no cloud and no star behind the row's full-strength text. Clouds roam the whole sky above it, behind the
    hero's text as on today's card, and are born whole above it (data-cloud-band); the mask only guards the line. It's on
