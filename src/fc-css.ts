@@ -227,15 +227,16 @@ const CARD_CSS = `
 /* With the row on, the readings lose their divider's gap to it: the row is the divider */
 .animated-weather-card:is([data-fc="full"], [data-fc="glyphs"], [data-fc="row"]) .fc-section + .weather-attributes { margin-top: -4px; }
 
-/* ── The floor: no cloud's core and no star behind data. Clouds and stars keep the open sky above the condition's
-   line and right of the hero's own text. Past either edge they're gone, not thinned: a thinned cloud is a smudge. ── */
-.animated-weather-card[data-fc]:not([data-variant="compact"]) :is(.clouds-layer, .stars-field) {
-  --fy: var(--fc-floor-c, 400px); --ffade: 22px;
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fy) - var(--ffade)), transparent calc(var(--fy) + 4px)), linear-gradient(90deg, transparent calc(var(--fc-floor-xl, 0px) - 36px), #000 calc(var(--fc-floor-xl, 0px) + 24px));
-  mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fy) - var(--ffade)), transparent calc(var(--fy) + 4px)), linear-gradient(90deg, transparent calc(var(--fc-floor-xl, 0px) - 36px), #000 calc(var(--fc-floor-xl, 0px) + 24px));
-  -webkit-mask-composite: source-in; mask-composite: intersect;
+/* ── The floor: no cloud and no star behind the row's full-strength text. Clouds roam the whole sky above it, behind the
+   hero's text as on today's card, and are born whole above it (data-cloud-band); the mask only guards the line. ── */
+.animated-weather-card[data-cloud-band] .clouds-layer {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-c, 100%) - 2px), transparent calc(var(--fc-floor-c, 100%) + 10px));
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-c, 100%) - 2px), transparent calc(var(--fc-floor-c, 100%) + 10px));
 }
-.animated-weather-card[data-fc]:not([data-variant="compact"]) .stars-field { --fy: var(--fc-floor-s, 400px); --ffade: 12px; }
+.animated-weather-card[data-cloud-band] .stars-field {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-s, 100%) - 14px), transparent var(--fc-floor-s, 100%));
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-s, 100%) - 14px), transparent var(--fc-floor-s, 100%));
+}
 
 @media (prefers-reduced-motion: reduce) {
   .fc-chips-sel, .fc-chip > span, .fc-needle, .awc-needle, .awc-tick, .awc-now { transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
@@ -324,12 +325,6 @@ const VIEW_CSS = `
 .fv-close i::after { content: ''; left: 0; top: 0; margin: 0; transform: rotate(90deg); }
 .fv-grab { position: absolute; z-index: 40; top: 7px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: currentColor; opacity: 0.4; pointer-events: none; }
 .animated-weather-card[data-fc-view] :is(.sun, .moon-gsap) { top: 12%; left: 76%; }
-/* Clouds and stars keep the sky above the hero's lines, right of its text */
-.animated-weather-card[data-fc-view] :is(.clouds-layer, .stars-field) {
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 18%, transparent 30%), linear-gradient(90deg, transparent 42%, #000 60%);
-  mask-image: linear-gradient(180deg, #000 0, #000 18%, transparent 30%), linear-gradient(90deg, transparent 42%, #000 60%);
-  -webkit-mask-composite: source-in; mask-composite: intersect;
-}
 /* The tablet (900 px and up): the hero, the line, the hours and the chips on the left; the week, the readings and the way
    to Home Assistant on the right. Nothing scrolls. */
 @container awc (min-width: 900px) {
@@ -471,12 +466,6 @@ const WALL_CSS = `
 .fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-d-bar: 200px; --fc-bar: 8px; }
 .fw-week .fc-d-name { font-size: 17px; font-weight: 600; }
 .fw-week .fc-d-hi { font-weight: 500; }
-/* Clouds keep the open sky right of the lockup and above the line */
-.animated-weather-card[data-fw] :is(.clouds-layer, .stars-field) {
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 56%), linear-gradient(90deg, transparent 52%, #000 70%);
-  mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 56%), linear-gradient(90deg, transparent 52%, #000 70%);
-  -webkit-mask-composite: source-in; mask-composite: intersect;
-}
 .theme-colors .fw :is(.fw-clock, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }
 .theme-colors .fw-temp { color: var(--awc-hero-color, var(--primary-color)); }
 `;

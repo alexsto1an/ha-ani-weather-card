@@ -27,6 +27,7 @@ import { Model, buildModel, iconTints, valueText } from './fc-weather';
 import { SKY_GLOW, SKY_GLOW_WIDE, relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
 import type { Metric } from './fc-data';
+import { cloudFloor } from './cloud-band';
 import type { AnimatedWeatherCardConfig, HomeAssistant } from './types';
 
 export const VIEW = { grow: 420, shrink: 300, restFrom: 160, restStep: 28, restDur: 220, restRise: 6, restOut: 100, closeVelocity: 0.5, closeShare: 0.3 };
@@ -202,13 +203,21 @@ export function attachView(host: ForecastHost): ForecastExtras {
     el.awcView = api;
     return {
         levels: () => [], setLevel() {}, levelOk: () => true,
-        fitted() { hourly?.remeasure(); chips?.fit(); },
+        fitted() {
+            hourly?.remeasure();
+            chips?.fit();
+            // Clouds roam the whole sky above the hours, behind the hero's text, as on the card; on a tablet the week
+            // stands at the right from the top, so they keep to the upper third there, as its first rows allow
+            if (!fc.getClientRects().length) return;
+            const y = fc.getBoundingClientRect().top - root.getBoundingClientRect().top - 8;
+            cloudFloor(root, tablet() ? Math.min(y, root.clientHeight * 0.3) : y);
+        },
         update() {},
         seen() {},
         away: () => !!slide?.active(),
         conditionText: (s: string) => conditionNoun(s, host.hass(), x => host.conditionName(x)),
         open() {},
-        destroy() { ticker.stop(); slide?.destroy(); hourly?.destroy(); chips?.destroy(); daily?.destroy(); delete el.awcView; },
+        destroy() { ticker.stop(); slide?.destroy(); hourly?.destroy(); chips?.destroy(); daily?.destroy(); cloudFloor(root, null); delete el.awcView; },
     };
 }
 

@@ -11,6 +11,7 @@ import { litTints, GLYPH_CONTRAST } from '../../src/fc-glyphs';
 import { EMBER } from '../../src/fc-night';
 import { FORECAST_GLOW } from '../../src/fc-fcard';
 import { createGSAPCloud } from '../../src/gsap-effects';
+import { cloudFloor } from '../../src/cloud-band';
 import { FORECAST_CSS } from '../../src/fc-css';
 
 const text = oklchToSrgb(SKY_TEXT);
@@ -146,25 +147,57 @@ describe('the nightstand at night', () => {
     });
 });
 
-describe('no cloud\'s core and no star behind the forecast\'s data', () => {
-    it('with the forecast on, clouds and stars are masked to the open sky above its words and right of the hero', () => {
-        expect(FORECAST_CSS).toMatch(/\[data-fc\][^{]*:is\(\.clouds-layer, \.stars-field\) \{[^}]*mask-image: linear-gradient\(180deg[^}]*var\(--fy\)[^}]*linear-gradient\(90deg[^}]*--fc-floor-xl/);
+describe('no cloud and no star behind the row; the rest of the sky is theirs', () => {
+    it('with the forecast on, clouds and stars are masked only below the floor, never sideways', () => {
+        expect(FORECAST_CSS).toMatch(/\[data-cloud-band\] \.clouds-layer \{[^}]*mask-image: linear-gradient\(180deg[^}]*var\(--fc-floor-c/);
+        expect(FORECAST_CSS).toMatch(/\[data-cloud-band\] \.stars-field \{[^}]*mask-image: linear-gradient\(180deg[^}]*var\(--fc-floor-s/);
+        // They cross the whole width, behind the clock, the place and the temperature, as on today's card
+        expect(FORECAST_CSS).not.toMatch(/(clouds-layer|stars-field)[^{]*\{[^}]*90deg/);
+        expect(FORECAST_CSS).not.toMatch(/--fc-floor-xl/);
         expect(FORECAST_CSS).toMatch(/\[data-fc-card\][^{]*:is\(\.sun-track, \.clouds-container, \.stars-field/);
-        expect(FORECAST_CSS).toMatch(/\[data-fw\] :is\(\.clouds-layer, \.stars-field\) \{[^}]*mask-image/);
         expect(FORECAST_CSS).toMatch(/\[data-qn\] \.clouds-container \{[^}]*mask-image/);
     });
-    it('and they\'re born in that sky: a cloud band on the card keeps every cloud above it', () => {
+
+    type Gsap = { set: ReturnType<typeof vi.fn> };
+    const gsap = () => (window as unknown as { AnimatedWeatherCardGsap: Gsap }).AnimatedWeatherCardGsap;
+    function sky(band?: number) {
         const card = document.createElement('div');
         card.className = 'animated-weather-card';
-        card.dataset.cloudBand = '40';
+        if (band !== undefined) card.dataset.cloudBand = String(band);
         Object.defineProperty(card, 'offsetWidth', { value: 353 });
-        Object.defineProperty(card, 'offsetHeight', { value: 504 });
+        Object.defineProperty(card, 'offsetHeight', { value: 502 });
         const layer = document.createElement('div');
+        layer.className = 'clouds-layer';
+        Object.defineProperty(layer, 'clientHeight', { value: 502 });
         card.append(layer);
-        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { set: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
-        createGSAPCloud(layer, { windSpeed: 10, cloudCount: 4, cloudBaseSize: 1 }, 4, card, {});
-        const ys = gsap.set.mock.calls.map(c => c[1]?.y).filter((y: unknown): y is number => typeof y === 'number');
-        expect(ys.length).toBeGreaterThan(0);
-        for (const y of ys) expect(y).toBeLessThanOrEqual(40);
+        createGSAPCloud(layer, { windSpeed: 10, cloudCount: 6, cloudBaseSize: 1 }, 6, card, {});
+        const tracks = [...layer.querySelectorAll<HTMLElement>('.cloud-track')];
+        const yOf = (t: HTMLElement) => gsap().set.mock.calls.filter(c => c[0] === t && typeof c[1]?.y === 'number').at(-1)![1].y as number;
+        return { card, tracks, yOf };
+    }
+
+    it('they\'re born in that sky: every cloud whole above the floor, spread down to it', () => {
+        const { tracks, yOf } = sky(226);
+        expect(tracks.length).toBeGreaterThan(3);
+        for (const t of tracks) expect(yOf(t) + Number(t.dataset.awcB)).toBeLessThanOrEqual(226);
+        expect(Math.max(...tracks.map(yOf))).toBeGreaterThan(226 / 2);
+    });
+
+    it('without a floor, they ride as on today\'s card, down to 60% of its height', () => {
+        const { tracks, yOf } = sky();
+        for (const t of tracks) expect(yOf(t)).toBeLessThanOrEqual(0.6 * 502);
+        expect(Math.max(...tracks.map(yOf))).toBeGreaterThan(226);
+    });
+
+    it('a new floor moves the clouds already up into its sky, and none gives them back', () => {
+        const { card, tracks, yOf } = sky();
+        cloudFloor(card, 226);
+        expect(card.dataset.cloudBand).toBe('226');
+        expect(card.style.getPropertyValue('--fc-floor-c')).toBe('226px');
+        for (const t of tracks) expect(yOf(t) + Number(t.dataset.awcB)).toBeLessThanOrEqual(226);
+        cloudFloor(card, null);
+        expect(card.dataset.cloudBand).toBeUndefined();
+        expect(card.style.getPropertyValue('--fc-floor-c')).toBe('');
+        for (const t of tracks) expect(yOf(t)).toBeCloseTo(Number(t.dataset.awcF) * 0.6 * 502, 5);
     });
 });

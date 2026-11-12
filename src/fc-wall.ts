@@ -20,6 +20,7 @@ import { TimeText, minuteTicker } from './fc-clock';
 import { Model, buildModel, iconTints, valueText } from './fc-weather';
 import { SKY_GLOW_WIDE } from './sky';
 import { dropView, openView } from './fc-view';
+import { cloudFloor } from './cloud-band';
 
 export const isWall = (root: HTMLElement): boolean => root.clientWidth >= 640 && root.clientHeight >= 540;
 
@@ -126,7 +127,13 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         levels: () => ['wall'],
         setLevel() {},
         levelOk: () => true,
-        fitted() { hourly?.remeasure(); daily?.draw(); },
+        fitted() {
+            hourly?.remeasure();
+            daily?.draw();
+            // Clouds roam the open sky over the temperature and stop above the turning line
+            const next = fw.querySelector('.fw-next') as HTMLElement | null;
+            cloudFloor(root, next ? next.getBoundingClientRect().top - root.getBoundingClientRect().top - 8 : null);
+        },
         update() {
             const k = keyOf();
             if (k === key) return;
@@ -138,7 +145,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         away: () => !!slide?.active(),
         conditionText: () => null,
         open() { if (model) openView(host, { model, metric: 'temp', slots: slide?.slots() ?? 0, chipsLevel: 0, small: root }); },
-        destroy() { ticker.stop(); teardown(); fw.remove(); delete root.dataset.fw; dropView(el); },
+        destroy() { ticker.stop(); teardown(); fw.remove(); delete root.dataset.fw; cloudFloor(root, null); dropView(el); },
     };
     void fill;
 }

@@ -3,6 +3,7 @@
 import type { GSAPTimeline } from './types';
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { isValidColor } from './utils';
+import { cloudY } from './cloud-band';
 
 /** Leaf speed range in px/s at the default wind. */
 export const LEAF_SPEED: [number, number] = [90, 160];
@@ -354,8 +355,12 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             ];
             
             const topPosition = heightVariations[layerIndex][i - 1] || (15 + layerIndex * 10);
-            // With the forecast on, clouds are born in the open sky above its words (data-cloud-band, px)
-            const band = Number(cardElement.dataset?.cloudBand);
+            // How far down its sky the cloud rides, and how much of it hangs below that (its body and blur).
+            // With the forecast on, the sky ends above the row (data-cloud-band, px): the whole cloud stays above it.
+            const frac = topPosition / 60;
+            const bottom = shape.height + Math.max(reach, Math.ceil(blur * 3)) + 2;
+            const banded = Number(cardElement.dataset?.cloudBand);
+            const band = Number.isFinite(banded) && cardElement.dataset?.cloudBand !== undefined ? banded : null;
             
             // Start and end fully outside the card, by this much
             const margin = Math.max(150 + layerIndex * 50, extent + CLOUD_BLUR_PAD_PX);
@@ -369,12 +374,14 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             // out of sight. Both are transforms: no layout per frame.
             const track = document.createElement('div');
             track.className = 'cloud-track';
+            track.dataset.awcF = String(frac);
+            track.dataset.awcB = String(bottom);
             track.appendChild(cloud);
             window.AnimatedWeatherCardGsap.set(cloud, { opacity: layer.opacity });
             window.AnimatedWeatherCardGsap.set(track, {
                 xPercent: 0,
                 x: -margin,
-                y: band > 0 ? Math.min(1, topPosition / 45) * band : (cardHeight * topPosition) / 100,
+                y: cloudY(frac, bottom, band, cardHeight),
             });
 
             cloudLayer.appendChild(track);

@@ -21,6 +21,7 @@ import { Tints, litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { TimeText, minuteTicker } from './fc-clock';
 import { dropView, openView, prepareView } from './fc-view';
+import { cloudFloor } from './cloud-band';
 
 /** The share of a narrow card's height above which the row's first line can't sit (the light law) */
 const ROW_TOP_MIN = 0.43;
@@ -424,28 +425,11 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         if (fits('hl')) return;
         companion.dataset.show = 'none';
     }
-    /** No cloud's core and no star behind data: they keep the open sky above the condition's line, right of the hero's text */
+    /** No cloud and no star behind the row: they roam the whole sky above it, behind the hero's text as on today's card. With no row, today's sky */
     function floor() {
-        if (compact || !forecastOn() || !descRow) { root.style.removeProperty('--fc-floor-c'); delete root.dataset.cloudBand; return; }
-        const rr = root.getBoundingClientRect();
-        const y = descRow.getBoundingClientRect().top - 2;
-        const layer = root.querySelector('.clouds-layer') as HTMLElement | null, stars = root.querySelector('.stars-field') as HTMLElement | null;
-        const top = (e: HTMLElement | null, d: number) => (e ? e.getBoundingClientRect().top : rr.top - d);
-        root.style.setProperty('--fc-floor-c', `${Math.round(y - top(layer, root.hasAttribute('data-spill') ? 48 : 0))}px`);
-        root.style.setProperty('--fc-floor-s', `${Math.round(y - top(stars, 0))}px`);
-        const xl = Math.max(0, ...[loc, root.querySelector('.temperature') as HTMLElement | null].filter((e): e is HTMLElement => !!e && e.getClientRects().length > 0).map(e => e.getBoundingClientRect().right - rr.left)) + 12;
-        root.style.setProperty('--fc-floor-xl', `${Math.round(xl)}px`);
-        // Clouds are born in the sky above it; those already up are moved there
-        const band = Math.max(24, y - rr.top - 58);
-        if (root.dataset.cloudBand !== String(Math.round(band))) {
-            root.dataset.cloudBand = String(Math.round(band));
-            const gsap = window.AnimatedWeatherCardGsap;
-            const H = root.clientHeight || 1;
-            for (const t of root.querySelectorAll<HTMLElement>('.cloud-track')) {
-                if (t.dataset.awcY === undefined) t.dataset.awcY = String(gsap?.getProperty(t, "y") ?? 0);
-                gsap?.set(t, { y: Math.min(1, Number(t.dataset.awcY) / H / 0.45) * band });
-            }
-        }
+        if (compact || !forecastOn() || !sec || !['full', 'glyphs', 'row'].includes(level) || !sec.getClientRects().length) { cloudFloor(root, null); return; }
+        const top = sec.getBoundingClientRect().top + (parseFloat(getComputedStyle(sec).paddingTop) || 0);
+        cloudFloor(root, top - root.getBoundingClientRect().top - 6);
     }
     /** The turning line, whole or not at all, and only as far as the light allows: the long form, the short, or none; then what follows it */
     function fitLine() {
@@ -554,8 +538,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             ticker.stop();
             clock?.finish();
             teardownForecast();
-            root.style.removeProperty('--fc-floor-c');
-            delete root.dataset.cloudBand;
+            cloudFloor(root, null);
         },
     };
 }

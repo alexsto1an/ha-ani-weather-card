@@ -8,7 +8,7 @@ import { glyph, glyphKey, GLYPH_KEYS, litTints } from '../../src/fc-glyphs';
 import { Timeline } from '../../src/fc-core';
 import { hours } from '../../src/fc-data';
 import { FC_WORDS } from '../../src/fc-words';
-import type { ForecastHost } from '../../src/forecast-host';
+import type { ForecastExtras, ForecastHost } from '../../src/forecast-host';
 import type { ForecastEntry } from '../../src/forecast-data';
 
 const HOUR = 3600_000;
@@ -73,6 +73,25 @@ describe('the forecast on the weather card', () => {
         expect(slider.getAttribute('aria-valuetext')).toMatch(/^Now: Partly cloudy, 21°/);
         // The condition is the forecast's noun at rest too
         expect(card.querySelector('.weather-desc')?.textContent).toBe('Partly cloudy');
+    });
+
+    it('keeps the clouds above the row, and with no row gives the card today\'s sky', async () => {
+        const card = mount({ show_forecast: true });
+        await settle();
+        const root = card.querySelector('.animated-weather-card') as HTMLElement;
+        const sec = root.querySelector('.fc-section') as HTMLElement;
+        const extras = (card as unknown as { extras: ForecastExtras }).extras;
+        // jsdom lays nothing out: the row starts 232 px down the card
+        vi.spyOn(sec, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+        vi.spyOn(sec, 'getBoundingClientRect').mockReturnValue({ top: 232, left: 0, right: 353, bottom: 360, width: 353, height: 128 } as DOMRect);
+        extras.setLevel('full');
+        extras.fitted();
+        expect(root.dataset.cloudBand).toBe('226');
+        expect(root.style.getPropertyValue('--fc-floor-c')).toBe('226px');
+        extras.setLevel('none');
+        extras.fitted();
+        expect(root.dataset.cloudBand).toBeUndefined();
+        expect(root.style.getPropertyValue('--fc-floor-c')).toBe('');
     });
 
     it('starts the row on forecast_metric', async () => {
