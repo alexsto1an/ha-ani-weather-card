@@ -52,6 +52,9 @@ const PARTS = `
 /* ── The chips: one white capsule, words beside it. No outline, no track, no glass. ── */
 .fc-chips { position: relative; display: block; height: var(--fc-chip-h, 28px); margin-top: var(--fc-chips-gap, 10px); }
 .fc-chips-row, .fc-chips-sel { display: flex; height: 100%; align-items: stretch; white-space: nowrap; }
+/* Centred under the row, by auto margins rather than justify-content: where the words don't fit, they start at the edge, never cut at both */
+.fc-chips-row > .fc-chip:first-child, .fc-chips-sel > .fc-chip:first-child { margin-left: auto; }
+.fc-chips-row > .fc-chip:last-child, .fc-chips-sel > .fc-chip:last-child { margin-right: auto; }
 .fc-chips-sel {
   position: absolute; inset: 0; pointer-events: none; background: currentColor; text-shadow: none;
   clip-path: inset(0 100% 0 0 round 999px); -webkit-clip-path: inset(0 100% 0 0 round 999px);
@@ -72,10 +75,10 @@ const PARTS = `
 .fc-chips-row .fc-chip:focus-visible { box-shadow: 0 0 0 2px var(--awc-sky-top, #16283f), 0 0 0 4px currentColor; }
 .fc-chips-sel .fc-chip { color: var(--awc-sky-top, #16283f); cursor: default; text-shadow: none; }
 
-/* ── The daily list ── */
+/* ── The daily list: name, icon and low at their own widths, the bar taking what's left, so the low sits by the icon ── */
 .fc-daily { display: grid; row-gap: 0; }
 .fc-day {
-  display: grid; grid-template-columns: var(--fc-d-day, 40px) var(--fc-d-glyph, 20px) minmax(var(--fc-d-lo, 34px), 1fr) minmax(0, var(--fc-d-bar, 151px)) var(--fc-d-hi, 34px);
+  display: grid; grid-template-columns: var(--fc-d-day, 40px) var(--fc-d-glyph, 20px) var(--fc-d-lo, 34px) minmax(0, 1fr) var(--fc-d-hi, 34px);
   column-gap: var(--fc-d-gap, 10px); align-items: center; height: var(--fc-d-row, 32px);
   font-size: var(--fc-d-size, 15px); line-height: var(--fc-d-lh, 20px); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
@@ -213,11 +216,14 @@ const CARD_CSS = `
 .awc-cond { display: inline-block; min-width: var(--awc-cond-w, 0); }
 .theme-colors .awc-hl-pair b { color: var(--secondary-text-color); }
 
-/* ── The turning line leads the line under the condition, full strength (it runs toward the light); feels like is a chip now ── */
-.hero-meta:has(> .awc-line:not(:empty)) { opacity: 1; }
+/* ── The turning line leads the line under the condition, full strength (it runs toward the light); feels like is a chip now.
+   With a note shown, the note tells what's coming: the turning line steps aside, and the line is today's again. ── */
+.animated-weather-card:not([data-note="long"]):not([data-note="line"]) .hero-meta:has(> .awc-line:not(:empty)) { opacity: 1; }
 .hero-meta > .awc-line { font-weight: 500; white-space: nowrap; }
-.hero-meta:has(> .awc-line:not(:empty)) > .feels-like { display: none; }
-.hero-meta:has(> .awc-line:not(:empty)) > :not(.awc-line) { opacity: var(--awc-secondary, 0.8); }
+.animated-weather-card:not([data-note="long"]):not([data-note="line"]) .hero-meta:has(> .awc-line:not(:empty)) > .feels-like { display: none; }
+.animated-weather-card:not([data-note="long"]):not([data-note="line"]) .hero-meta:has(> .awc-line:not(:empty)) > :not(.awc-line) { opacity: var(--awc-secondary, 0.8); }
+.animated-weather-card:is([data-note="long"], [data-note="line"]) .hero-meta > .awc-line { display: none !important; }
+.animated-weather-card:is([data-note="long"], [data-note="line"]) .hero-meta:not(:has(> :not(.awc-line))) { display: none; }
 .animated-weather-card[data-fc]:is([data-height="compact"], [data-height="short"]) .hero-meta:has(> .awc-line:not(:empty)) { display: flex; }
 .animated-weather-card[data-fc]:is([data-fc="row"], [data-fc="bare"]) .hero-meta { display: none !important; }
 .theme-colors .hero-meta > .awc-line { color: var(--primary-text-color); }
@@ -287,10 +293,10 @@ const FCARD_CSS = `
 .fc-fcard .fc-daily { margin-top: 14px; }
 .fc-fcard[data-variant="regular"] .fc-daily { margin-top: auto; padding-bottom: 12px; }
 .fc-day[hidden] { display: none; }
-/* Wide: the hours on the left, the week on the right. Bars capped at 200 px: longer, a range reads as a progress bar. */
+/* Wide: the hours on the left, the week on the right, in a 320 px column that keeps the bars short */
 .fc-fcard[data-variant="wide"] { display: grid; grid-template-columns: minmax(0, 1fr) 320px; column-gap: 44px; padding-top: 20px; padding-bottom: 14px; }
 .fc-fcard[data-variant="wide"] .fc-left { min-width: 0; --fc-bleed: 20px; }
-.fc-fcard[data-variant="wide"] .fc-daily { margin-top: 0; align-self: center; --fc-d-row: 30px; --fc-d-bar: 200px; }
+.fc-fcard[data-variant="wide"] .fc-daily { margin-top: 0; align-self: center; --fc-d-row: 30px; }
 /* The strip: labels, icons and the line with its values. No chips, no words: the compact weather card above says now. */
 .fc-fcard[data-variant="strip"] { padding-top: 16px; --fc-glyph-gap: 4px; --fc-cols-h: 36px; --fc-plot-gap: 2px; --fc-mid-h: 84px; }
 .fc-fcard[data-variant="strip"] .fc-needle { top: -6px; }
@@ -320,7 +326,7 @@ const VIEW_CSS = `
   mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - env(safe-area-inset-bottom, 0px) - 24px), transparent calc(100% - env(safe-area-inset-bottom, 0px)));
 }
 .fv-list::-webkit-scrollbar { display: none; }
-.fv-list .fc-daily { --fc-d-row: 40px; --fc-d-bar: 180px; }
+.fv-list .fc-daily { --fc-d-row: 40px; }
 .fv-now { margin-top: 22px; }
 .fv-head { margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
 .fv-readings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 14px; margin-top: 10px; }
@@ -359,7 +365,7 @@ const VIEW_CSS = `
   .animated-weather-card[data-fc-view] .awc-companion { font-size: 21px; line-height: 26px; }
   .animated-weather-card[data-fc-view] .hero-meta { margin-top: auto; font-size: 48px; line-height: 53px; letter-spacing: -0.02em; }
   .animated-weather-card[data-fc-view] .hero-meta > .awc-line { font-weight: 400; white-space: normal; text-wrap: balance; }
-  .fv-list .fc-daily { --fc-d-row: 44px; --fc-d-bar: 200px; --fc-d-size: 17px; --fc-d-lh: 22px; --fc-d-day: 48px; }
+  .fv-list .fc-daily { --fc-d-row: 44px; --fc-d-size: 17px; --fc-d-lh: 22px; --fc-d-day: 48px; }
   .fv-readings { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; }
   .fv-more { margin-top: auto; flex: none; }
   .fv-close { top: 22px; right: 22px; }
@@ -481,7 +487,7 @@ const WALL_CSS = `
 .fw-hours { min-width: 0; --fc-label: 21px; --fc-label-lh: 26px; --fc-value: 40px; --fc-value-lh: 44px; --fc-value-w: 500; --fc-cols-h: 64px; --fc-glyph-gap: 6px; --fc-plot-gap: 8px; --fc-stroke: 4px; --fc-mid-h: 140px; --fc-bleed: 28px; }
 .fw-hours .fc-hr { font-weight: 500; letter-spacing: 0; opacity: 0.8; }
 .fw-hours .fc-needle { top: -10px; width: 3px; height: 7px; }
-.fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-d-bar: 200px; --fc-bar: 8px; }
+.fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-bar: 8px; }
 .fw-week .fc-d-name { font-size: 17px; font-weight: 600; }
 .fw-week .fc-d-hi { font-weight: 500; }
 .theme-colors .fw :is(.fw-clock, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }

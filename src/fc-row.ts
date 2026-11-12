@@ -101,6 +101,14 @@ export interface Hourly {
     destroy(): void;
 }
 
+/**
+ * How many hours a row shows across a width: one about every 54 px, so a wider card shows more hours rather than
+ * wider gaps between them, and never fewer than a phone's six (eight on a wide card)
+ */
+export function hourCols(width: number, min: number): number {
+    return Math.max(min, Math.round(width / 54));
+}
+
 export function createHourly(o: HourlyOptions): Hourly {
     const W = o.W;
     const hrs = o.hours.map(h => ({ ...h }));

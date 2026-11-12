@@ -20,7 +20,7 @@ import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
 import { conditionNoun, dayName, timeHtml, week } from './fc-data';
 import { fcWords } from './fc-words';
-import { Chips, Daily, Hourly, createChips, createDaily, createHourly } from './fc-row';
+import { Chips, Daily, Hourly, createChips, createDaily, createHourly, hourCols } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { minuteTicker } from './fc-clock';
@@ -91,8 +91,8 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         if (showHours && m.hours.length) {
             const pad = parseFloat(getComputedStyle(card).paddingLeft) || 20;
             const rw = wide() ? Math.max(200, root.clientWidth * 0.5) : (root.clientWidth || 353) - 2 * pad;
-            const cols = wide() ? 8 : 6;
             // The strip's first and last labels sit on the compact weather card's text edges
+            const cols = strip ? hourCols(rw - 20, 5) + 1 : hourCols(rw, wide() ? 8 : 6);
             const pitch = strip ? (rw - 20) / (cols - 1) : rw / cols;
             const tints = iconTints(host, m, { y0: strip ? 0.2 : 0.16, y1: strip ? 0.6 : 0.36, glow: FORECAST_GLOW, reach: cols });
             metric = m.metrics.includes(metric) ? metric : (m.metrics[0] ?? 'temp');

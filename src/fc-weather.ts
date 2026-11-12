@@ -17,7 +17,7 @@ import { SKY_GLOW, SKY_GLOW_WIDE, sampleSkyAt, relativeLuminance, type SkyCondit
 import { HOUR, Slot, Timeline, classOf, clamp, esc, num, ownControl, sunModel, wetNoun, phaseWeights } from './fc-core';
 import { HourRow, METRICS, Metric, TurningLine, available, conditionNoun, highLow, hours, relative, timeHtml, timeParts, timeText, turningLine, dayName } from './fc-data';
 import { FcWords, fcWords, fill } from './fc-words';
-import { Chips, Hourly, Noun, createChips, createHourly } from './fc-row';
+import { Chips, Hourly, Noun, createChips, createHourly, hourCols } from './fc-row';
 import { Tints, litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { TimeText, minuteTicker } from './fc-clock';
@@ -226,7 +226,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             const pad = parseFloat(getComputedStyle(info).paddingLeft) || 20;
             const w = wide() ? Math.min(hero.clientWidth || 448, 448) : (root.clientWidth || 353) - 2 * pad;
             if (wide()) sec.style.width = `${w}px`;
-            const cols = wide() ? 8 : 6;
+            const cols = hourCols(w, wide() ? 8 : 6);
             tintsFor = iconTints(host, m, { y0: 0.5, y1: 0.66, glow: wide() ? SKY_GLOW_WIDE : SKY_GLOW, reach: cols });
             hourly = createHourly({
                 hass: host.hass(), W, lang: m.lang, hours: m.hours, current: current(), metric, has: m.has, noun: m.noun,
@@ -415,6 +415,8 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         return true;
     }
     /** Whole or not at all: the companion shows the line only if it fits, else H and L, else nothing */
+    /** A note is shown: it tells what's coming, so the turning line steps aside */
+    const noted = () => root.dataset.note === 'long' || root.dataset.note === 'line';
     function fitCompanion() {
         if (!companion || !descRow || root.dataset.awcAway) return;
         const tight = ['tight', 'minimal'].includes(root.dataset.height ?? '') || level === 'bare';
@@ -422,7 +424,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         const mw = parseFloat(getComputedStyle(descRow).maxWidth);
         const limit = descRow.getBoundingClientRect().left + (isFinite(mw) ? mw : hero.clientWidth);
         const fits = (v: string) => { companion!.dataset.show = v; return !!desc && companion!.offsetTop <= desc.offsetTop + 4 && companion!.getBoundingClientRect().right <= limit - 4; };
-        if (tight && companion.querySelector('[data-v="line"]') && fits('line')) return;
+        if (tight && !noted() && companion.querySelector('[data-v="line"]') && fits('line')) return;
         if (fits('hl')) return;
         companion.dataset.show = 'none';
     }
@@ -444,7 +446,10 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         if (!lineEl || !model || root.dataset.awcAway || !descRow) return;
         const l = model.lineAt(0);
         const meta = lineEl.parentElement as HTMLElement | null;
-        if (!l || !meta || !meta.getClientRects().length) return;
+        if (!l || !meta) return;
+        // With a note shown, the turning line steps aside (CSS, on data-note) and the line under the condition is today's
+        if (noted()) { for (const e of [...meta.children] as HTMLElement[]) e.style.display = ''; return; }
+        if (!meta.getClientRects().length) return;
         const mw = parseFloat(getComputedStyle(descRow).maxWidth);
         const limit = meta.getBoundingClientRect().left + (isFinite(mw) ? mw : meta.clientWidth) - 4;
         lineEl.style.display = '';

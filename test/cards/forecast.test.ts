@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import '../../src/animated-weather-card';
 import '../../src/animated-weather-card-forecast';
 import { attachSlide, SLIDE } from '../../src/fc-slide';
-import { createChips, createHourly } from '../../src/fc-row';
+import { createChips, createHourly, hourCols } from '../../src/fc-row';
 import { TimeText } from '../../src/fc-clock';
 import { glyph, glyphKey, GLYPH_KEYS, litTints } from '../../src/fc-glyphs';
 import { Timeline } from '../../src/fc-core';
@@ -89,6 +89,47 @@ describe('the forecast on the weather card', () => {
         expect(css).toMatch(/\.weather-attributes ~ \.fc-section::before \{[^}]*height: 1px;[^}]*opacity: 0\.2;/);
         expect(css).toMatch(/:is\(\[data-fc="full"\], \[data-fc="glyphs"\], \[data-fc="row"\]\) \.weather-attributes:has\(~ \.fc-section\)::before \{ content: none; \}/);
         expect(css).toMatch(/\.weather-attributes ~ \.fc-section \{[^}]*padding-top: calc\(14px \+ var\(--fc-sec-top, 0px\)\)/);
+    });
+
+    it('steps the turning line aside while a note shows: the note tells what\'s coming, and the line is today\'s again', async () => {
+        const hass = makeHass();
+        (hass.states as Record<string, unknown>)['sensor.note'] = { entity_id: 'sensor.note', state: 'Dry until evening.', attributes: { note: 'Dry until evening, then rain by night.' } };
+        const card = mount({ show_forecast: true, note_entity: 'sensor.note' }, hass);
+        await settle();
+        const root = card.querySelector('.animated-weather-card') as HTMLElement;
+        expect(root.dataset.note).toBe('long');
+        const css = card.querySelector('style.awc-fc-css')?.textContent ?? '';
+        expect(css).toMatch(/:is\(\[data-note="long"\], \[data-note="line"\]\) \.hero-meta > \.awc-line \{ display: none !important; \}/);
+        // Feels like and the quiet tint come back only beside a note
+        expect(css).toMatch(/:not\(\[data-note="long"\]\):not\(\[data-note="line"\]\) \.hero-meta:has\(> \.awc-line:not\(:empty\)\) > \.feels-like \{ display: none; \}/);
+        // The fit leaves what follows the line alone, even what it hid before the note came
+        const feels = card.querySelector('.hero-meta .feels-like') as HTMLElement;
+        feels.style.display = 'none';
+        (card as unknown as { extras: ForecastExtras }).extras.fitted();
+        expect(feels.style.display).toBe('');
+        // Beside the condition too: on a tight card everything fits (jsdom: 300 px wide), yet the companion keeps to H and L
+        const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300);
+        root.dataset.height = 'tight';
+        (card as unknown as { extras: ForecastExtras }).extras.fitted();
+        expect(card.querySelector('.awc-companion')?.getAttribute('data-show')).toBe('hl');
+        width.mockRestore();
+    });
+
+    it('fits more hours across a wider card, never fewer than six (eight wide); centres the chips; gives the days\' free width to the bar', () => {
+        expect(hourCols(313, 6)).toBe(6);    // a phone: 52 px an hour, as before
+        expect(hourCols(438, 6)).toBe(8);    // a desktop column: 55 px, not 73
+        expect(hourCols(470, 6)).toBe(9);
+        expect(hourCols(200, 6)).toBe(6);
+        expect(hourCols(448, 8)).toBe(8);
+        expect(hourCols(300, 8)).toBe(8);
+        const card = mount({ show_forecast: true });
+        return settle().then(() => {
+            const css = card.querySelector('style.awc-fc-css')?.textContent ?? '';
+            expect(css).toMatch(/\.fc-chips-row > \.fc-chip:first-child, \.fc-chips-sel > \.fc-chip:first-child \{ margin-left: auto; \}/);
+            expect(css).toMatch(/\.fc-chips-row > \.fc-chip:last-child, \.fc-chips-sel > \.fc-chip:last-child \{ margin-right: auto; \}/);
+            expect(css).toMatch(/\.fc-day \{\s*display: grid; grid-template-columns: var\(--fc-d-day, 40px\) var\(--fc-d-glyph, 20px\) var\(--fc-d-lo, 34px\) minmax\(0, 1fr\) var\(--fc-d-hi, 34px\);/);
+            expect(css).not.toMatch(/--fc-d-bar/);
+        });
     });
 
     it('keeps the clouds above the readings, and with no row gives the card today\'s sky', async () => {
