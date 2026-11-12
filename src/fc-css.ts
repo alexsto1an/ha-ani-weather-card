@@ -226,7 +226,15 @@ const CARD_CSS = `
    below. The readings keep today's place (pushed to the bottom); the section follows them at the card's gap, and
    takes the free space itself only when there are no readings. ── */
 .fc-section { position: relative; flex: none; margin-top: auto; padding-top: var(--fc-sec-top, 0px); --fc-cols-h: 42px; --fc-mid-h: 90px; }
-.weather-attributes ~ .fc-section { margin-top: 0; }
+/* With the row shown, the divider moves from above the readings to between them and the row, with the readings'
+   own spacing (14 px under the line, 10 at close), so the card's height and its fit don't change. Where the row
+   gives way, the divider is back above the readings, carrying the rail. */
+.weather-attributes ~ .fc-section { margin-top: 0; padding-top: calc(14px + var(--fc-sec-top, 0px)); }
+.weather-attributes ~ .fc-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: currentColor; opacity: 0.2; }
+.animated-weather-card[data-height="close"] .weather-attributes ~ .fc-section { padding-top: calc(10px + var(--fc-sec-top, 0px)); }
+.animated-weather-card:is([data-fc="full"], [data-fc="glyphs"], [data-fc="row"]) .weather-attributes:has(~ .fc-section) { padding-top: 0; }
+.animated-weather-card:is([data-fc="full"], [data-fc="glyphs"], [data-fc="row"]) .weather-attributes:has(~ .fc-section)::before { content: none; }
+.theme-colors .weather-attributes ~ .fc-section::before { background: var(--divider-color, rgba(0, 0, 0, 0.12)); opacity: 1; }
 @container awc (min-width: 640px) { .fc-section { margin-top: 16px; align-self: flex-start; --fc-bleed: 20px; } }
 .animated-weather-card:is([data-fc="none"], [data-fc="bare"]) .fc-section { display: none; }
 .animated-weather-card:is([data-fc="row"], [data-fc="glyphs"]) .fc-section .fc-chips { display: none; }

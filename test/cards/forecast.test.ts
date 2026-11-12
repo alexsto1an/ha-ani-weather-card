@@ -84,6 +84,11 @@ describe('the forecast on the weather card', () => {
         expect(sec.parentElement).toBe(info);
         expect(info.lastElementChild).toBe(sec);
         expect(sec.previousElementSibling?.classList.contains('weather-attributes')).toBe(true);
+        // The divider moves with it: between the readings and the row while the row shows, above the readings (the rail's) where it gives way
+        const css = card.querySelector('style.awc-fc-css')?.textContent ?? '';
+        expect(css).toMatch(/\.weather-attributes ~ \.fc-section::before \{[^}]*height: 1px;[^}]*opacity: 0\.2;/);
+        expect(css).toMatch(/:is\(\[data-fc="full"\], \[data-fc="glyphs"\], \[data-fc="row"\]\) \.weather-attributes:has\(~ \.fc-section\)::before \{ content: none; \}/);
+        expect(css).toMatch(/\.weather-attributes ~ \.fc-section \{[^}]*padding-top: calc\(14px \+ var\(--fc-sec-top, 0px\)\)/);
     });
 
     it('keeps the clouds above the readings, and with no row gives the card today\'s sky', async () => {

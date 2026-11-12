@@ -428,7 +428,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
     }
     /**
      * No cloud and no star behind the data: they roam the whole sky above it, behind the hero's text as on today's
-     * card. Narrow, the row sits under the readings, so the floor is the readings' divider; wide, the readings stand
+     * card. Narrow, the row sits under the readings, so the floor is the readings' top; wide, the readings stand
      * beside the hero and the floor is the row's top. With no row, today's sky
      */
     function floor() {
