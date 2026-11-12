@@ -56,7 +56,7 @@ const COLOR_VARS: Record<string, string> = {
     cf: '--awc-cloud-far', cm: '--awc-cloud-mid', cn: '--awc-cloud-near',
 };
 const SKY_KEYS = ['top', 'mid', 'bottom', 'glow', 'scrim'] as const;
-const NUMS = ['sun', 'drop', 'rain', 'snow', 'sleet', 'clouds', 'lightning', 'stars'] as const;
+const NUMS = ['sun', 'drop', 'rain', 'snow', 'sleet', 'clouds', 'fog', 'wind', 'lightning', 'stars'] as const;
 type Picture = { sky: Record<string, Lab>; cols: Record<string, Lab>; n: Record<string, number> };
 const PHASE_LAB = {} as Record<SkyPhase, Record<string, Lab>>;
 for (const ph of ['day', 'dawn', 'dusk', 'night'] as SkyPhase[]) {
@@ -242,9 +242,12 @@ export function attachSlide(o: SlideOptions): Slide {
             const ty = m && m !== 'none' ? parseFloat(m.split(',')[5]) : 0;
             drop = track.clientHeight ? (ty / track.clientHeight) * 100 / (o.dropScale ?? 1) : 0;
         }
-        const n: Record<string, number> = { sun: 1, drop };
+        // The sun as the card shows it now: its class's opacity, none under fog, rain or at night
+        const sunEl = track?.querySelector('.sun') as HTMLElement | null;
+        const sun = sunEl ? parseFloat(getComputedStyle(sunEl).opacity) : 0;
+        const n: Record<string, number> = { sun: Number.isFinite(sun) ? sun : 0, drop };
         const layers = host.layers();
-        for (const name of ['rain', 'snow', 'sleet', 'clouds', 'lightning', 'stars']) {
+        for (const name of [...LAYER_NAMES, 'stars']) {
             activeAtHome[name] = !!layers?.animations[name]?.isActive && !started.includes(name);
             n[name] = activeAtHome[name] ? 1 : 0;
         }
@@ -288,7 +291,7 @@ export function attachSlide(o: SlideOptions): Slide {
             const layer = (name: string) => LAYER_OF[name][s.cls] ?? 0;
             const n: Record<string, number> = {
                 sun: layer('sun') * smooth(-2, 3, elevation), drop: sunDrop(elevation),
-                rain: layer('rain'), snow: layer('snow'), sleet: layer('sleet'), clouds: layer('clouds'), lightning: layer('lightning'),
+                rain: layer('rain'), snow: layer('snow'), sleet: layer('sleet'), clouds: layer('clouds'), fog: layer('fog'), wind: layer('wind'), lightning: layer('lightning'),
                 stars: layer('stars') * pw.night,
             };
             pictures.set(k, { sky: skyMix, cols, n });
@@ -329,6 +332,9 @@ export function attachSlide(o: SlideOptions): Slide {
         state.active = true;
         home = readHome();
         pictures.clear();
+        // The pull's sun starts where the card's is, before the class that hands it to the slide
+        const track = root.querySelector('.sun-track') as HTMLElement | null;
+        track?.style.setProperty('--awc-pull-sun', clamp(home.n.sun).toFixed(3));
         root.classList.add('awc-pulling');
         pxs = pxPerSlot();
         void prewarm();

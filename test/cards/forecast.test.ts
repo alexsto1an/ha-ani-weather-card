@@ -160,16 +160,16 @@ describe('the forecast card', () => {
 
 describe('the slide: it stays where it\'s left', () => {
     beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] }));
-    function rig() {
+    function rig({ html = '', layers }: { html?: string; layers?: unknown } = {}) {
         const root = document.createElement('div');
         root.className = 'animated-weather-card';
-        root.innerHTML = '<div class="sky"></div><div class="weather-info"></div>';
+        root.innerHTML = `<div class="sky"></div>${html}<div class="weather-info"></div>`;
         document.body.append(root);
         mounted.push(root);
         const tl = new Timeline(forecast(), 'hourly', Date.now());
         const host = {
             element: root, surface: 'card', config: () => ({ entity: 'weather.home' }), hass: () => makeHass(),
-            forecast: () => ({ hourly: null, daily: null, dailyType: null, settled: true }), layers: () => undefined,
+            forecast: () => ({ hourly: null, daily: null, dailyType: null, settled: true }), layers: () => layers,
             skyColors: () => ({ top: '#203050', mid: '#304060', bottom: '#405070', glow: 'rgba(255,255,255,0.3)', scrim: 'rgba(0,0,0,0.2)' }),
             phase: () => 'day', current: () => 21, temperature: (v: number) => String(Math.round(v)), conditionName: (s: string) => s,
             fit() {}, refresh() {}, seen: () => true, still: () => false, moreInfo() {},
@@ -195,6 +195,55 @@ describe('the slide: it stays where it\'s left', () => {
         };
         return { root, slide, offsets, slots, drag, pointer };
     }
+
+    it('under fog, the sun stays hidden as the drag starts, and the fog leaves at the hours without it', () => {
+        // The card under fog: its sun hidden by its class, its fog running
+        const layers = { animations: { fog: { isActive: true } }, startAnimation: async () => {}, stopAnimation: async () => {} };
+        const { root, slide, drag } = rig({ html: '<div class="sun-track"><div class="sun" style="opacity: 0"></div></div><div class="animation-container fog-container"><i></i></div>', layers });
+        const track = root.querySelector('.sun-track') as HTMLElement;
+        const fog = root.querySelector('.fog-container') as HTMLElement;
+        const pointer = (type: string, x: number) => {
+            const e = new MouseEvent(type, { clientX: x, clientY: 100, bubbles: true, cancelable: true, button: 0 });
+            Object.defineProperty(e, 'pointerId', { value: 1 });
+            Object.defineProperty(e, 'isPrimary', { value: true });
+            Object.defineProperty(e, 'timeStamp', { value: performance.now() });
+            root.dispatchEvent(e);
+        };
+        pointer('pointerdown', 300);
+        pointer('pointermove', 285);
+        vi.advanceTimersByTime(16);
+        expect(root.classList.contains('awc-pulling')).toBe(true);
+        expect(track.style.getPropertyValue('--awc-pull-sun')).toBe('0.000');
+        pointer('pointerup', 285);
+        vi.advanceTimersByTime(2000);
+        drag(-160);
+        vi.advanceTimersByTime(2000);
+        // Three hours on the sample is cloudy: no fog
+        expect(slide.slots()).toBe(3);
+        expect(parseFloat(fog.style.opacity)).toBeLessThan(0.05);
+        expect(parseFloat(track.style.getPropertyValue('--awc-pull-sun'))).toBeLessThan(0.05);
+    });
+
+    it('every layer the card runs for a condition is one the slide fades', async () => {
+        const { WeatherAnimationController } = await import('../../src/animation-controller');
+        const { LAYER_NAMES, LAYER_OF, classOf } = await import('../../src/fc-core');
+        const el = document.createElement('div');
+        const mappings = (new WeatherAnimationController(el, {} as never) as unknown as { defaultWeatherMappings: Record<string, { animations: string[] }> }).defaultWeatherMappings;
+        const reachable = new Set(['sunny', 'clear-night', 'partlycloudy', 'cloudy', 'fog', 'rainy', 'pouring', 'lightning', 'lightning-rainy', 'snowy', 'snowy-rainy', 'hail', 'windy', 'windy-variant'].map(classOf));
+        for (const cls of reachable) {
+            for (const name of mappings[cls].animations) {
+                if (name === 'sun' || name === 'stars') continue;
+                expect(LAYER_NAMES as readonly string[], `${cls} runs ${name}`).toContain(name);
+                expect(LAYER_OF[name][cls] ?? 0, `${cls} shows ${name}`).toBeGreaterThan(0);
+            }
+            // And nothing the card doesn't run: the sun only where the card shows it
+            for (const name of LAYER_NAMES) if ((LAYER_OF[name][cls] ?? 0) > 0) expect(mappings[cls].animations, `${name} for ${cls}`).toContain(name);
+        }
+        // Stars only on a clear night, as the card shows them
+        for (const cls of reachable) if (cls !== 'sunny') expect((LAYER_OF.stars[cls] ?? 0) > 0, `stars for ${cls}`).toBe(mappings[cls].animations.includes('stars'));
+        expect(LAYER_OF.sun.foggy ?? 0).toBe(0);
+        expect(LAYER_OF.sun.windy ?? 0).toBe(0);
+    });
 
     it('a lift leaves the card at the nearest hour, and the next drag continues from there', () => {
         const { slide, slots, drag } = rig();

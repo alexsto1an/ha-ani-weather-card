@@ -19,19 +19,27 @@ const CLASS_OF: Record<string, string> = {
 };
 export const classOf = (condition: string | undefined): string => (condition && Object.prototype.hasOwnProperty.call(CLASS_OF, condition) ? CLASS_OF[condition] : 'sunny');
 
-/** How much of each of the card's layers a sky class shows */
+/**
+ * How much of each of the card's layers a sky class shows, as the card itself
+ * shows it: the sun at the opacities styles/card.ts gives it (none when windy,
+ * foggy or wet), and every layer its animation table runs for the class.
+ */
 export const LAYER_OF: Record<string, Record<string, number>> = {
-    sun: { sunny: 1, 'partly-cloudy': 0.85, windy: 0.9 },
+    sun: { sunny: 1, 'partly-cloudy': 0.85 },
     clouds: { 'partly-cloudy': 1, cloudy: 1 },
     rain: { rainy: 1, pouring: 1, stormy: 1, 'snowy-rainy': 0.7 },
     snow: { snowy: 1, 'snowy-rainy': 0.8 },
     sleet: { sleety: 1 },
-    stars: { 'clear-night': 1, 'partly-cloudy': 0.35, sunny: 1, windy: 0.6 },
+    fog: { foggy: 1 },
+    wind: { windy: 1 },
+    stars: { 'clear-night': 1, sunny: 1 },     // sunny is a clear night's day: picture() swaps it by phase
     lightning: { stormy: 1 },
 };
-export const LAYER_NAMES = ['rain', 'snow', 'sleet', 'clouds', 'lightning'] as const;
+/** The layers the slide fades by their container; the sun and the stars have their own writes */
+export const LAYER_NAMES = ['rain', 'snow', 'sleet', 'clouds', 'fog', 'wind', 'lightning'] as const;
 export const CONTAINER: Record<string, string> = {
-    rain: '.rain-container', snow: '.snow-container', sleet: '.sleet-container', clouds: '.clouds-container', lightning: '.lightning-container',
+    rain: '.rain-container', snow: '.snow-container', sleet: '.sleet-container', clouds: '.clouds-container',
+    fog: '.fog-container', wind: '.wind-container', lightning: '.lightning-container',
 };
 
 const WET = new Set(['rainy', 'pouring', 'lightning-rainy', 'snowy', 'snowy-rainy', 'hail']);

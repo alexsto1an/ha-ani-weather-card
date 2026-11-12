@@ -338,7 +338,7 @@ forecast_metric: chance  # temp, feels, chance or amount
 
 **Drag through the hours.**
 
-- **The card goes there.** Drag the card sideways, on the row, on a chip or anywhere else on it, and the row moves under a fixed needle. The card's real sky, its light, sun, clouds, rain, snow and lightning, the temperature, the condition, the line on what turns, and the humidity, wind and pressure go to the hour under it. Where the row has given way, a thin rail on the divider is the ruler.
+- **The card goes there.** Drag the card sideways, on the row, on a chip or anywhere else on it, and the row moves under a fixed needle. The card's real sky, its light, sun, clouds, fog, wind, rain, snow and lightning, the temperature, the condition, the line on what turns, and the humidity, wind and pressure go to the hour under it. Where the row has given way, a thin rail on the divider is the ruler.
 - **It stays where you leave it.** A slow lift settles on the nearest hour. A flick carries on, the way a list does, and lands on the hour it was heading for. The next drag continues from there, so a few swipes reach two days ahead.
 - **It says so.** While the card shows another hour, the location line becomes "‹ Now  16:00  in 3 hr.": the Now control, the hour, and how far ahead it is. Today's high and low step out, and the hour's chance of rain takes their place.
 - **Coming home.** The card comes back to now when you tap **Now**, press Home or Escape, leave it alone for half a minute, scroll it off screen or hide the page, and when a new forecast arrives. It comes home on one quick spring: the row, the sky and every layer of weather go straight from the hour you left to now.
