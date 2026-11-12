@@ -231,10 +231,14 @@ dialog.fv-dialog::backdrop { background: transparent; }
 .animated-weather-card:is([data-fc="full"], [data-fc="glyphs"], [data-fc="row"]) .fc-section + .weather-attributes { margin-top: -4px; }
 
 /* \u2500\u2500 The floor: no cloud and no star behind the row's full-strength text. Clouds roam the whole sky above it, behind the
-   hero's text as on today's card, and are born whole above it (data-cloud-band); the mask only guards the line. \u2500\u2500 */
-.animated-weather-card[data-cloud-band] .clouds-layer {
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-c, 100%) - 2px), transparent calc(var(--fc-floor-c, 100%) + 10px));
-  mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-c, 100%) - 2px), transparent calc(var(--fc-floor-c, 100%) + 10px));
+   hero's text as on today's card, and are born whole above it (data-cloud-band); the mask only guards the line. It's on
+   the container, which reaches CLOUD_OVERHANG_PX above the card when weather spills: a mask clips to its own element's
+   box, so on the layer (the card's box) it would cut the clouds at the card's top edge. With spill it keeps the
+   container's fade-in over the top half of the overhang, and outranks that rule whatever the order. \u2500\u2500 */
+.animated-weather-card[data-cloud-band] .animation-container.clouds-container {
+  --fc-floor-at: calc(var(--awc-cloud-overhang, 0px) + var(--fc-floor-c, 100%));
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 calc(var(--awc-cloud-overhang, 0px) / 2), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
+  mask-image: linear-gradient(180deg, transparent 0, #000 calc(var(--awc-cloud-overhang, 0px) / 2), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
 }
 .animated-weather-card[data-cloud-band] .stars-field {
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-s, 100%) - 14px), transparent var(--fc-floor-s, 100%));
