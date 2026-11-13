@@ -179,7 +179,10 @@ describe('the nightstand at night', () => {
             expect(relativeLuminance(parse(NIGHT_RED[k]).rgb)).toBeLessThan(relativeLuminance(parse(EMBER[k]).rgb));
         }
         // Black whatever the sky or the theme, and every word in the red
-        expect(FORECAST_CSS).toMatch(/\.qn-veil\[data-red\] \{ background: #000 !important; \}/);
+        expect(FORECAST_CSS).toMatch(/\.qn-veil\[data-red\] \{ background: #000 !important; z-index: 1; \}/);
+        // The weather over the black, multiplied into a faint red, white at most a dim red (1.6:1 on black, under the words' 3.5 and 4.8)
+        const tint = FORECAST_CSS.match(/\.qn-tint \{[^}]*mix-blend-mode: multiply; background: (#[0-9a-f]{6});/)![1];
+        expect(contrastRatio(parse(tint).rgb, black)).toBeLessThan(1.7);
         expect(FORECAST_CSS).toMatch(/\.qn\[data-red\]\[data-night\] :is\(\.qn-quiet, \.awc-ampm\) \{ color: inherit !important; \}/);
     });
 });

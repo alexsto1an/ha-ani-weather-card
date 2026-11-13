@@ -398,8 +398,14 @@ animated-weather-card[data-qn] .weather-info { padding: 0; gap: 0; text-shadow: 
 .animated-weather-card:is([data-phase="dawn"], [data-phase="dusk"]) > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.55), rgba(3, 4, 9, 0.8) 100%); }
 .animated-weather-card[data-phase="day"] > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.65), rgba(3, 4, 9, 0.85) 100%); }
 .animated-weather-card.theme-colors > .qn-veil { background: rgba(3, 4, 9, 0.96); }
-/* Red at night (night_red): black, whatever the sky or the theme, as a bedside clock's night mode; the card's own frame too */
-.animated-weather-card > .qn-veil[data-red] { background: #000 !important; }
+/* Red at night (night_red): black, whatever the sky or the theme, as a bedside clock's night mode; the card's own frame
+   too. The black goes under the weather, just over the sky, and a dark red over the weather multiplies it into a faint
+   red: white rain, the moon and the stars a dim red on the black, which stays black. The words are over both. The
+   weather stays in the card, where the red reaches. */
+.animated-weather-card > .qn-veil[data-red] { background: #000 !important; z-index: 1; }
+.qn-tint { position: absolute; inset: 0; z-index: 29; pointer-events: none; border-radius: inherit; opacity: 0; mix-blend-mode: multiply; background: #5c100b; }
+animated-weather-card[data-red][data-qn-night] :is(.rain-container, .snow-container, .sleet-container, .wind-container, .lightning-container) { clip-path: inset(0 round var(--ha-card-border-radius, 12px)) !important; overflow: clip; }
+animated-weather-card[data-red][data-qn-night] .clouds-container { clip-path: inset(var(--awc-cloud-overhang, 0px) 0 0 0 round var(--ha-card-border-radius, 12px)) !important; }
 animated-weather-card[data-red][data-qn-night] > ha-card { background: #000; border-color: transparent; }
 /* Clouds and stars keep the top of the sky: none below the time's cap line, so no core and no star sits behind a figure */
 animated-weather-card[data-qn] .clouds-container { -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); }

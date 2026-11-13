@@ -292,6 +292,10 @@ describe('the forecast on the weather card', () => {
         expect((red.querySelector('.qn-time') as HTMLElement).style.color).toBe('rgb(194, 31, 23)');
         expect((red.querySelector('.qn-right') as HTMLElement).style.color).toBe('rgb(235, 38, 28)');
         expect(red.hasAttribute('data-red') && red.hasAttribute('data-qn-night')).toBe(true);
+        // The weather shows through, faintly: the black under it, a red over it that multiplies it into a faint red
+        expect((red.querySelector('.qn-tint') as HTMLElement).style.opacity).toBe('1');
+        // The condition now, in the night's one line (partly cloudy here), before what's coming
+        expect(red.querySelector('.qn-right .qn-cond')?.textContent).toMatch(/^Partly cloudy · /);
         // By day nothing is red: the sky as it is
         const day = mount({ layout: 'nightstand', night: 'off' });
         await settle();
@@ -299,6 +303,7 @@ describe('the forecast on the weather card', () => {
         const warm = mount({ layout: 'nightstand', night: 'on', night_red: false });
         await settle();
         expect(warm.querySelector('.qn-veil')?.hasAttribute('data-red')).toBe(false);
+        expect((warm.querySelector('.qn-tint') as HTMLElement).style.opacity).toBe('0');
         expect((warm.querySelector('.qn-time') as HTMLElement).style.color).toBe('rgb(139, 106, 77)');
     });
 

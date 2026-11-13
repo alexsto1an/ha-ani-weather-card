@@ -59,7 +59,7 @@ export function nextAlarm(hass: HomeAssistant | undefined, entityId: string | un
 const KMH: Record<string, number> = { 'km/h': 1, 'mph': 1.609344, 'm/s': 3.6, 'kn': 1.852, 'ft/s': 1.09728 };
 const kmh = (v: number, unit: string): number => v * (KMH[unit] ?? 1);
 
-export function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: HomeAssistant | undefined, W: FcWords, entity?: { attributes?: Record<string, unknown> }): string | null {
+export function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: HomeAssistant | undefined, W: FcWords, entity?: { attributes?: Record<string, unknown> }, out?: { kind?: string | null; bare?: string }): string | null {
     if (!tl || tl.unit !== 'hour') return null;
     const hours = tl.slots.filter(h => h.at.getTime() + HOUR > now.getTime() && h.at < new Date(wakeAt.getTime() + HOUR));
     const t = (d: Date) => timeText(d, hass, { sentence: true, bare: true });
@@ -70,7 +70,12 @@ export function alertBefore(tl: Timeline | null, now: Date, wakeAt: Date, hass: 
         let j = 0; while (j + 1 < all.length && bad(all[j + 1])) j++;
         const k = W[wetKind(hours[i]) ?? 'rain'];
         const end = all[j + 1]?.at ?? null;
-        if (hours[i].at <= now) return end ? fill(W.until, { k, b: t(end) }) : k;
+        if (out) out.kind = wetKind(hours[i]);
+        if (hours[i].at <= now) {
+            // Wet now: without its noun, for a line after a condition that already says it
+            if (out) out.bare = end ? fill(W.until_bare, { b: t(end) }) : '';
+            return end ? fill(W.until, { k, b: t(end) }) : k;
+        }
         return end ? fill(W.from_to, { k, a: t(hours[i].at), b: t(end) }) : fill(W.from, { k, a: t(hours[i].at) });
     }
     // In the entity's own units: gusts of 60 km/h (37 mph, 17 m/s, 32 kn), frost at 0 °C (32 °F)
@@ -137,6 +142,9 @@ const toHex = (c: string) => { const m = c.match(/[\d.]+/g); if (!c.startsWith('
 /** Night below this many lux (night_lux): 5 unless set to a positive number */
 export const nightLux = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 5; };
 
+/** The wet kind a condition already names, so a line after it can drop its noun (as the weather card's does) */
+const KIND_NOW: Record<string, string> = { rainy: 'rain', pouring: 'rain', 'lightning-rainy': 'storms', lightning: 'storms', snowy: 'snow', 'snowy-rainy': 'sleet', hail: 'sleet' };
+
 /** The weather beside the time keeps this much: the high and low with its bar (about 200 px), or the temperature at 76 px */
 const RIGHT_MIN = 212;
 
@@ -151,7 +159,11 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     const veil = document.createElement('div');
     veil.className = 'qn-veil';
     veil.setAttribute('aria-hidden', 'true');
-    root.append(veil);
+    // Red at night: a layer over the weather that multiplies it into a faint red (fc-css.ts), the black under it
+    const tint = document.createElement('div');
+    tint.className = 'qn-tint';
+    tint.setAttribute('aria-hidden', 'true');
+    root.append(veil, tint);
     const ns = document.createElement('div');
     ns.className = 'qn';
     ns.setAttribute('role', 'group');
@@ -233,14 +245,25 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const alarmLine: Line = { k: 'alarm', html: `${esc(W.alarm)} ${alarm ? timeText(alarm, hass, { bare: true }) : ''}`, cls: 'qn-alarm' };
         if (state.night) {
             // At 3 a.m. the one question is whether anything is coming before you're up
-            const alert = alertBefore(tl, now, wakeAt, hass, W, hass?.states[cfg().entity ?? '']);
+            const wet: { kind?: string | null; bare?: string } = {};
+            const alert = alertBefore(tl, now, wakeAt, hass, W, hass?.states[cfg().entity ?? ''], wet);
+            const kindNow = KIND_NOW[hass?.states[cfg().entity ?? '']?.state ?? ''];
             const until = tl ? new Timeline(tl.slots.filter(h => h.at < new Date(wakeAt.getTime() + HOUR)), 'hourly', now.getTime()) : null;
             const quiet = until?.length ? turningLine(until, hass, { bare: true }) : null;
             const h = now.getHours();
-            const said = !tl ? esc(wx.name) : quiet && quiet.kind ? quiet.shortHtml : h >= 5 && h < 12 ? esc(W.dry_morning) : esc(W.dry_night);
+            const coming = quiet && quiet.kind ? quiet.shortHtml : h >= 5 && h < 12 ? esc(W.dry_morning) : esc(W.dry_night);
+            // The condition now, then a warning before you're up or what's coming; a line that starts with the
+            // condition's own noun ("Rain until 7 AM" while it rains) drops it: "Rain until 7 AM", not "Rain · Rain until"
+            const sep = '<span class="qn-sep" aria-hidden="true"> · </span>';
+            const name = esc(wx.name);
+            const said = alert
+                ? (wet.bare !== undefined && wet.kind === kindNow ? `${name}${wet.bare ? ` <span class="qn-alert">${esc(wet.bare)}</span>` : ''}` : `${name}${sep}<span class="qn-alert">${esc(alert)}</span>`)
+                : !tl || !name ? name || coming
+                : quiet?.bareHtml && quiet.kind === kindNow ? `${name} ${quiet.bareHtml}` : `${name}${sep}${coming}`;
             return {
                 sub: alarm ? [alarmLine] : [], kind: 'line', alert,
-                lines: [alert ? { k: 'now', html: `<span class="qn-alert" role="status">${esc(alert)}</span>` } : { k: 'now', html: `<span class="qn-t">${esc(wx.temp)}</span><span class="qn-cond">${said}</span>` }],
+                // The temperature and the condition now, then a warning before you're up, or what's coming
+                lines: [{ k: 'now', html: `<span class="qn-t">${esc(wx.temp)}</span><span class="qn-cond"${alert ? ' role="status"' : ''}>${said}</span>` }],
             };
         }
         const bed = cfg().bed_time ? parseHm(cfg().bed_time, 22 * 60 + 30) : (minsOf(wakeAt) - 510 + 1440) % 1440;
@@ -300,6 +323,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         timeEl.style.color = ink.time;
         subEl.style.color = ink.words; rightEl.style.color = ink.words;
         veil.style.opacity = on ? '1' : '0';
+        tint.style.opacity = on && red() ? '1' : '0';
         el.toggleAttribute('data-qn-night', on);
         // Red at night: the veil is black, whatever the sky (fc-css.ts), and every word takes the red
         for (const e of [el, veil, ns]) e.toggleAttribute('data-red', red());
@@ -316,6 +340,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const o = { duration: LIGHT.ms, easing: LIGHT.ease };
         state.anims = [
             veil.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], o),
+            ...(red() ? [tint.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], o)] : []),
             timeEl.animate(labKeyframes(toHex(from.time), toHex(to.time)), o),
             subEl.animate(labKeyframes(toHex(from.words), toHex(to.words)), o),
             rightEl.animate(labKeyframes(toHex(from.words), toHex(to.words)), o),
@@ -371,7 +396,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         destroy() {
             ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); clearTimeout(sensorTimer);
             for (const a of state.anims) a.cancel();
-            fig.finish(); ns.remove(); veil.remove();
+            fig.finish(); ns.remove(); veil.remove(); tint.remove();
             delete el.dataset.qn; el.removeAttribute('data-qn-night'); el.removeAttribute('data-red');
         },
         /** For the demo and the tests: night on or off at once */
