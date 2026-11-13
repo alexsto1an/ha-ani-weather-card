@@ -35,7 +35,7 @@ The words follow the same register, in the README, the editor and the changelog:
 ## Design Principles
 
 1. **The sky is the card.** Color, depth and light come from the weather itself (condition plus time of day), never from chrome around it.
-2. **One hero, one quiet tier.** Temperature leads by a wide margin; everything else is a calm, consistent secondary tier. If two things compete, one of them is wrong.
+2. **One hero, one quiet tier.** Temperature leads by a wide margin (or the time, for those who choose it, with the temperature first in the line under it); everything else is a calm, consistent secondary tier. If two things compete, one of them is wrong.
 3. **Legibility over spectacle.** Text always wins over particles: weather moves behind the words, and contrast is guaranteed in every condition and theme.
 4. **Fit any frame.** The layout adapts to the space it's given (narrow column, short row, wall tablet, one-line compact strip) instead of clipping or shrinking uniformly.
 5. **Motion is weather, not UI.** Interface transitions are brief and state-driven; the atmosphere is where motion lives.

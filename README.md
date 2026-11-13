@@ -10,7 +10,7 @@
 
 ![Three weather cards over Lisbon, each with its note: a sunny afternoon, a thunderstorm and a clear night](docs/images/hero.webp)
 
-Animated Weather Card turns a Home Assistant weather entity into a living sky. The condition and the time of day set the light. Rain, snow, fog, wind, lightning and clouds move behind the numbers, and the temperature is always the first thing you read. Turn on the forecast and you can drag the card through the hours ahead. Under the conditions, your AI can write a note about them. A forecast card and a sun tracker card to match come in the same download.
+Animated Weather Card turns a Home Assistant weather entity into a living sky. The condition and the time of day set the light. Rain, snow, fog, wind, lightning and clouds move behind the numbers, and the temperature, or the time if you'd rather, is always the first thing you read. Turn on the forecast and you can drag the card through the hours ahead. Under the conditions, your AI can write a note about them. A forecast card and a sun tracker card to match come in the same download.
 
 It's free, open source and made for Home Assistant. You can [try it live](https://alexsto1an.github.io/ha-ani-weather-card/) in your browser first, on sample data.
 
@@ -38,7 +38,7 @@ Turn on `show_note` and the card hands Home Assistant's AI the hours ahead: when
 
 ## Drag through the hours.
 
-Turn on `show_forecast` and the card adds today's high and low, a line on what turns ("Rain from 17:00 to 19:00", "Dry all day") and the next hours in a row at its foot, drawn as a line, a soft area or bars. Drag the card sideways and its sky, its weather, the temperature and the readings go to the hour you stop at, and stay there until you come back to now. A forecast card or a sun tracker on the same weather goes there with it. A tap opens the whole forecast: the hours, the week and every reading your weather entity reports. The forecast also comes as a card of its own, the card can show the time, and it can be a bedside clock, red on black at night, or a panel you read across the room. [Set it up](#the-forecast-and-the-clock).
+Turn on `show_forecast` and the card adds today's high and low, a line on what turns ("Rain from 17:00 to 19:00", "Dry all day") and the next hours in a row at its foot, drawn as a line, a soft area or bars. Drag the card sideways and its sky, its weather, the temperature and the readings go to the hour you stop at, and stay there until you come back to now. A forecast card or a sun tracker on the same weather goes there with it. A tap opens the whole forecast: the hours, the week and every reading your weather entity reports. The forecast also comes as a card of its own, the card can show the time and the date or make the time its big value, and it can be a bedside clock, red on black at night, or a panel you read across the room. [Set it up](#the-forecast-and-the-clock).
 
 ![The weather card with the forecast on a partly cloudy afternoon at 13:10, and the same card dragged to 17:00: rain falls behind the numbers, and the location line reads Now, 17:00, in 4 hr.](docs/images/forecast.webp)
 
@@ -374,7 +374,7 @@ Only then does the card step down as it always has. With a note, the note first 
 
 With the forecast on, a tap opens the whole forecast. The card's own sky grows from the card into the screen, and the temperature, the condition, the line, the row and the chips travel with it. It holds:
 
-- the clock and the place, the temperature, the condition with today's high and low, and the line on what turns
+- the clock and the place (with the date if it's on), the temperature, the condition with today's high and low, and the line on what turns; with `hero: clock`, the time is the big value here too, and the temperature leads the condition
 - the row and its chips, which drag and stay where you leave them, as on the card
 - seven days with their ranges, eight on a tablet. As you drag the row, the days show the day the hour falls in, and the chips change what the days show too, as on the forecast card
 - every reading your weather entity reports: feels like, wind with its gusts, humidity, dew point, UV, cloud cover, precipitation, visibility and pressure. While you're at another hour, they're that hour's ("At 17:00").
