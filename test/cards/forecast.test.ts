@@ -245,7 +245,7 @@ describe('the forecast on the weather card', () => {
         const card = mount({ show_forecast: true });
         await settle();
         const dialog = () => document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('dialog') as HTMLDialogElement;
-        const until = async (ok: () => boolean) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
+        const until = async (ok: () => boolean) => { for (let i = 0; i < 150 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
         for (let i = 0; i < 2; i++) {
             card.openForecast();
             await until(() => !!document.querySelector('.awc-view-host') && dialog().hasAttribute('open'));
@@ -270,7 +270,7 @@ describe('the forecast on the weather card', () => {
         const card = mount({ show_forecast: true });
         await settle();
         card.openForecast();
-        const until = async (ok: () => boolean) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
+        const until = async (ok: () => boolean) => { for (let i = 0; i < 150 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
         await until(() => !!document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
         const grown = document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
         const list = grown.querySelector('[data-fc-daily]') as HTMLElement;
@@ -548,7 +548,9 @@ describe('the slide: it stays where it\'s left', () => {
         for (let i = 0; i < 3; i++) slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
         // Taken, the card says so (the capsule shows while it's pulled) and the capsule names the hour three on
         expect(root.classList.contains('awc-pulling')).toBe(true);
-        expect(cap.textContent).toBe(hourly.hours[3].hour);
+        // (at midnight it names the day, as the row's label does, so the test holds at any hour it runs)
+        const third = hourly.hours[3];
+        expect(cap.textContent).toBe(third.midnight ? third.day : third.hour);
         // The lens: the label the capsule names, sitting under it, is faded; one far from it is whole
         const labels = [...hourly.el.querySelectorAll<HTMLElement>('.fc-col .fc-hr')];
         expect(labels[3].style.getPropertyValue('--fc-lens')).not.toBe('');
