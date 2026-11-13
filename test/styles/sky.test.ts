@@ -156,6 +156,18 @@ describe('spilled weather', () => {
         expect(rule).toContain('overflow: visible');
         expect(rule).toMatch(/contain: layout;/);
     });
+
+    it('keeps fog, clouds and, in Firefox, leaves out of the page\'s size (issue #16: Firefox counts them despite the containment)', () => {
+        const css = getMainCardStyles();
+        // Fog and clouds never spill sideways: they clip their overflow, not only their paint
+        expect(css).toMatch(/\.animation-container\.fog-container \{[^}]*clip-path: inset\(0 round[^}]*overflow: hidden;\s*overflow: clip;/);
+        expect(css).toMatch(/\.clouds-container \{[^}]*overflow: hidden;\s*overflow: clip;/);
+        // The clouds' overhang lives inside their container's box, so the clip leaves it showing
+        expect(css).toMatch(/\[data-spill\] \.clouds-container \{[^}]*top: calc\(-1 \* var\(--awc-cloud-overhang\)\)/);
+        // Leaves still blow out to the right, except in Firefox, where they'd widen the dashboard
+        expect(css).toMatch(/\[data-spill\] \.wind-container \{\s*clip-path: inset\(0 -500px -200px 0\);/);
+        expect(css).toMatch(/@supports \(-moz-appearance: none\) \{\s*\.animated-weather-card\[data-spill\] \.wind-container \{ overflow: clip; \}/);
+    });
 });
 
 describe('clouds over the top edge', () => {

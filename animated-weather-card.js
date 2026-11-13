@@ -884,9 +884,12 @@ ${dr("animated-weather-card")}
           opacity: 0 !important;
           transition: opacity 0.4s cubic-bezier(0.5, 0, 0.75, 0) !important;
         }
-        /* Fog always stays in the frame, corners included */
+        /* Fog always stays in the frame, corners included; overflow keeps it
+           out of the page's size in Firefox (#16) */
         .animation-container.fog-container {
           clip-path: inset(0 round var(--ha-card-border-radius, 12px));
+          overflow: hidden;
+          overflow: clip;
         }
         /* Spill: precipitation escapes the sides and bottom, never the top;
            wind carries leaves out to the right */
@@ -899,6 +902,10 @@ ${dr("animated-weather-card")}
         .animated-weather-card[data-spill] .wind-container {
           clip-path: inset(0 -500px -200px 0);
         }
+        /* Firefox would count spilled leaves in the page's size (#16) */
+        @supports (-moz-appearance: none) {
+          .animated-weather-card[data-spill] .wind-container { overflow: clip; }
+        }
 
         /* Clouds drift in front of the sun, stars and planes, in their own
            layer. In the frame by default; with spill they can rise past the
@@ -908,6 +915,8 @@ ${dr("animated-weather-card")}
           --awc-cloud-overhang: 0px;
           z-index: 25;
           clip-path: inset(0 round var(--ha-card-border-radius, 12px));
+          overflow: hidden;
+          overflow: clip;
         }
         .clouds-layer {
           position: absolute;
