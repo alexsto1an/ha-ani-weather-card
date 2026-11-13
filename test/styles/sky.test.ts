@@ -192,7 +192,16 @@ describe('clouds over the top edge', () => {
         expect(rule).toMatch(/top: calc\(-1 \* var\(--awc-cloud-overhang\)\)/);
         // Clipped flush at the sides and bottom (rounded bottom corners)
         expect(rule).toMatch(/clip-path: inset\(0 round 0 0 /);
-        expect(rule).toMatch(/mask-image: linear-gradient\(to bottom, transparent 0, #000 calc\(var\(--awc-cloud-overhang\) \/ 2\)\)/);
+        // Solid from halfway up, at --awc-above (#000, or 16% for the theme's solid clouds) until the card's edge
+        expect(rule).toMatch(/mask-image: linear-gradient\(to bottom, transparent 0, var\(--awc-above, #000\) calc\(var\(--awc-cloud-overhang\) \/ 2\), var\(--awc-above, #000\) var\(--awc-cloud-overhang\), #000 var\(--awc-cloud-overhang\)\)/);
+    });
+
+    it('on the theme palette, are drawn solid over an opaque card, mixed with its fill, and show at 16% above it', () => {
+        const block = css.match(/@supports \(color: color-mix\(in srgb, red, blue\)\) \{([\s\S]*?)\n {8}\}/)![1];
+        expect(block).toMatch(/\.theme-colors\[data-solid-clouds\] \{[^}]*--awc-cloud-near: color-mix\(in srgb, var\(--secondary-text-color, #888\) 16%, var\(--awc-card-bg, transparent\)\)/);
+        expect(block).toMatch(/--awc-above: rgba\(0, 0, 0, 0\.16\)/);
+        // Solid, but they still fade out with a change of condition
+        expect(block).toMatch(/\[data-solid-clouds\]:not\(\.condition-out\) \.cloud-gsap \{ opacity: 1 !important; \}/);
     });
 
     it('keep their positions relative to the card', () => {

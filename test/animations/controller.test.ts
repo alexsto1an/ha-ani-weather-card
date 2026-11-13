@@ -309,6 +309,43 @@ describe('Clouds over the sun', () => {
         expect(gsap.to.mock.calls.filter(([target]) => target === track).at(-1)?.[1].opacity).toBeCloseTo(0.9, 2);
     });
 
+    it('are drawn solid on the theme palette over an opaque card, hiding the sun themselves, and see-through over a glass one', async () => {
+        // jsdom has no CSS.supports; the browsers that mix colours say yes
+        const had = (window as unknown as { CSS?: unknown }).CSS;
+        (window as unknown as { CSS: unknown }).CSS = { supports: () => true };
+        const element = makeCardElement();
+        const root = element.querySelector('.animated-weather-card') as HTMLElement;
+        const fill = document.createElement('ha-card');
+        fill.style.backgroundColor = 'rgb(28, 28, 28)';
+        element.appendChild(fill);
+        fill.appendChild(root);
+        root.querySelector('.animation-layer')!.innerHTML = '<div class="sun-track"><div class="sun"></div></div>';
+        const track = root.querySelector('.sun-track') as HTMLElement;
+        place(track.querySelector('.sun')!, 400, 40, 40, 40);
+        const bridge = new ModularIntegrationBridge(element, { ...cardConfig, color_palette: 'theme' }, undefined, 12);
+        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn>; timeline: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
+        await bridge.startModularAnimation('clouds', 1);
+        const looks = gsap.timeline.mock.results.map(r => r.value).find(tl => tl.vars.onRepeat);
+        const near = Array.from(root.querySelectorAll<HTMLElement>('.cloud-gsap')).find(c => c.dataset.awcO === '0.66')!;
+        place(near, 380, 30, 120, 60);
+        looks.vars.onRepeat();
+        expect(root.hasAttribute('data-solid-clouds')).toBe(true);
+        expect(root.style.getPropertyValue('--awc-card-bg')).toBe('rgb(28, 28, 28)');
+        // The cloud hides the sun where it lies over it: its flat disc isn't dimmed, nor the cloud thickened
+        expect(gsap.to.mock.calls.some(([target]) => target === track)).toBe(false);
+        expect(gsap.to.mock.calls.some(([target]) => target === near)).toBe(false);
+        // A see-through fill (a glass theme): no solid colour looks the same, so the clouds stay see-through
+        fill.style.backgroundColor = 'rgba(30, 30, 50, 0.45)';
+        looks.vars.onRepeat();
+        expect(root.hasAttribute('data-solid-clouds')).toBe(false);
+        // Stopped, the clouds take the attribute with them
+        fill.style.backgroundColor = 'rgb(28, 28, 28)';
+        looks.vars.onRepeat();
+        await bridge.stopModularAnimation('clouds');
+        expect(root.hasAttribute('data-solid-clouds')).toBe(false);
+        (window as unknown as { CSS?: unknown }).CSS = had;
+    });
+
     it('measure nothing while the sun isn\'t showing', async () => {
         const element = makeCardElement();
         element.querySelector('.animation-layer')!.innerHTML = '<div class="sun-track"><div class="sun" style="opacity: 0"></div></div>';

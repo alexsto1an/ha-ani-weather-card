@@ -272,8 +272,8 @@ dialog.fv-dialog::backdrop { background: transparent; }
    container's fade-in over the top half of the overhang, and outranks that rule whatever the order. \u2500\u2500 */
 .animated-weather-card[data-cloud-band] .animation-container.clouds-container {
   --fc-floor-at: calc(var(--awc-cloud-overhang, 0px) + var(--fc-floor-c, 100%));
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 calc(var(--awc-cloud-overhang, 0px) / 2), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
-  mask-image: linear-gradient(180deg, transparent 0, #000 calc(var(--awc-cloud-overhang, 0px) / 2), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, var(--awc-above, #000) calc(var(--awc-cloud-overhang, 0px) / 2), var(--awc-above, #000) var(--awc-cloud-overhang, 0px), #000 var(--awc-cloud-overhang, 0px), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
+  mask-image: linear-gradient(180deg, transparent 0, var(--awc-above, #000) calc(var(--awc-cloud-overhang, 0px) / 2), var(--awc-above, #000) var(--awc-cloud-overhang, 0px), #000 var(--awc-cloud-overhang, 0px), #000 calc(var(--fc-floor-at) - 2px), transparent calc(var(--fc-floor-at) + 10px));
 }
 .animated-weather-card[data-cloud-band] .stars-field {
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(var(--fc-floor-s, 100%) - 14px), transparent var(--fc-floor-s, 100%));

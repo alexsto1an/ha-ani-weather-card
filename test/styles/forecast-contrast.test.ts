@@ -166,7 +166,7 @@ describe('no cloud and no star behind the row; the rest of the sky is theirs', (
     it('with the forecast on, clouds and stars are masked only below the floor, never sideways', () => {
         // On the container, which reaches above the card when weather spills: a mask on the layer would clip clouds to
         // the card's box. It keeps the spill's fade over the top half of the overhang.
-        expect(FORECAST_CSS).toMatch(/\[data-cloud-band\] \.animation-container\.clouds-container \{[^}]*--awc-cloud-overhang[^}]*--fc-floor-c[^}]*mask-image: linear-gradient\(180deg, transparent 0, #000 calc\(var\(--awc-cloud-overhang, 0px\) \/ 2\)/);
+        expect(FORECAST_CSS).toMatch(/\[data-cloud-band\] \.animation-container\.clouds-container \{[^}]*--awc-cloud-overhang[^}]*--fc-floor-c[^}]*mask-image: linear-gradient\(180deg, transparent 0, var\(--awc-above, #000\) calc\(var\(--awc-cloud-overhang, 0px\) \/ 2\), var\(--awc-above, #000\) var\(--awc-cloud-overhang, 0px\), #000 var\(--awc-cloud-overhang, 0px\)/);
         expect(FORECAST_CSS).not.toMatch(/clouds-layer[^{]*\{[^}]*mask-image/);
         expect(FORECAST_CSS).toMatch(/\[data-cloud-band\] \.stars-field \{[^}]*mask-image: linear-gradient\(180deg[^}]*var\(--fc-floor-s/);
         // They cross the whole width, behind the clock, the place and the temperature, as on today's card

@@ -99,6 +99,7 @@ export class CloudsAnimation extends BaseAnimation {
         const cloudLayer = this.element.querySelector(this.layerSelector);
         if (cloudLayer) removeClouds(cloudLayer);
         this.lightSun(1);
+        this.element.querySelector('.animated-weather-card')?.removeAttribute('data-solid-clouds');
 
         devLog(this.config.devMode, 'Clouds animation stopped');
     }
@@ -130,6 +131,8 @@ export class CloudsAnimation extends BaseAnimation {
      * opacity. Nothing is measured while the sun isn't showing.
      */
     protected veilSun(instant = false): void {
+        // Solid on the theme palette, the clouds hide the sun themselves, and its flat disc has no light to dim
+        if (this.solidClouds()) { this.lightSun(1, instant); return; }
         const sun = this.element.querySelector('.sun-track .sun') as HTMLElement | null;
         const s = sun?.getBoundingClientRect();
         const clouds = Array.from(this.element.querySelectorAll<HTMLElement>('.cloud-gsap'));
@@ -164,6 +167,27 @@ export class CloudsAnimation extends BaseAnimation {
         this.lightSun(lit / DISC.length, instant);
         // Dense from the moment it's well over the disc: a third of it and its edge
         clouds.forEach((cloud, n) => this.dense(cloud, base(cloud) * (1 + (DENSE - 1) * Math.min(1, near[n] * 3)), instant));
+    }
+
+    /**
+     * On the theme palette, draw the clouds solid, mixed with the card's
+     * fill (styles/card.ts), where the browser mixes colours and the fill is
+     * an opaque colour. Over a see-through fill or an image (a card-mod
+     * background, a glass theme) no solid colour looks the same as the
+     * faint cloud, so they stay see-through. Read on every look, so a new
+     * theme follows.
+     */
+    protected solidClouds(): boolean {
+        const card = this.element.querySelector('.animated-weather-card') as HTMLElement | null;
+        if (!card || this.cardConfig.color_palette !== 'theme') return false;
+        const fill = card.closest('ha-card');
+        const bg = fill ? getComputedStyle(fill) : null;
+        // An opaque colour computes without an alpha: rgb(), or color() and the like without a slash
+        const solid = !!bg && (bg.backgroundImage || 'none') === 'none' && !/rgba|\/|transparent/.test(bg.backgroundColor)
+            && !!window.CSS?.supports?.('color', 'color-mix(in srgb, red, blue)');
+        if (solid && card.style.getPropertyValue('--awc-card-bg') !== bg!.backgroundColor) card.style.setProperty('--awc-card-bg', bg!.backgroundColor);
+        card.toggleAttribute('data-solid-clouds', solid);
+        return solid;
     }
 
     /** Ease a cloud to an opacity, capped short of opaque */

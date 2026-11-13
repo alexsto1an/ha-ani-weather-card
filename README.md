@@ -761,7 +761,7 @@ The card reads the standard Home Assistant conditions. It also understands free-
 | --- | --- | --- |
 | `sunny` | Clear sky and the sun | `weather-sunny-background` |
 | `clear-night` | Stars and the moon | `weather-clear-night-background` |
-| `partlycloudy` | The sun between drifting clouds, dimming as one passes in front of it | `weather-partly-cloudy-background` |
+| `partlycloudy` | The sun between drifting clouds, behind each one that passes in front of it | `weather-partly-cloudy-background` |
 | `cloudy` | Overcast, with drifting clouds | `weather-cloudy-background` |
 | `fog` | Drifting fog | `weather-foggy-background` |
 | `rainy` | Rain that splashes on the lower edge | `weather-rainy-background` |
