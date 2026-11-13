@@ -47,6 +47,7 @@ import { processWeatherData, readNote, noteExpiresAt, WeatherNote, temperatureDe
 import { localizeString, formatTime, timeHtml, localeKey } from './localize';
 import { ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
 import { loadEditorBundle, loadSiblingBundle } from './bundles';
+import { IconName, icon, setIcon } from './icons';
 // Sky palettes (condition × time of day) and their animatable properties
 import { registerSkyProperties, skyPhaseFromSun, SkyPhase, skyColors, SKY_TEXT, oklchToSrgb, toHex } from './sky';
 // Import color utilities
@@ -65,7 +66,7 @@ const windArrowLabel = (bearing: number) => `Wind from ${Math.round(bearing)}°`
 const pressureTrendIcon = (trend: 'rising' | 'falling') => trend === 'rising' ? 'mdi:arrow-top-right' : 'mdi:arrow-bottom-right';
 
 /** The sun metric shows the next sunset by day and the next sunrise by night */
-const sunMetricIcon = (aboveHorizon: boolean) => aboveHorizon ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up';
+const sunMetricIcon = (aboveHorizon: boolean): IconName => aboveHorizon ? 'sunset' : 'sunrise';
 
 /**
  * A written note types itself in, the way a chatbot's answer arrives: this
@@ -451,7 +452,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             this.innerHTML = `
               <ha-card>
                 <div class="awc-empty-state" role="status">
-                  <ha-icon class="awc-empty-icon" icon="mdi:weather-cloudy-alert"></ha-icon>
+                  ${icon('alert', 'awc-empty-icon')}
                   <div class="awc-empty-title">Animated Weather Card</div>
                   <div class="awc-empty-message">${escapeHtml(message)}</div>
                   <div class="awc-empty-hint">Open the card editor to choose a weather entity.</div>
@@ -468,7 +469,9 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
                     color: var(--primary-text-color, #333);
                   }
                   .awc-empty-icon {
-                    --mdc-icon-size: 48px;
+                    width: 48px;
+                    height: 48px;
+                    fill: currentColor;
                     color: var(--secondary-text-color, #888);
                   }
                   .awc-empty-title {
@@ -511,9 +514,9 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
         const showIcons = this.config.show_attribute_icons !== false;
         const showLabels = this.config.show_attribute_labels !== false;
-        const metric = (kind: string, icon: string, labelText: string, valueHtml: string, extra = '') => {
+        const metric = (kind: string, iconName: IconName, labelText: string, valueHtml: string, extra = '') => {
             const label = (showIcons || showLabels)
-                ? `<div class="attribute-label">${showIcons ? `<ha-icon class="attribute-icon" icon="${icon}"></ha-icon>` : ''}${showLabels ? `<span>${escapeHtml(labelText)}</span>` : ''}</div>`
+                ? `<div class="attribute-label">${showIcons ? icon(iconName, 'attribute-icon') : ''}${showLabels ? `<span>${escapeHtml(labelText)}</span>` : ''}</div>`
                 : '';
             return `<div class="attribute" data-kind="${kind}">${label}<div class="attribute-value"><span class="attribute-text">${valueHtml}</span>${extra}</div></div>`;
         };
@@ -525,9 +528,9 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             : '';
         const metrics = this.config.show_attributes !== false ? `
               <div class="weather-attributes${showLabels ? '' : ' values-only'}">${[
-                metric('humidity', 'mdi:water-percent', cardLocalize(this._hass, 'ui.card.weather.attributes.humidity', 'Humidity'), escapeHtml(humidity)),
-                metric('wind', 'mdi:weather-windy', cardLocalize(this._hass, 'ui.card.weather.attributes.wind_speed', 'Wind'), escapeHtml(windSpeed), windArrow),
-                metric('pressure', 'mdi:gauge', cardLocalize(this._hass, 'ui.card.weather.attributes.air_pressure', 'Pressure'), escapeHtml(pressure), trendArrow),
+                metric('humidity', 'humidity', cardLocalize(this._hass, 'ui.card.weather.attributes.humidity', 'Humidity'), escapeHtml(humidity)),
+                metric('wind', 'wind', cardLocalize(this._hass, 'ui.card.weather.attributes.wind_speed', 'Wind'), escapeHtml(windSpeed), windArrow),
+                metric('pressure', 'pressure', cardLocalize(this._hass, 'ui.card.weather.attributes.air_pressure', 'Pressure'), escapeHtml(pressure), trendArrow),
                 showSun ? metric('sun', sunMetricIcon(sunIsDay), localizeString(this._hass, sunIsDay ? 'sunset' : 'sunrise'),
                     timeHtml(sunEvent, 'awc-ampm')) : '',
               ].join('')}</div>` : '';
@@ -815,10 +818,10 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     private indoorLead(): string {
         const style = this.config?.indoor_style;
         const word = escapeHtml(localizeString(this._hass, 'indoors'));
-        const icon = '<ha-icon class="indoor-icon" icon="mdi:home-thermometer-outline"></ha-icon>';
-        if (style === 'icon') return `${icon}<span class="awc-visually-hidden">${word} </span>`;
+        const mark = icon('indoor', 'indoor-icon');
+        if (style === 'icon') return `${mark}<span class="awc-visually-hidden">${word} </span>`;
         const label = `<span class="indoor-label">${word}</span>`;
-        return style === 'both' ? icon + label : label;
+        return style === 'both' ? mark + label : label;
     }
 
     private heroMetaHtml(feelsLike: string | null | undefined, indoorTemperature: string, indoorHumidity: string): string {
@@ -1238,10 +1241,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             if (value && value.innerHTML !== html) value.innerHTML = html;
             setText(sunMetric?.querySelector('.attribute-label > span') ?? null,
                 localizeString(this._hass, sun.aboveHorizon ? 'sunset' : 'sunrise'));
-            const icon = sunMetric?.querySelector('.attribute-icon');
-            if (icon && icon.getAttribute('icon') !== sunMetricIcon(sun.aboveHorizon)) {
-                icon.setAttribute('icon', sunMetricIcon(sun.aboveHorizon));
-            }
+            setIcon(sunMetric?.querySelector('.attribute-icon'), sunMetricIcon(sun.aboveHorizon));
         }
 
         }

@@ -445,6 +445,31 @@ describe('the icons', () => {
         expect(glyph('partlycloudy', true, 22, null)).toMatch(/currentColor/);
         expect(glyph('partlycloudy', true, 22, null)).not.toMatch(/#[0-9a-f]{6}/);
     });
+
+    it('draws each from the Senja set on its 25-unit grid, every part in its own light, with no masks', () => {
+        const t = litTints(40, false, 0);
+        const night: Record<string, string> = { 'clear-night': 'sunny', 'partlycloudy-night': 'partlycloudy' };
+        const fills = (k: string) => {
+            const svg = glyph(night[k] ?? k, !night[k], 22, t);
+            expect(svg).toContain('viewBox="0 0 25 25"');
+            expect(svg).not.toMatch(/<mask/);
+            const paths = [...svg.matchAll(/<path d="([^"]+)" fill="([^"]+)"/g)];
+            expect(paths.length).toBeGreaterThan(0);
+            for (const [, d] of paths) expect(d).toMatch(/^[mM][\d.-]/);
+            return new Set(paths.map(p => p[2]));
+        };
+        for (const k of GLYPH_KEYS) fills(k);
+        expect(fills('sunny')).toEqual(new Set([t.sun]));
+        expect(fills('clear-night')).toEqual(new Set([t.moon]));
+        expect(fills('partlycloudy')).toEqual(new Set([t.sun, t.cloud]));
+        expect(fills('partlycloudy-night')).toEqual(new Set([t.moon, t.cloud]));
+        // The ones the pack doesn't have, put together from its parts
+        expect(fills('lightning-rainy')).toEqual(new Set([t.grey, t.bolt, t.rain]));
+        expect(fills('snowy-rainy')).toEqual(new Set([t.grey, t.rain]));
+        expect(fills('hail')).toEqual(new Set([t.grey, t.rain]));
+        expect(fills('fog')).toEqual(new Set([t.grey]));
+        expect(fills('exceptional')).toEqual(new Set([t.cloud]));
+    });
 });
 
 describe('the clock', () => {

@@ -36,6 +36,19 @@ describe('metric arrows', () => {
     const arrow = () => card.querySelector('.attribute[data-kind="wind"] .wind-bearing-arrow') as HTMLElement | null;
     const trend = () => card.querySelector('.attribute[data-kind="pressure"] .pressure-trend') as HTMLElement | null;
 
+    it('labels the readings with the Senja icons, drawn inline on their 25-unit grid', () => {
+        const icons = [...card.querySelectorAll('.attribute-label > svg.attribute-icon')];
+        expect(icons.map(i => i.getAttribute('data-icon')).slice(0, 3)).toEqual(['humidity', 'wind', 'pressure']);
+        for (const i of icons) {
+            expect(i.getAttribute('viewBox')).toBe('0 0 25 25');
+            expect(i.getAttribute('aria-hidden')).toBe('true');
+            expect(i.querySelector('path')!.getAttribute('d')).toMatch(/^m[\d.]/);
+        }
+        expect(card.querySelector('.attribute-label ha-icon')).toBeNull();
+        // Sized like ha-icon, so the card's sizes still apply, and in the text's colour, so the theme's icon colour does
+        expect(getMainCardStyles()).toMatch(/\.awc-icon \{[^}]*width: var\(--mdc-icon-size, 24px\);[^}]*height: var\(--mdc-icon-size, 24px\);[^}]*fill: currentColor;/);
+    });
+
     it('turns the wind arrow in place when the direction changes', () => {
         const first = arrow()!;
         expect(first.style.transform).toBe('rotate(270deg)');

@@ -752,7 +752,7 @@ describe('the demo build', () => {
     it('ships every icon the cards name, including the moon phases built at runtime', () => {
         const names = iconNames();
         for (const moon of MOON_ICONS) expect(names).toContain(moon);
-        expect(names).toContain('mdi:water-percent');
+        expect(names).toContain('mdi:navigation');
         // The page's own glyphs: weather options, the plane, copy, the steppers
         for (const condition of CONDITIONS) {
             expect(names).toContain(condition.icon);

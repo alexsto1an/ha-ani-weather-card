@@ -27,6 +27,15 @@ export const CLOUD_OVERHANG_PX = 48;
 
 export const getMainCardStyles = () => `
 ${iconBoxCss('animated-weather-card')}
+        /* The card's own icons (icons.ts): inline SVG, sized like ha-icon and in the text's colour */
+        .awc-icon {
+          display: inline-block;
+          flex-shrink: 0;
+          width: var(--mdc-icon-size, 24px);
+          height: var(--mdc-icon-size, 24px);
+          fill: currentColor;
+          vertical-align: middle;
+        }
         /* ── Reduced motion (WCAG 2.3.3): static sky, no weather motion ───── */
         @media (prefers-reduced-motion: reduce) {
           .animated-weather-card *,
