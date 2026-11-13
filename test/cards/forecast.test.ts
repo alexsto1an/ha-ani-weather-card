@@ -4,7 +4,9 @@ import '../../src/animated-weather-card-forecast';
 import { attachSlide, SLIDE } from '../../src/fc-slide';
 import { wallLayout } from '../../src/fc-wall';
 import { createChips, createHourly, hourCols } from '../../src/fc-row';
-import { TimeText } from '../../src/fc-clock';
+import { TimeText, fitHeroTime } from '../../src/fc-clock';
+import { cardClock } from '../../src/fc-weather';
+import { shortDate } from '../../src/localize';
 import { glyph, glyphKey, GLYPH_KEYS, litTints } from '../../src/fc-glyphs';
 import { Timeline } from '../../src/fc-core';
 import { hours } from '../../src/fc-data';
@@ -927,6 +929,82 @@ describe('the time as the big value (hero: clock), and the date (show_date)', ()
         const alone = mount({ show_date: true });
         await settle();
         expect(alone.querySelector('.awc-date')?.textContent).toBe(date);
+    });
+
+    it('sizes a big time as the widest it can show, made smaller only where that would pass the light\'s limit', () => {
+        // jsdom has no fonts: a figure 0.6 of the size, "1" 0.3, the colon 0.25, a period 20 px; the clock 10 px in
+        const clock = document.createElement('span');
+        clock.style.fontSize = '80px';
+        document.body.append(clock);
+        mounted.push(clock);
+        const fs = () => parseFloat(clock.style.fontSize);
+        const rect = Element.prototype.getBoundingClientRect;
+        const box = (width: number) => ({ x: 0, y: 0, top: 0, left: 0, bottom: 0, right: width, height: 0, width, toJSON() { return this; } }) as DOMRect;
+        const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+            if (this === clock) return box(100);
+            if (this.localName === 'i' && this.closest('span') && clock.contains(this)) return box((this.textContent === ':' ? 0.25 : this.textContent === '1' ? 0.3 : 0.6) * fs());
+            if (this.classList.contains('awc-ampm')) return box(20);
+            return rect.call(this);
+        });
+        const ow = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth'), ol = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetLeft');
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get() { return this === clock ? 100 : 0; } });
+        Object.defineProperty(HTMLElement.prototype, 'offsetLeft', { configurable: true, get() { return this === clock ? 10 : 0; } });
+        try {
+            const sizes: Array<number | null> = [];
+            const set = (size: number | null) => { sizes.push(size); clock.style.fontSize = size === null ? '80px' : `${size}px`; };
+            // 24 hours: "20:58", four figures and the colon, 212 px at 80 px; inside 300 it keeps its size
+            fitHeroTime(clock, 300, [], set);
+            expect(sizes).toEqual([null]);
+            // Past 200, it's made as small as puts the widest time at the limit, and it stays: one size all day
+            sizes.length = 0;
+            fitHeroTime(clock, 200, [], set);
+            expect(sizes).toEqual([null, Math.floor((80 * 190) / 212 * 10) / 10]);
+            expect(10 + 212 * fs() / 80).toBeLessThanOrEqual(200.5);
+            // 12 hours: "1" and a figure, the minutes and the period, 208 px. The period keeps its 20 px as the figures
+            // shrink, so a second look takes the rest: it ends at the limit, not short of it
+            sizes.length = 0;
+            fitHeroTime(clock, 200, ['AM', 'PM'], set);
+            expect(sizes.slice(0, 2)).toEqual([null, Math.floor((80 * 190) / 208 * 10) / 10]);
+            const right = 10 + 2.35 * fs() + 20;
+            expect(right).toBeLessThanOrEqual(200.5);
+            expect(right).toBeGreaterThan(198);
+            // No limit (a wide card): its CSS size
+            sizes.length = 0;
+            fitHeroTime(clock, Infinity, [], set);
+            expect(sizes).toEqual([null]);
+        } finally {
+            spy.mockRestore();
+            if (ow) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', ow);
+            if (ol) Object.defineProperty(HTMLElement.prototype, 'offsetLeft', ol);
+        }
+    });
+
+    it('fits the date whole: with its month, else without, and the place steps out before the date is cut', () => {
+        // jsdom has no fonts: 7 px a character, 8 px between the date and the place
+        const root = document.createElement('div');
+        root.innerHTML = '<div class="main-weather-info"><div class="location"><span class="awc-date"></span><span class="awc-place">Lisbon</span></div></div>';
+        document.body.append(root);
+        mounted.push(root);
+        const hass = makeHass();
+        const loc = root.querySelector('.location') as HTMLElement, date = root.querySelector('.awc-date') as HTMLElement, place = root.querySelector('.awc-place') as HTMLElement;
+        let width = 0;
+        Object.defineProperty(loc, 'getClientRects', { value: () => [{}] });
+        Object.defineProperty(loc, 'clientWidth', { get: () => width });
+        Object.defineProperty(date, 'offsetWidth', { get: () => (date.textContent ?? '').length * 7 });
+        Object.defineProperty(place, 'offsetLeft', { get: () => (date.textContent ?? '').length * 7 + 8 });
+        Object.defineProperty(place, 'offsetWidth', { get: () => (place.textContent ?? '').length * 7 });
+        const c = cardClock({ hass: () => hass } as unknown as ForecastHost, root);
+        const long = shortDate(new Date(), hass as never, true), short = shortDate(new Date(), hass as never);
+        const L = long.length * 7, S = short.length * 7, P = 6 * 7;
+        expect(S).toBeLessThan(L);
+        const at = (w: number) => { width = w; c.fit(); return [date.textContent, place.hidden]; };
+        c.date();
+        expect(at(L + 8 + P + 10)).toEqual([long, false]);
+        expect(at(S + 8 + P + 2)).toEqual([short, false]);
+        expect(at(L + 2)).toEqual([long, true]);
+        expect(at(S + 2)).toEqual([short, true]);
+        // Room again: the place comes back
+        expect(at(L + 8 + P + 10)).toEqual([long, false]);
     });
 
     it('leaves the nightstand, the forecast card and dev mode their own text', async () => {

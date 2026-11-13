@@ -219,11 +219,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
             + `<div class="fw-next"><p class="fw-turn"></p><div class="fw-hours"></div><div class="fw-week"></div></div>`;
         clock = new TimeText(fw.querySelector(big ? '.fw-big' : '.fw-clock') as HTMLElement);
         tick();
-        // A hero clock stops where today's line does (72% of the column), short of the sun's light
-        if (big) {
-            const bigEl = fw.querySelector('.fw-big') as HTMLElement, box = fw.querySelector('.fw-temp') as HTMLElement, col = fw.querySelector('.fw-hero') as HTMLElement;
-            fitHeroTime(bigEl, layoutLeft(col) + 0.72 * col.offsetWidth, dayPeriods(host), size => (size === null ? box.style.removeProperty('--fw-t0') : box.style.setProperty('--fw-t0', `${size}px`)));
-        }
+        fitBig();
         ownControl(fw.querySelector('.awc-now') as HTMLElement, () => slide?.home());
         const turn = fw.querySelector('.fw-turn') as HTMLElement;
         setTurn(turn, m.lineAt(0));
@@ -279,6 +275,12 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         const p = timeParts(at, host.hass());
         clock?.set({ text: `${p.hour}:${p.minute}`, period: p.period }, { animate });
     }
+    /** A hero clock stops where today's line does (72% of the column), short of the sun's light; again once the display font is in */
+    function fitBig() {
+        const bigEl = fw.querySelector('.fw-big') as HTMLElement | null, box = fw.querySelector('.fw-temp') as HTMLElement | null, col = fw.querySelector('.fw-hero') as HTMLElement | null;
+        if (!bigEl || !box || !col) return;
+        fitHeroTime(bigEl, layoutLeft(col) + 0.72 * col.offsetWidth, dayPeriods(host), size => (size === null ? box.style.removeProperty('--fw-t0') : box.style.setProperty('--fw-t0', `${size}px`)));
+    }
     function tick() {
         // A hero clock away at another hour stays there; it comes back to now with the card
         if (fw.hasAttribute('data-hero') && fw.dataset.away !== undefined) return;
@@ -320,6 +322,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
                     return;
                 }
             }
+            fitBig();
             hourly?.remeasure();
             fitNames();
             daily?.draw();

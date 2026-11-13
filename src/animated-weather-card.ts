@@ -1709,6 +1709,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         const metrics = card.querySelector('.weather-attributes') as HTMLElement | null;
 
         card.dataset.height = 'regular';
+        // The steps size a big time (hero: clock) by CSS; the forecast bundle fits it again once they're done
+        (card.querySelector('.awc-hero-clock') as HTMLElement | null)?.style.removeProperty('font-size');
         if (metrics) {
             // Measure the row at its natural width. Switch to the grid as soon
             // as it doesn't fit, but only back to a row with room to spare, so
