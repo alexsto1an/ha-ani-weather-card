@@ -370,6 +370,24 @@ describe('the slide: it stays where it\'s left', () => {
         return { root, slide, offsets, slots, needles, drag, pointer };
     }
 
+    it('following another card, a hand on it continues from the hour it shows, and from then on it leads', () => {
+        const { slide, slots, drag } = rig();
+        const heard: HourLink[] = [];
+        const listen = (e: Event) => heard.push((e as CustomEvent<HourLink>).detail);
+        window.addEventListener(HOUR_EVENT, listen);
+        slide.follow(Date.now() + 3 * HOUR);
+        vi.advanceTimersByTime(600);
+        expect(slots[slots.length - 1]).toBe(3);
+        // Following, it says nothing
+        expect(heard).toHaveLength(0);
+        drag(-50);
+        vi.advanceTimersByTime(2000);
+        // One hour further than the hour it showed, not one hour from now
+        expect(slots[slots.length - 1]).toBe(4);
+        expect(heard.length).toBeGreaterThan(0);
+        window.removeEventListener(HOUR_EVENT, listen);
+    });
+
     it('tells the days where its needle is, every frame it moves, and once it\'s home', () => {
         const { slide, needles, drag } = rig();
         drag(-150);
