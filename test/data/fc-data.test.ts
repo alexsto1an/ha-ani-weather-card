@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun } from '../../src/fc-core';
+import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun, num, whole } from '../../src/fc-core';
 import { turningLine, timeParts, timeText, highLow, week, hours, available, relative, dateText, conditionNoun } from '../../src/fc-data';
 import { FC_WORDS, fill } from '../../src/fc-words';
 import { nextAlarm, alertBefore, nightMode } from '../../src/fc-night';
@@ -161,6 +161,13 @@ describe('the nightstand\'s night option', () => {
     it('on and off as strings or, from a YAML-mode dashboard, as true and false; anything else is auto', () => {
         expect([nightMode('on'), nightMode(true), nightMode('off'), nightMode(false)]).toEqual(['on', 'on', 'off', 'off']);
         expect([nightMode(undefined), nightMode('auto'), nightMode('yes'), nightMode(1)]).toEqual(['auto', 'auto', 'auto', 'auto']);
+    });
+});
+
+describe('numbers in the forecast', () => {
+    it('zero has no minus, whatever rounds to it (#22); a negative that rounds away keeps it', () => {
+        expect([num(Math.round(-0.5), 'en'), num(-0.4, 'en'), num(-0.04, 'de', 1), whole(-0.4)]).toEqual(['0', '0', '0,0', '0']);
+        expect([num(-1, 'en'), num(-0.06, 'en', 1), whole(-0.6)]).toEqual(['-1', '-0.1', '\u22121']);
     });
 });
 

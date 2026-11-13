@@ -142,6 +142,9 @@ export function formatLocalizedNumber(
     decimals: number = 0
 ): string {
     if (!isFinite(value)) return '--';
+    // A value that rounds to zero is "0", never "-0": Intl keeps the sign of -0 (what Math.round(-0.5) gives) and of a
+    // small negative it rounds to zero, so -0.5 °C read "-0°" (#22). A negative that rounds away from zero keeps its minus
+    if (Math.abs(value) < 0.5 / 10 ** decimals) value = 0;
     const lang = hass?.locale?.language || hass?.language || (typeof navigator !== 'undefined' ? navigator.language : 'en');
     try {
         return new Intl.NumberFormat(lang, {

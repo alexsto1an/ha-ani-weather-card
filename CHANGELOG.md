@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A temperature that rounds to zero reads "0°", never "-0°": at −0.5 °C the card showed "-0°", and so could feels like, indoors, the forecast's highs and lows and the hours. A negative that rounds away from zero, such as −0.6 °C, still reads "-1°" ([#22](https://github.com/alexsto1an/ha-ani-weather-card/issues/22)).
 - On the sky palette, fog is the light haze the live demo shows, and `custom_colors.fog_color` colours it, on a card that doesn't set `color_palette`, which is most of them. Such a card painted its fog in the theme's secondary text colour and ignored `fog_color`, as if it were on the theme palette.
 - In Firefox, fog and clouds no longer bring up the dashboard's scrollbars as they drift past the card's edge, and wind's leaves no longer widen the page there: in Firefox they stay inside the card ([#16](https://github.com/alexsto1an/ha-ani-weather-card/issues/16)).
 - A clear evening before 20:00 showed an empty night sky, with no moon and no stars, and stayed that way all night. That's every clear evening where the sun sets early, such as autumn and winter in Europe. The card decided between the sun and the moon by the clock instead of by Home Assistant's `clear-night`. Home Assistant's `clear-night` and `sunny` now decide at any hour, for the sun tracker's shared sky too. A condition from another integration that only says "clear" follows the sun. With `enable_day_night_cycle`, the hours still decide, as before.

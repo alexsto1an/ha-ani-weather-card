@@ -267,6 +267,8 @@ export class Timeline {
 
 /** The card's number format: "1.4" or "1,4" */
 export function num(value: number, lang: string, digits = 0): string {
+    // Zero is "0", never "-0" (see formatLocalizedNumber)
+    if (Math.abs(value) < 0.5 / 10 ** digits) value = 0;
     try { return new Intl.NumberFormat(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value); }
     catch { return value.toFixed(digits); }
 }

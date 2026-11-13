@@ -86,6 +86,16 @@ describe('formatLocalizedNumber', () => {
         expect(formatLocalizedNumber(29.92, { language: 'en-US' }, 2)).toBe('29.92');
     });
 
+    it('writes zero without a minus, whatever rounds to it (#22)', () => {
+        expect(formatLocalizedNumber(Math.round(-0.5), { language: 'en-US' })).toBe('0');
+        expect(formatLocalizedNumber(-0.4, { language: 'en-US' })).toBe('0');
+        expect(formatLocalizedNumber(-0.04, { language: 'en-US' }, 1)).toBe('0.0');
+        expect(formatLocalizedNumber(-0.04, { language: 'de-DE' }, 1)).toBe('0,0');
+        // A negative that rounds away from zero keeps its minus
+        expect(formatLocalizedNumber(Math.round(-0.6), { language: 'en-US' })).toBe('-1');
+        expect(formatLocalizedNumber(-0.06, { language: 'en-US' }, 1)).toBe('-0.1');
+    });
+
     it('returns "--" for non-finite input', () => {
         expect(formatLocalizedNumber(NaN)).toBe('--');
         expect(formatLocalizedNumber(Infinity)).toBe('--');
