@@ -95,7 +95,7 @@ export interface HomeAssistant {
     localize: (key: string, ...args: any[]) => string;
     language: string;
     /** The user's language and formats (HA 2023+) */
-    locale?: { language: string; time_format?: 'language' | 'system' | '12' | '24'; number_format?: string };
+    locale?: { language: string; time_format?: 'language' | 'system' | '12' | '24'; number_format?: string; time_zone?: 'local' | 'server' };
     /** A state in the user's language, e.g. a moon phase (HA 2023.11+) */
     formatEntityState?: (stateObj: HassEntity, state?: string) => string;
     selectedLanguage?: string;
@@ -156,35 +156,28 @@ export interface WeatherEngineSettings {
     cloudBaseSize: number;
     cloudCount: number;
     splashBounce: number;
-    stormIntensity?: number;
-    fogDensity?: number;
-    starCount?: number;
 }
 
 /**
- * Custom color configuration with validation
+ * custom_colors: each _bg colour becomes a whole sky for its condition, on
+ * the sky palette (color-utils.ts); the text, the temperature, the sun, the
+ * rain and the snow apply on either palette; the fog's on the sky palette
  */
 export interface CustomColorConfig {
-    background_sunny?: string;
-    background_cloudy?: string;
-    background_rainy?: string;
-    background_stormy?: string;
-    background_snowy?: string;
-    background_foggy?: string;
-    background_clear_night?: string;
-    text_primary?: string;
-    text_secondary?: string;
-    icon_color?: string;
-    animation_rain?: string;
-    animation_snow?: string;
-    animation_wind?: string;
-    animation_lightning?: string;
-    animation_clouds?: string;
-    animation_fog?: string;
-    animation_stars?: string;
-    // Legacy color properties for backward compatibility
+    sunny_bg?: string;
+    cloudy_bg?: string;
+    rainy_bg?: string;
+    stormy_bg?: string;
+    snowy_bg?: string;
+    windy_bg?: string;
+    text_color?: string;
+    /** The temperature's colour, on either palette */
+    temperature_color?: string;
+    sun_color?: string;
     rain_color?: string;
     snow_color?: string;
+    /** The fog's colour, on the sky palette (gsap-effects.ts) */
+    fog_color?: string;
     [key: string]: string | undefined;
 }
 
@@ -223,6 +216,12 @@ export interface AnimatedWeatherCardConfig {
     /** Minutes after its `generated_at` that a note is hidden as stale (default 180, 0 never) */
     note_max_age?: number;
     show_flight_labels?: boolean;
+    /** What a plane's tag says: "flight" (number and aircraft, default), "route" ("Lisbon → Paris") or "both" */
+    flight_label?: 'flight' | 'route' | 'both';
+    /** How fast planes cross, as a share of their usual pace: 0.25 to 2 (default 1) */
+    plane_speed?: number;
+    /** Fly the planes already overhead when the dashboard opens (default: only those that arrive) */
+    planes_on_load?: boolean;
     show_attributes?: boolean;
     show_attribute_labels?: boolean;
     show_attribute_icons?: boolean;
@@ -241,6 +240,37 @@ export interface AnimatedWeatherCardConfig {
     /** What a double tap does (default: nothing) */
     double_tap_action?: import('./actions').ActionConfig;
     show_sun?: boolean;
+    /** The time, leading the location line */
+    show_clock?: boolean;
+    /** Today's date on the location line, after the time ("13:10  Fri 13 Nov  Home") */
+    show_date?: boolean;
+    /** The big value: the temperature (default), or the time, with the temperature leading the condition's line */
+    hero?: 'temperature' | 'clock';
+    /** The forecast on the card: today's high and low, the turning line, the hourly row and its chips, and the slide through the hours */
+    show_forecast?: boolean;
+    /** The metric the row shows first: temp, feels, chance or amount */
+    forecast_metric?: 'temp' | 'feels' | 'chance' | 'amount';
+    /** The hours' graph, the same for every metric: a line (default), the line with a soft fill under it, bars, or none */
+    forecast_graph?: 'line' | 'area' | 'bars' | 'none';
+    /** The forecast card: how many days its list shows (0 to 10, default 7) */
+    forecast_days?: number;
+    /** The forecast card: the hourly row (default true) */
+    show_hours?: boolean;
+    /** The card's layout: the regular card, or the nightstand (the time as the hero) */
+    layout?: 'default' | 'nightstand';
+    /** The nightstand: a sensor with the next alarm (a timestamp, or an input_datetime) */
+    alarm_entity?: string;
+    /** The nightstand: when you get up without an alarm, and when you go to bed ("07:00", "22:30") */
+    wake_time?: string;
+    bed_time?: string;
+    /** The nightstand: the dark night (auto: from the light sensor, else from bed to wake time) */
+    night?: 'auto' | 'on' | 'off' | boolean;
+    /** The nightstand: an illuminance sensor beside it */
+    night_sensor?: string;
+    /** The nightstand: night below this many lux on the sensor, held for a minute (5); day again at three times it, held for 10 s */
+    night_lux?: number;
+    /** The nightstand: red on black at night, as a bedside clock's night mode (on unless false); off, the sky stays under a veil in warm inks */
+    night_red?: boolean;
     animate?: boolean;
     auto_pause?: boolean;
     dev_mode?: boolean;
@@ -403,6 +433,8 @@ export interface GSAP {
     timeline(vars?: Record<string, any>): GSAPTimeline;
     killTweensOf(target: any): void;
     getTweensOf(target: any, onlyActive?: boolean): GSAPAnimation[];
+    /** A tweened property's current value (the forecast reads a cloud track's height to move it above its words) */
+    getProperty(target: any, property: string): number | string;
     globalTimeline: GSAPTimeline;
     ticker: {
         add(callback: () => void): void;
@@ -481,6 +513,10 @@ declare global {
         AnimatedWeatherCardNote?: new (host: import('./note-generator').NoteHost) => import('./note-generator').NoteWriter;
         /** Set by the planes bundle (animated-weather-card-planes.js) when it loads */
         AnimatedWeatherCardPlanes?: typeof import('./planes-animation').PlanesAnimation;
+        /** Set by the forecast bundle (animated-weather-card-forecast.js) when it loads: the forecast's drawings */
+        AnimatedWeatherCardForecast?: import('./forecast-host').ForecastViews;
+        /** The page's forecast subscriptions, made by the first bundle that asks (forecast-data.ts) */
+        AnimatedWeatherCardForecasts?: import('./forecast-data').ForecastHub;
         animatedWeatherCardBannerShown?: boolean;
         loadCardHelpers?: () => Promise<{
             createCardElement: (config: Record<string, any>) => HTMLElement;

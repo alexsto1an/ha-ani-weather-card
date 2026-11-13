@@ -47,6 +47,7 @@ export function installGsapStub(): void {
         delayedCall: vi.fn((_delay: number, callback: () => void) => timelineFactory({ onComplete: callback })),
         killTweensOf: vi.fn(),
         getTweensOf: vi.fn(() => []),
+        getProperty: vi.fn(() => 0),
     };
 }
 
@@ -59,6 +60,8 @@ beforeEach(() => {
 /** Tear down anything that leaks across tests. */
 afterEach(() => {
     delete (window as unknown as { AnimatedWeatherCardGsap?: unknown }).AnimatedWeatherCardGsap;
+    // Each test starts with no forecast subscriptions (forecast-data.ts)
+    delete (window as unknown as { AnimatedWeatherCardForecasts?: unknown }).AnimatedWeatherCardForecasts;
 });
 
 // matchMedia is missing in jsdom; many of our code paths consult it to

@@ -5,6 +5,8 @@ import { ActionConfig, ActionsConfig, readAction } from './actions';
 import { cardLocalize, escapeHtml, textField } from './utils';
 
 export type ActionKey = 'tap_action' | 'hold_action' | 'double_tap_action';
+/** The card's own actions, by name, with what the editor calls them ({ forecast: 'Forecast' }) */
+export type CardActions = Record<string, string>;
 export type ActionsPatch = Partial<Record<ActionKey, ActionConfig | undefined>>;
 
 const KEYS: readonly ActionKey[] = ['tap_action', 'hold_action', 'double_tap_action'];
@@ -44,18 +46,36 @@ type HaForm = HTMLElement & {
  * Changes go out as a patch: an action, or undefined for the default.
  */
 export function mountActionsEditor(container: HTMLElement, hass: HomeAssistant | undefined, config: ActionsConfig,
-                                   onChange: (patch: ActionsPatch) => void): void {
+                                   onChange: (patch: ActionsPatch) => void, cardActions: CardActions = {}): void {
     let current: ActionsConfig = { ...config };
     const change = (patch: ActionsPatch) => {
         current = { ...current, ...patch };
         onChange(patch);
     };
+    // A gesture set to one of the card's own actions (the forecast pop-up)
+    // isn't one Home Assistant's picker knows: it gets a line of its own,
+    // with a way back to Home Assistant's actions
+    const own = (key: ActionKey) => {
+        const action = current[key]?.action;
+        return action !== undefined && Object.prototype.hasOwnProperty.call(cardActions, action) ? action : undefined;
+    };
+    const ownRows = () => KEYS.filter(own).map(key => {
+        const row = document.createElement('div');
+        row.className = 'option card-action';
+        row.innerHTML = `<span>${escapeHtml(label(hass, key))}: <b>${escapeHtml(cardActions[own(key)!] ?? '')}</b></span>`
+            + `<button type="button" class="card-action-reset">${escapeHtml(cardLocalize(hass, 'ui.common.reset', 'Reset'))}</button>`;
+        row.querySelector('button')!.addEventListener('click', () => {
+            change({ [key]: undefined });
+            mountActionsEditor(container, hass, current, onChange, cardActions);
+        });
+        return row;
+    });
 
     const form = () => {
         const el = document.createElement('ha-form') as HaForm;
         el.hass = hass;
         el.data = { ...current };
-        el.schema = SCHEMA;
+        el.schema = SCHEMA.filter(entry => !own(entry.name));
         el.computeLabel = schema => label(hass, schema.name as ActionKey);
         el.addEventListener('value-changed', (e: Event) => {
             // Home Assistant's editor dialog listens for config-changed, not this
@@ -69,14 +89,14 @@ export function mountActionsEditor(container: HTMLElement, hass: HomeAssistant |
             el.data = { ...current, ...patch };
             if (Object.keys(patch).length) change(patch);
         });
-        container.replaceChildren(el);
+        container.replaceChildren(...ownRows(), el);
     };
 
     if (customElements.get('ha-form')) {
         form();
         return;
     }
-    renderFallback(container, hass, () => current, change);
+    renderFallback(container, hass, () => current, change, cardActions);
     customElements.whenDefined('ha-form').then(() => {
         if (container.isConnected) form();
     });
@@ -118,7 +138,8 @@ const ACTION_FIELDS: Record<string, { key: string; label: string; placeholder: s
 };
 
 function renderFallback(container: HTMLElement, hass: HomeAssistant | undefined, current: () => ActionsConfig,
-                        change: (patch: ActionsPatch) => void): void {
+                        change: (patch: ActionsPatch) => void, cardActions: CardActions = {}): void {
+    const plain = [...PLAIN_ACTIONS, ...Object.entries(cardActions).map(([value, label]) => ({ value, label }))];
     container.innerHTML = KEYS.map(key => {
         const action = current()[key];
         const field = action ? ACTION_FIELDS[action.action] : undefined;
@@ -131,12 +152,12 @@ function renderFallback(container: HTMLElement, hass: HomeAssistant | undefined,
 
     for (const key of KEYS) {
         const action = current()[key];
-        const select = container.querySelector(`[data-action="${key}"]`) as HTMLElement & { value: string; options: typeof PLAIN_ACTIONS } | null;
+        const select = container.querySelector(`[data-action="${key}"]`) as HTMLElement & { value: string; options: typeof plain } | null;
         if (!select) continue;
         // An action set in YAML (perform-action, toggle, assist) stays as it is
-        const options = action && !PLAIN_ACTIONS.some(o => o.value === action.action)
-            ? [...PLAIN_ACTIONS, { value: action.action, label: `${action.action} (set in YAML)` }]
-            : PLAIN_ACTIONS;
+        const options = action && !plain.some(o => o.value === action.action)
+            ? [...plain, { value: action.action, label: `${action.action} (set in YAML)` }]
+            : plain;
         const init = () => {
             select.options = options;
             select.value = action?.action ?? 'default';
@@ -147,7 +168,7 @@ function renderFallback(container: HTMLElement, hass: HomeAssistant | undefined,
             const value = e.detail?.value as string | undefined;
             if (!value || value === (current()[key]?.action ?? 'default')) return;
             change({ [key]: value === 'default' ? undefined : { action: value } });
-            renderFallback(container, hass, current, change);
+            renderFallback(container, hass, current, change, cardActions);
         }) as EventListener);
         select.addEventListener('closed', (e: Event) => e.stopPropagation());
 

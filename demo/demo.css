@@ -940,6 +940,69 @@ a { color: inherit; }
     color: var(--text-3);
 }
 
+/* ── The hours ahead: the forecast and the clock ─────────────────────
+   Three cards at a phone's size (a sections column is 353 px wide, and
+   each card is as tall as the rows it asks for), side by side where they
+   fit. Each stands on its own patch of wall, lit by its own sky, with its
+   caption and its YAML under it. */
+.ahead {
+    --console: 352px;
+    max-width: var(--page);
+    margin: var(--section) auto 0;
+    padding: 0 var(--gutter);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--console);
+    column-gap: 64px;
+    align-items: end;
+}
+.ahead-title { grid-column: 1; }
+.ahead-copy { grid-column: 2; }
+.ahead-copy .section-lede { margin: 0; }
+.ahead-stage {
+    grid-column: 1 / -1;
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 353px), 353px));
+    justify-content: center;
+    align-items: start;
+    gap: 64px clamp(32px, 4vw, 56px);
+}
+.ahead-slot {
+    position: relative;
+    min-width: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+/* The scenes stack in one cell, so a new setup can dissolve over the old.
+   Wind carries snow sideways: keep it off the next card. */
+.ahead-scenes {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    overflow-x: clip;
+    overflow-clip-margin: 12px;
+}
+.ahead-scene { grid-area: 1 / 1; width: 100%; }
+.ahead-box { width: 100%; }
+.ahead-box > * { display: block; height: 100%; }
+.ahead-caption,
+.ahead-slot .snippet-slot,
+.ahead-hero { position: relative; z-index: 1; }
+/* The big value, temperature or time, under the first card: its label and its two choices on one line */
+.ahead-hero { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.ahead-hero-label { font-size: 14px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+.ahead-hero .segmented { flex: 0 1 220px; }
+.ahead-caption { justify-self: start; width: auto; max-width: 100%; transform: none; text-wrap: pretty; }
+.ahead-slot .snippet-slot { width: 100%; }
+.ahead-slot:has(.snippet-slot[data-open]) .code-toggle-icon svg { transform: rotate(180deg); }
+.ahead-slot .stage-light { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s, transform 0.52s var(--ease-out-quint); }
+.ahead-slot .stage-light.is-placing { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s; }
+.ahead-caption,
+.ahead-slot .snippet-slot,
+.ahead-hero { transition: opacity 0.6s var(--ease-out-quart) 0.35s; }
+.js .ahead-stage:not(.is-shown) :is(.stage-light, .ahead-caption, .snippet-slot, .ahead-hero) { opacity: 0; }
+
 /* ── The sun tracker: its sizes, and the day under your finger ──────── */
 .tracker {
     --console: 352px;
@@ -1594,7 +1657,7 @@ a { color: inherit; }
 
 /* ── Narrower screens ────────────────────────────────────────────────── */
 @media (max-width: 1199px) {
-    .hero, .dash, .tracker { --console: 312px; column-gap: 48px; }
+    .hero, .dash, .ahead, .tracker { --console: 312px; column-gap: 48px; }
     .instrument { column-gap: 48px; }
 }
 
@@ -1614,10 +1677,12 @@ a { color: inherit; }
 }
 
 @media (max-width: 900px) {
-    .hero, .dash, .tracker { grid-template-columns: minmax(0, 1fr); }
+    .hero, .dash, .ahead, .tracker { grid-template-columns: minmax(0, 1fr); }
     .dash-title, .dash-copy, .frame-stage,
+    .ahead-title, .ahead-copy, .ahead-stage,
     .tracker-title, .tracker-copy { grid-column: 1 / -1; }
-    .dash-copy, .tracker-copy { margin-top: 22px; }
+    .dash-copy, .ahead-copy, .tracker-copy { margin-top: 22px; }
+    .ahead-stage { margin-top: 44px; row-gap: 48px; }
     .station-title, .station-copy, .readings, .station-stage { grid-column: 1 / -1; grid-row: auto; }
     .station-copy { margin-top: 22px; }
     .station-stage { position: relative; top: auto; order: 1; margin-top: 36px; justify-items: center; }
@@ -1719,7 +1784,9 @@ a { color: inherit; }
     .code-toggle-icon svg,
     .button-quiet span { transition: none !important; }
     .glyph, .plane-button, .button-primary, .copy, .chip, .swatch, .slider-thumb { transform: none !important; }
-    .lab-stage.is-shown .stage-light { transition: opacity 0.2s ease !important; }
+    .lab-stage.is-shown .stage-light,
+    .ahead-slot .stage-light { transition: opacity 0.2s ease !important; }
+    .ahead-caption, .ahead-slot .snippet-slot, .ahead-hero { transition-duration: 0.2s; transition-delay: 0s; }
     .reading-dot, .reading-value { transition-delay: 0ms !important; }
     .weather-live.is-finding .glyph svg { animation: none; opacity: 0.6; }
     .stage.is-ready .stage-light { transition: opacity 0.2s ease !important; }

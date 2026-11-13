@@ -1,16 +1,19 @@
 name: Release
 
-# Triggered by pushing a `vX.Y.Z` tag. Builds the five bundles and publishes
-# a GitHub Release with them attached. HACS reads hacs.json at the tag, finds
+# Triggered by pushing a `vX.Y.Z` tag. Builds the six bundles and publishes
+# a GitHub Release with them attached. The Marketplace (Home Assistant
+# 2026.11 and later), and HACS before it, reads hacs.json at the tag, finds
 # its `filename` (animated-weather-card.js) among the release's files,
 # registers it as the dashboard resource and downloads every attached file,
-# so the release carries exactly the five bundles and nothing else. (With
+# so the release carries exactly the six bundles and nothing else. (With
 # `zip_release`, HACS would download the file `filename` names and unzip it,
 # which is what broke 1.0.0.)
 #
 # To cut a release:
-#   1. Set the version in package.json and in CARD_VERSION (src/constants.ts)
-#      so they match (this workflow rejects a mismatch).
+#   1. Set the version in package.json, package-lock.json and CARD_VERSION
+#      (src/constants.ts) so they match (this workflow rejects a mismatch,
+#      and the tests check the lock), and move the CHANGELOG's Unreleased
+#      entries under it.
 #   2. Commit them with the rebuilt bundles.
 #   3. git tag vX.Y.Z && git push origin vX.Y.Z
 #   The workflow takes it from there.
@@ -66,11 +69,13 @@ jobs:
           test -f animated-weather-card-dev.js
           test -f animated-weather-card-note.js
           test -f animated-weather-card-planes.js
+          test -f animated-weather-card-forecast.js
           echo "Main bundle:   $(stat -c %s animated-weather-card.js) bytes"
           echo "Editor bundle: $(stat -c %s animated-weather-card-editor.js) bytes"
           echo "Dev bundle:    $(stat -c %s animated-weather-card-dev.js) bytes"
           echo "Note bundle:   $(stat -c %s animated-weather-card-note.js) bytes"
           echo "Planes bundle: $(stat -c %s animated-weather-card-planes.js) bytes"
+          echo "Forecast bundle: $(stat -c %s animated-weather-card-forecast.js) bytes"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -84,3 +89,4 @@ jobs:
             animated-weather-card-dev.js
             animated-weather-card-note.js
             animated-weather-card-planes.js
+            animated-weather-card-forecast.js

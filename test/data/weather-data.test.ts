@@ -211,6 +211,17 @@ describe('processWeatherData — temperature decimals', () => {
         expect(temperatureDecimals({ temperature_decimals: '1' })).toBe(1);
     });
 
+    it('reads -0.5 °C as 0°, not -0° (#22), in whole degrees and to one decimal', () => {
+        const cold = (temperature: number, feels: number) => ({
+            states: { 'weather.home': { entity_id: 'weather.home', state: 'cloudy', attributes: { temperature, apparent_temperature: feels } } },
+            language: 'en-US',
+        } as unknown as HomeAssistant);
+        const whole = processWeatherData(cold(-0.5, -0.4), { entity: 'weather.home' });
+        expect([whole.temperature, whole.feelsLike]).toEqual(['0', '0°']);
+        expect(processWeatherData(cold(-0.6, -1.4), { entity: 'weather.home' }).temperature).toBe('-1');
+        expect(processWeatherData(cold(-0.04, -0.03), { entity: 'weather.home', temperature_decimals: 1 }).temperature).toBe('0.0');
+    });
+
     it('shows the dev mode samples to one decimal too', () => {
         const data = processWeatherData(undefined, { dev_mode: true, temperature_decimals: 1 }, 'sunny');
         expect(data.temperature).toMatch(/^26[.,]0$/);

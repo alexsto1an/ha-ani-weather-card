@@ -47,14 +47,14 @@ describe('the sun tracker\'s moon', () => {
         tracker.setConfig({ sun_entity: 'sun.sun', moon_entity: 'sensor.moon' });
         document.body.appendChild(tracker);
         const root = tracker.shadowRoot!;
-        const icon = () => root.querySelector('.st-metric[data-kind="moon"] ha-icon')!.getAttribute('icon');
+        const icon = () => root.querySelector('.st-metric[data-kind="moon"] svg.awc-icon')!.getAttribute('data-icon');
 
         tracker.hass = hass('waning_gibbous');
-        expect(icon()).toBe('mdi:moon-waning-gibbous');
+        expect(icon()).toBe('moon-waning-gibbous');
 
-        // Any sensor can be the moon entity: its state never becomes an icon name
+        // Any sensor can be the moon entity: its state never picks an icon, and gets the plain moon
         tracker.hass = hass(BREAKOUT);
-        expect(icon()).toBe('mdi:weather-night');
+        expect(icon()).toBe('last-light');
         tracker.hass = hass(TAGS);
         expect(handlers(root)).toEqual([]);
         expect(root.querySelector('img')).toBeNull();
@@ -63,7 +63,7 @@ describe('the sun tracker\'s moon', () => {
 
         // A state named like something every object inherits isn't a phase either
         tracker.hass = hass('constructor');
-        expect(icon()).toBe('mdi:weather-night');
+        expect(icon()).toBe('last-light');
         expect(root.querySelector('.st-metric[data-kind="moon"] .st-metric-value')!.textContent).toBe('Constructor');
     });
 });
@@ -147,12 +147,25 @@ describe('colors', () => {
         expect(painted.querySelector<HTMLElement>('.fog-layer > div')!.style.background).toContain('rgb(200, 210, 220)');
     });
 
+    it('paint the fog in fog_color on the sky palette, set or not, and in the theme\'s colour on the theme palette', () => {
+        const card = document.createElement('div');
+        const fogOf = (config: Record<string, unknown>) => {
+            const fog = document.createElement('div');
+            createGSAPFogLayer(fog, { windSpeed: 1 }, 0, card, config);
+            return fog.querySelector<HTMLElement>('.fog-layer > div')!.style.background;
+        };
+        // Most cards never write color_palette: it's the sky palette all the same
+        expect(fogOf({ custom_colors: { fog_color: 'rgb(200, 210, 220)' } })).toContain('rgb(200, 210, 220)');
+        expect(fogOf({})).toContain('rgb(224, 224, 224)');
+        expect(fogOf({ color_palette: 'theme', custom_colors: { fog_color: 'rgb(200, 210, 220)' } })).toContain('var(--secondary-text-color)');
+    });
+
     it('keep a hostile color out of the card\'s markup', async () => {
         vi.useFakeTimers();
         const card = document.createElement('animated-weather-card') as Card;
         card.setConfig({
             type: 'custom:animated-weather-card', entity: 'weather.home',
-            custom_colors: { text_color: `rgb(1,2,3)${BREAKOUT}`, sun_color: 'rgb(1,2,3);background:url(x)', rain_color: 'rgb(200, 220, 255)' },
+            custom_colors: { text_color: `rgb(1,2,3)${BREAKOUT}`, sun_color: 'rgb(1,2,3);background:url(x)', rain_color: 'rgb(200, 220, 255)', temperature_color: 'white' },
         });
         card.hass = {
             states: { 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: { temperature: 20, friendly_name: TAGS } } },
@@ -165,6 +178,8 @@ describe('colors', () => {
         expect(card.querySelector('img')).toBeNull();
         const style = card.querySelector('.animated-weather-card')!.getAttribute('style')!;
         expect(style).toContain('--weather-rain-color: rgb(200, 220, 255)');
+        // The temperature's own colour (issue #20), on either palette: the card's hero colour, which the theme sets otherwise
+        expect(style).toContain('--awc-hero-color: white !important');
         expect(style).not.toContain('onmouseover');
         expect(style).not.toContain('url(');
     });

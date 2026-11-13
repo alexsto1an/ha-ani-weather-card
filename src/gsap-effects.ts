@@ -3,6 +3,7 @@
 import type { GSAPTimeline } from './types';
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { isValidColor } from './utils';
+import { cloudY } from './cloud-band';
 
 /** Leaf speed range in px/s at the default wind. */
 export const LEAF_SPEED: [number, number] = [90, 160];
@@ -234,9 +235,10 @@ export function cloudPartMask(width: number, height: number, blur: number, dpr: 
     return url;
 }
 
-/** Remove every cloud and its track, and stop them moving. */
+/** Remove every cloud and its track, and their twins, and stop them moving. */
 export function removeClouds(root: ParentNode): void {
-    root.querySelectorAll('.cloud-track, .cloud-gsap').forEach(el => {
+    const scope = (root as Element).closest?.('.clouds-container') ?? root;
+    scope.querySelectorAll('.cloud-track, .cloud-gsap, .cloud-occluder').forEach(el => {
         window.AnimatedWeatherCardGsap?.killTweensOf(el);
         el.remove();
     });
@@ -286,6 +288,8 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
 
             cloud.style.position = 'absolute';
             cloud.style.opacity = layer.opacity.toString();
+            // Its own opacity, which it grows from as it passes the sun (clouds-animation.ts)
+            cloud.dataset.awcO = String(layer.opacity);
             cloud.style.zIndex = (10 + layerIndex).toString();
 
             // Far clouds are dimmer and cooler, near clouds brightest. The
@@ -354,6 +358,12 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             ];
             
             const topPosition = heightVariations[layerIndex][i - 1] || (15 + layerIndex * 10);
+            // How far down its sky the cloud rides, and how much of it hangs below that (its body and blur).
+            // With the forecast on, the sky ends above the row (data-cloud-band, px): the whole cloud stays above it.
+            const frac = topPosition / 60;
+            const bottom = shape.height + Math.max(reach, Math.ceil(blur * 3)) + 2;
+            const banded = Number(cardElement.dataset?.cloudBand);
+            const band = Number.isFinite(banded) && cardElement.dataset?.cloudBand !== undefined ? banded : null;
             
             // Start and end fully outside the card, by this much
             const margin = Math.max(150 + layerIndex * 50, extent + CLOUD_BLUR_PAD_PX);
@@ -367,12 +377,30 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             // out of sight. Both are transforms: no layout per frame.
             const track = document.createElement('div');
             track.className = 'cloud-track';
+            track.dataset.awcF = String(frac);
+            track.dataset.awcB = String(bottom);
             track.appendChild(cloud);
             window.AnimatedWeatherCardGsap.set(cloud, { opacity: layer.opacity });
-            window.AnimatedWeatherCardGsap.set(track, {
+            // On the theme palette, a twin in the card's fill rides under it, clipped to the card, to hide the sun
+            // behind it (styles/card.ts: .clouds-occluders). Its track carries the same place, so a floor moves it too.
+            const tracks: HTMLElement[] = [track];
+            if (config?.color_palette === 'theme') {
+                const twins = cloudLayer.parentElement?.querySelector('.clouds-occluders')
+                    ?? cloudLayer.insertAdjacentElement('beforebegin', Object.assign(document.createElement('div'), { className: 'clouds-occluders' }));
+                const twin = cloud.cloneNode(true) as HTMLElement;
+                twin.className = 'cloud-occluder';
+                twin.style.opacity = '1';
+                for (const el of [twin, ...Array.from(twin.querySelectorAll<HTMLElement>('div'))]) if (el.style.background) el.style.background = 'var(--awc-card-bg)';
+                const shadow = track.cloneNode(false) as HTMLElement;
+                shadow.appendChild(twin);
+                twins?.appendChild(shadow);
+                tracks.push(shadow);
+            }
+            const moved = tracks.length > 1 ? tracks : track;
+            window.AnimatedWeatherCardGsap.set(moved, {
                 xPercent: 0,
                 x: -margin,
-                y: (cardHeight * topPosition) / 100,
+                y: cloudY(frac, bottom, band, cardHeight),
             });
 
             cloudLayer.appendChild(track);
@@ -383,7 +411,7 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
                 repeat: -1,
                 repeatDelay: Math.random() * 1.5,
             });
-            tl.fromTo(track, { xPercent: 0, x: -margin }, { xPercent: 100, x: margin, duration, ease: 'none' });
+            tl.fromTo(moved, { xPercent: 0, x: -margin }, { xPercent: 100, x: margin, duration, ease: 'none' });
             tl.progress(Math.random());
 
             cloudTimelines.push(tl);
@@ -437,9 +465,10 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
     const layer = layerConfig[layerIndex] || layerConfig[2];
 
     // Set fog layer styling. A custom fog colour goes into cssText, so it
-    // must be a colour and nothing that could end the declaration.
+    // must be a colour and nothing that could end the declaration. An unset
+    // palette is the sky palette, as everywhere else in the card.
     const customFog = config.custom_colors?.fog_color;
-    const fogColor = config.color_palette === 'default'
+    const fogColor = (config.color_palette || 'default') !== 'theme'
         ? (isValidColor(customFog) ? customFog : '#e0e0e0')
         : 'var(--secondary-text-color)';
 

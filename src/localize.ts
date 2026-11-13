@@ -95,7 +95,8 @@ STRINGS.nn = STRINGS.nb;
 /** The parts of `hass` these helpers read. */
 export interface LocaleSource {
     language?: string;
-    locale?: { language?: string; time_format?: string };
+    locale?: { language?: string; time_format?: string; time_zone?: string };
+    config?: { time_zone?: string };
 }
 
 /** The dashboard's language: the user's HA profile setting, then HA's. */
@@ -103,15 +104,37 @@ export function cardLanguage(hass: LocaleSource | undefined): string {
     return hass?.locale?.language || hass?.language || 'en';
 }
 
-/** Changes when the user's language or clock format does, so labels can be rebuilt. */
+/** Changes when the user's language, clock format or time zone does, so labels can be rebuilt. */
 export function localeKey(hass: LocaleSource | undefined): string {
-    return `${cardLanguage(hass)}|${hass?.locale?.time_format ?? ''}`;
+    return `${cardLanguage(hass)}|${hass?.locale?.time_format ?? ''}|${cardTimeZone(hass) ?? ''}`;
+}
+
+/**
+ * The time zone times are shown in, as the user's profile says: the
+ * server's (Home Assistant's own) or, by default, the device's. Undefined
+ * means the device's.
+ */
+export function cardTimeZone(hass: LocaleSource | undefined): string | undefined {
+    if (hass?.locale?.time_zone !== 'server') return undefined;
+    const zone = hass.config?.time_zone;
+    if (!zone) return undefined;
+    try {
+        new Intl.DateTimeFormat('en', { timeZone: zone });
+        return zone;
+    } catch {
+        return undefined;
+    }
 }
 
 /** A card string in the dashboard's language ("pt-BR" → "pt" → English). */
 export function localizeString(hass: LocaleSource | undefined, key: CardString, vars: Record<string, string> = {}): string {
+    return fromTable(STRINGS, hass, key, vars);
+}
+
+/** A string from a table of them by language: the dashboard's, its base language, else English */
+export function fromTable<K extends string>(table: Record<string, Partial<Record<K, string>>>, hass: LocaleSource | undefined, key: K, vars: Record<string, string> = {}): string {
     const language = cardLanguage(hass).toLowerCase();
-    const text = STRINGS[language]?.[key] ?? STRINGS[language.split('-')[0]]?.[key] ?? STRINGS.en[key]!;
+    const text = table[language]?.[key] ?? table[language.split('-')[0]]?.[key] ?? table.en[key]!;
     return text.replace(/\{(\w+)\}/g, (_, name: string) => vars[name] ?? '');
 }
 
@@ -141,13 +164,111 @@ export function formatTime(iso: string | null | undefined, hass?: LocaleSource):
     if (!iso) return '--';
     const date = new Date(iso);
     if (isNaN(date.getTime())) return '--';
-    const amPm = useAmPm(hass);
-    const options: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
-    if (amPm !== undefined) options.hourCycle = amPm ? 'h12' : 'h23';
     try {
-        return new Intl.DateTimeFormat(hass ? cardLanguage(hass) : undefined, options).format(date);
+        return timeFormat(hass, { hour: 'numeric', minute: '2-digit' }).format(date);
     } catch {
         return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+}
+
+/** A formatter for times of day in the dashboard's language, 12/24-hour setting and time zone. */
+function timeFormat(hass: LocaleSource | undefined, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+    const amPm = useAmPm(hass);
+    const full: Intl.DateTimeFormatOptions = { ...options, timeZone: cardTimeZone(hass) };
+    if (amPm !== undefined) full.hourCycle = amPm ? 'h12' : 'h23';
+    return new Intl.DateTimeFormat(hass ? cardLanguage(hass) : undefined, full);
+}
+
+/**
+ * The clock's reading: the hours and minutes ("7:12", "19:12") and, on a
+ * 12-hour clock, the day period ("PM") apart, so it can be set smaller.
+ */
+export function clockParts(date: Date, hass?: LocaleSource): { time: string; period: string } {
+    try {
+        const parts = timeFormat(hass, { hour: 'numeric', minute: '2-digit' }).formatToParts(date);
+        const period = parts.filter(p => p.type === 'dayPeriod').map(p => p.value).join('');
+        const time = parts.filter(p => p.type !== 'dayPeriod').map(p => p.value).join('').trim();
+        return { time, period };
+    } catch {
+        return { time: date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), period: '' };
+    }
+}
+
+/**
+ * An hour on its own for a forecast ("14", "2 PM"), in the same format and
+ * time zone. Built from the hour and the day period alone: Intl's own hour
+ * says "15 Uhr" in German and "15 h" in French, too long for a column.
+ */
+export function formatHour(date: Date, hass?: LocaleSource): string {
+    try {
+        const parts = timeFormat(hass, { hour: 'numeric' }).formatToParts(date);
+        const hour = parts.find(p => p.type === 'hour')?.value ?? String(date.getHours());
+        const period = parts.find(p => p.type === 'dayPeriod')?.value;
+        return period ? `${hour} ${period}` : hour;
+    } catch {
+        return String(date.getHours());
+    }
+}
+
+/** A day's name ("Mon", "Montag"), in the dashboard's language and time zone */
+export function formatWeekday(date: Date, hass?: LocaleSource, width: 'short' | 'long' = 'short'): string {
+    try {
+        return new Intl.DateTimeFormat(hass ? cardLanguage(hass) : undefined, { weekday: width, timeZone: cardTimeZone(hass) }).format(date);
+    } catch {
+        return '';
+    }
+}
+
+/** Today's date for the clock ("Monday 9 November", "Montag, 9. November") */
+export function formatDate(date: Date, hass?: LocaleSource, options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' }): string {
+    try {
+        return new Intl.DateTimeFormat(hass ? cardLanguage(hass) : undefined, { ...options, timeZone: cardTimeZone(hass) }).format(date);
+    } catch {
+        return date.toDateString();
+    }
+}
+
+/**
+ * Today's date, short, for the clock: the weekday and the day ("Tue 10",
+ * "Di., 10."), with the month too ("Tue, Nov 10"). English puts the
+ * weekday first, which Intl's American order doesn't.
+ */
+export function shortDate(date: Date, hass?: LocaleSource, withMonth = false): string {
+    const language = hass ? cardLanguage(hass) : undefined;
+    const options: Intl.DateTimeFormatOptions = withMonth
+        ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: cardTimeZone(hass) }
+        : { weekday: 'short', day: 'numeric', timeZone: cardTimeZone(hass) };
+    try {
+        const format = new Intl.DateTimeFormat(language, options);
+        if (!withMonth && (language ?? 'en').toLowerCase().startsWith('en')) {
+            const parts = format.formatToParts(date);
+            const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
+            const day = parts.find(p => p.type === 'day')?.value ?? '';
+            return `${weekday} ${day}`.trim();
+        }
+        return format.format(date);
+    } catch {
+        return date.toDateString();
+    }
+}
+
+/** The time of day in hours (14.5 is 2:30 PM), in the card's time zone: where a time sits on a 24-hour drawing */
+export function hourOfDay(date: Date, hass?: LocaleSource): number {
+    try {
+        const parts = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23', timeZone: cardTimeZone(hass) }).formatToParts(date);
+        const part = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0);
+        return part('hour') + part('minute') / 60 + part('second') / 3600;
+    } catch {
+        return date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+    }
+}
+
+/** A day number for comparing dates in the card's time zone: two times on the same calendar day get the same number */
+export function dayKey(date: Date, hass?: LocaleSource): string {
+    try {
+        return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: cardTimeZone(hass) }).format(date);
+    } catch {
+        return date.toDateString();
     }
 }
 

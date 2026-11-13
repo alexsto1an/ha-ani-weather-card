@@ -17,6 +17,11 @@ export interface FlightInfo {
     label: string;
     /** ICAO aircraft type code, e.g. "B77W". Empty if unknown. */
     aircraftCode: string;
+    /** Where it's from and going: the cities ("Lisbon") and the airports' IATA codes ("LIS"). Empty if unknown. */
+    originCity: string;
+    originCode: string;
+    destinationCity: string;
+    destinationCode: string;
     altitudeFt: number | null;
     groundSpeedKt: number | null;
     /** True track in degrees, 0 = north, 90 = east. */
@@ -69,6 +74,10 @@ export function normalizeFlight(raw: unknown): FlightInfo | null {
         id,
         label: toText(r.flight_number) || toText(r.callsign),
         aircraftCode: toText(r.aircraft_code),
+        originCity: toText(r.airport_origin_city),
+        originCode: toText(r.airport_origin_code_iata),
+        destinationCity: toText(r.airport_destination_city),
+        destinationCode: toText(r.airport_destination_code_iata),
         altitudeFt: toNumber(r.altitude),
         groundSpeedKt: toNumber(r.ground_speed),
         heading: toNumber(r.heading),
@@ -100,7 +109,8 @@ export function readFlights(hass: HomeAssistant | undefined, entityId: string | 
 /**
  * Tracks which airborne flights have already been seen and reports new
  * arrivals. The first observation only seeds the set, so loading a
- * dashboard while planes are overhead doesn't fire a burst of fly-overs.
+ * dashboard while planes are overhead doesn't fire a burst of fly-overs,
+ * unless `onLoad` asks for the planes already overhead (planes_on_load).
  *
  * Flights on the ground aren't counted as seen: a plane that takes off
  * from a nearby airport flies over once it's airborne.
@@ -108,8 +118,8 @@ export function readFlights(hass: HomeAssistant | undefined, entityId: string | 
 export class FlightTracker {
     private known: Set<string> | null = null;
 
-    /** Feed the latest flight list; returns flights that newly appeared. */
-    public update(flights: FlightInfo[] | null): FlightInfo[] {
+    /** Feed the latest flight list; returns flights that newly appeared (with `onLoad`, the first time, those already up) */
+    public update(flights: FlightInfo[] | null, onLoad = false): FlightInfo[] {
         if (!flights) return [];
 
         const airborne = flights.filter(f => !f.onGround);
@@ -117,7 +127,7 @@ export class FlightTracker {
 
         if (this.known === null) {
             this.known = ids;
-            return [];
+            return onLoad ? airborne.filter((f, i) => airborne.findIndex(g => g.id === f.id) === i) : [];
         }
 
         const arrivals: FlightInfo[] = [];

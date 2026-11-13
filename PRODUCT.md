@@ -14,7 +14,7 @@ The job: know what it's like outside right now in one glance (temperature and co
 
 An animated weather card that makes the dashboard feel alive: the sky behaves like the weather. It exists because Home Assistant's default weather card is a static data tile. Success is a card people keep on their main view because it is the most beautiful thing on it, and the data is still faster to read than the default card.
 
-The same download includes a second card, the sun tracker: the sun's path across the day, with the next sunrise or sunset as its headline. It's designed to pair with the weather card. A compact tracker stacked under the weather card shares its sky and lines up with its text, so the two read as one piece. Both cards are free and open source.
+The same download includes two more cards. The forecast card is the weather card's own engine showing the hours and days ahead, on the same sky. The sun tracker draws the sun's path across the day, with the next sunrise or sunset as its headline. Both are designed to pair with the weather card: a compact tracker stacked under it shares its sky and lines up with its text, so the two read as one piece, and the forecast strip sits under the compact card the same way. All three cards are free and open source.
 
 ## Brand Personality
 
@@ -35,7 +35,7 @@ The words follow the same register, in the README, the editor and the changelog:
 ## Design Principles
 
 1. **The sky is the card.** Color, depth and light come from the weather itself (condition plus time of day), never from chrome around it.
-2. **One hero, one quiet tier.** Temperature leads by a wide margin; everything else is a calm, consistent secondary tier. If two things compete, one of them is wrong.
+2. **One hero, one quiet tier.** Temperature leads by a wide margin (or the time, for those who choose it, with the temperature first in the line under it); everything else is a calm, consistent secondary tier. If two things compete, one of them is wrong.
 3. **Legibility over spectacle.** Text always wins over particles: weather moves behind the words, and contrast is guaranteed in every condition and theme.
 4. **Fit any frame.** The layout adapts to the space it's given (narrow column, short row, wall tablet, one-line compact strip) instead of clipping or shrinking uniformly.
 5. **Motion is weather, not UI.** Interface transitions are brief and state-driven; the atmosphere is where motion lives.

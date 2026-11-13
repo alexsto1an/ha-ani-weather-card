@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { escapeHtml, convertWindSpeedToKmh, formatLocalizedNumber, cardLocalize, getWeatherSettings, getWeatherClass } from '../../src/utils';
 
 describe('escapeHtml', () => {
@@ -86,6 +86,16 @@ describe('formatLocalizedNumber', () => {
         expect(formatLocalizedNumber(29.92, { language: 'en-US' }, 2)).toBe('29.92');
     });
 
+    it('writes zero without a minus, whatever rounds to it (#22)', () => {
+        expect(formatLocalizedNumber(Math.round(-0.5), { language: 'en-US' })).toBe('0');
+        expect(formatLocalizedNumber(-0.4, { language: 'en-US' })).toBe('0');
+        expect(formatLocalizedNumber(-0.04, { language: 'en-US' }, 1)).toBe('0.0');
+        expect(formatLocalizedNumber(-0.04, { language: 'de-DE' }, 1)).toBe('0,0');
+        // A negative that rounds away from zero keeps its minus
+        expect(formatLocalizedNumber(Math.round(-0.6), { language: 'en-US' })).toBe('-1');
+        expect(formatLocalizedNumber(-0.06, { language: 'en-US' }, 1)).toBe('-0.1');
+    });
+
     it('returns "--" for non-finite input', () => {
         expect(formatLocalizedNumber(NaN)).toBe('--');
         expect(formatLocalizedNumber(Infinity)).toBe('--');
@@ -157,5 +167,54 @@ describe('weather condition mapping', () => {
 
     it('shows hail as sleet rather than a clear sky', () => {
         expect(cls('hail')).toBe('sleety');
+    });
+});
+
+describe('a clear sky by day and by night', () => {
+    // 19:55 UTC: after a winter sunset, before the clock's default sunset hour (20)
+    const at = (hour: number, minute = 0) => vi.setSystemTime(new Date(Date.UTC(2026, 10, 6, hour, minute)));
+    const clear = (state: string, time = {}) => getWeatherClass(state, false, undefined, undefined, 'UTC', time);
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("takes Home Assistant's clear-night and sunny at their word, at any hour", () => {
+        at(17, 30);
+        expect(clear('clear-night')).toBe('clear-night');
+        at(19, 55);
+        expect(clear('clear-night')).toBe('clear-night');
+        at(6, 30);
+        expect(clear('clear-night')).toBe('clear-night');
+        at(23);
+        expect(clear('sunny')).toBe('sunny');
+    });
+
+    it('trusts the state over what the sky shows', () => {
+        // HA turns clear-night at sunset, while the sky is still dusk
+        at(17, 30);
+        expect(clear('clear-night', { night: false })).toBe('clear-night');
+        expect(clear('sunny', { night: true })).toBe('sunny');
+    });
+
+    it('gives free text that only says "clear" the time of day the sky shows', () => {
+        at(12);
+        expect(clear('Clear', { night: true })).toBe('clear-night');
+        at(23);
+        expect(clear('clear sky', { night: false })).toBe('sunny');
+        expect(clear('Clear night')).toBe('clear-night');
+    });
+
+    it('falls back to the default hours when nothing else says', () => {
+        at(19, 55);
+        expect(clear('Clear')).toBe('sunny');
+        at(20, 30);
+        expect(clear('Clear')).toBe('clear-night');
+    });
+
+    it('lets the day/night cycle decide by its hours, as it follows the clock', () => {
+        at(12);
+        expect(getWeatherClass('clear-night', false, 7, 19, 'UTC', { clock: true, night: false })).toBe('sunny');
+        at(19, 30);
+        expect(getWeatherClass('clear-night', false, 7, 19, 'UTC', { clock: true, night: true })).toBe('clear-night');
     });
 });

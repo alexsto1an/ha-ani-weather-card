@@ -6,15 +6,26 @@
  * next sunrise or sunset as the headline, and the day's facts in a quiet
  * grid below. The card's sky follows the sun's real elevation, in the same
  * palette as the weather card.
+ *
+ * It follows a weather card's needle on the same sun (hour-link.ts): while
+ * one is dragged through the hours, the sun goes to that time on its path,
+ * and with the same weather_entity the sky is the weather card's own. When
+ * the card comes home, so does the tracker.
+ * It only listens here: the forecast bundle, which draws the needle, moves
+ * it (fc-tracker.ts).
  */
 
 import { SunData } from './weather-data';
-import { iconBoxCss } from './styles/icon-box';
-import { localizeString, localeKey, formatTime, formatDuration, timeHtml as splitTimeHtml } from './localize';
+import { localizeString, localeKey, formatTime, formatDuration, hourOfDay, timeHtml as splitTimeHtml } from './localize';
 import { HomeAssistant } from './types';
 import { escapeHtml, getWeatherClass, lookup } from './utils';
 import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
 import { loadEditorBundle } from './bundles';
+import { IconName, icon } from './icons';
+import { HOUR_EVENT, HourLink } from './hour-link';
+import { COMPACT_PATH, PathGeometry, REGULAR_PATH, VH, VW, hourFrac, pathElevation, xFor, yFor } from './sun-path';
+
+export { pathElevation };
 import {
     skyColors, skyPhaseFromSun, oklchToSrgb, toHex, registerSkyProperties, SKY_CONDITIONS,
     type SkyCondition, type SkyPhase,
@@ -33,6 +44,8 @@ export interface SunTrackerConfig {
     show_details?: boolean;
     title?: string;
     color_palette?: 'default' | 'theme';
+    /** Which way the sun crosses the chart: auto runs right to left south of the equator (Home Assistant's latitude) */
+    direction?: 'auto' | 'left_to_right' | 'right_to_left';
     /** What a tap does (default: the sun entity's more-info dialog) */
     tap_action?: ActionConfig;
     /** What a hold does (default: nothing) */
@@ -45,7 +58,7 @@ export interface SunTrackerConfig {
 interface MoonData {
     phase: string;       // e.g. "waning_gibbous"
     phaseName: string;   // e.g. "Waning Gibbous"
-    icon: string;        // e.g. "mdi:moon-waning-gibbous"
+    icon: IconName;      // e.g. "moon-waning-gibbous"
 }
 
 // ── Moon helpers ──
@@ -60,15 +73,19 @@ const MOON_PHASE_NAMES: Record<string, string> = {
     waning_crescent:  'Waning Crescent',
 };
 
+/** The icon for each of Home Assistant's eight moon phases (icons.ts) */
+const MOON_PHASE_ICONS: Record<string, IconName> = {
+    new_moon: 'moon-new', waxing_crescent: 'moon-waxing-crescent', first_quarter: 'moon-first-quarter', waxing_gibbous: 'moon-waxing-gibbous',
+    full_moon: 'moon-full', waning_gibbous: 'moon-waning-gibbous', last_quarter: 'moon-last-quarter', waning_crescent: 'moon-waning-crescent',
+};
+
 /**
- * The icon for one of Home Assistant's eight moon phases: mdi:moon-{phase}
- * with hyphens, except that new_moon and full_moon are mdi:moon-new and
- * mdi:moon-full. The moon entity can be any sensor, so any other state
- * gets a plain moon rather than an icon name built from it.
+ * The icon for a moon phase. The moon entity can be any sensor, so a state
+ * that isn't one of the eight phases gets the plain moon, never an icon
+ * picked by it.
  */
-function moonPhaseToIcon(phase: string): string {
-    if (lookup(MOON_PHASE_NAMES, phase) === undefined) return 'mdi:weather-night';
-    return `mdi:moon-${phase.replace(/_moon$/, '').replace(/_/g, '-')}`;
+function moonPhaseToIcon(phase: string): IconName {
+    return lookup(MOON_PHASE_ICONS, phase) ?? 'last-light';
 }
 
 /**
@@ -83,18 +100,6 @@ function trackerConfig(sunEntity: string, hass?: HomeAssistant): SunTrackerConfi
         : Object.keys(hass.states).find(isMoon);
     return moon ? { sun_entity: sunEntity, moon_entity: moon } : { sun_entity: sunEntity };
 }
-
-// ── Sun path geometry (SVG user units; the SVG stretches to the card) ──
-const VW = 1000;
-const VH = 300;
-/** Where the horizon, the noon peak and the midnight trough sit (user units). */
-interface PathGeometry { horizon: number; peak: number; trough: number; twilightRy: number }
-const REGULAR_PATH: PathGeometry = { horizon: 196, peak: 34, trough: 276, twilightRy: 78 };
-/**
- * Compact: the chart spans a short strip, so the arc is lower and gentler
- * (a day, not a mountain) and the sun clears the card's top edge.
- */
-const COMPACT_PATH: PathGeometry = { horizon: 200, peak: 96, trough: 262, twilightRy: 44 };
 
 /** A detail column is wide enough for "Waxing Gibbous" on one line. */
 const DETAIL_MIN_WIDTH = 124;
@@ -112,32 +117,12 @@ export function detailColumns(count: number, width: number): number {
     return Math.ceil(count / rows);
 }
 
-/**
- * Normalized elevation for an hour of the day: 0 → 1 → 0 between sunrise
- * and sunset, 0 → -1 → 0 through the night. One continuous wave, so the
- * curve crosses the horizon exactly at sunrise and sunset.
- */
-export function pathElevation(hour: number, riseHour: number, setHour: number): number {
-    const day = setHour - riseHour;
-    if (day <= 0 || day >= 24) return 0;
-    if (hour >= riseHour && hour <= setHour) {
-        return Math.sin(Math.PI * (hour - riseHour) / day);
-    }
-    const sinceSet = (((hour - setHour) % 24) + 24) % 24;
-    return -Math.sin(Math.PI * sinceSet / (24 - day));
-}
 
-const xFor = (hour: number): number => (hour / 24) * VW;
-const yFor = (elevation: number, g: PathGeometry): number =>
-    elevation >= 0
-        ? g.horizon - elevation * (g.horizon - g.peak)
-        : g.horizon - elevation * (g.trough - g.horizon);
-
-function sunPath(riseHour: number, setHour: number, g: PathGeometry): string {
+function sunPath(riseHour: number, setHour: number, g: PathGeometry, rtl: boolean): string {
     const points: string[] = [];
     for (let i = 0; i <= 240; i++) {
         const h = i / 10;
-        points.push(`${xFor(h).toFixed(1)},${yFor(pathElevation(h, riseHour, setHour), g).toFixed(1)}`);
+        points.push(`${xFor(h, rtl).toFixed(1)},${yFor(pathElevation(h, riseHour, setHour), g).toFixed(1)}`);
     }
     return 'M' + points.join(' L');
 }
@@ -151,11 +136,12 @@ function sunPath(riseHour: number, setHour: number, g: PathGeometry): string {
  * Returns 0 for null / unparseable inputs so the chart degrades to a
  * flat line instead of throwing.
  */
-function isoToHours(iso: string | null): number {
+function isoToHours(iso: string | null, hass?: HomeAssistant): number {
     if (!iso) return 0;
     const d = new Date(iso);
     if (isNaN(d.getTime())) return 0;
-    return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+    // In the time zone the times are shown in, so the dot sits where the headline says
+    return hourOfDay(d, hass);
 }
 
 /** "7:12 PM" → "7:12" + a smaller "PM", so the numerals carry the weight. */
@@ -168,7 +154,6 @@ const SKY_TEXT_HEX = toHex(oklchToSrgb(SKY_TEXT));
 
 // ── Styles ──
 const STYLES = `
-${iconBoxCss('')}
     :host {
         display: block;
         height: 100%;
@@ -237,6 +222,7 @@ ${iconBoxCss('')}
         /* Same registered colors and curve as the weather card's sky */
         transition: ${SKY_COLOR_PROPERTIES.map(name => `${name} ${SKY_DISSOLVE_SEC}s ${SKY_DISSOLVE_EASE}`).join(', ')};
     }
+    .st-card.following { transition: none; }
 
     /* ── Headline: the next sunrise or sunset ── */
     .st-hero {
@@ -280,9 +266,14 @@ ${iconBoxCss('')}
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .st-eyebrow ha-icon,
-    .st-metric-label ha-icon {
+    /* The tracker's icons (icons.ts): inline SVG, sized like ha-icon and in the text's colour */
+    .st-eyebrow .awc-icon,
+    .st-metric-label .awc-icon {
         --mdc-icon-size: 13px;
+        display: inline-block;
+        width: var(--mdc-icon-size);
+        height: var(--mdc-icon-size);
+        fill: currentColor;
         /* Optical: centred on the capitals of the uppercase label */
         margin-top: -0.5px;
         flex-shrink: 0;
@@ -380,8 +371,8 @@ ${iconBoxCss('')}
     .st-card:not(.sky) .st-dot.below {
         background: var(--st-path-night);
     }
-    .st-card:not(.sky) .st-eyebrow ha-icon,
-    .st-card:not(.sky) .st-metric-label ha-icon {
+    .st-card:not(.sky) .st-eyebrow .awc-icon,
+    .st-card:not(.sky) .st-metric-label .awc-icon {
         color: var(--st-icon);
     }
     /* The headline time is the tracker's hero, like the weather card's temperature */
@@ -545,6 +536,11 @@ class AnimatedSunTrackerCard extends HTMLElement {
     private _shadow: ShadowRoot;
     private _clock?: ReturnType<typeof setInterval>;
     private _resizeObserver?: ResizeObserver;
+    /** Sunrise and sunset as last drawn, so a followed time can be placed on the path */
+    private _path: { riseH: number; setH: number; rtl: boolean } | null = null;
+    /** A weather card's needle this tracker follows, and the way to stop listening */
+    private _link: HourLink | null = null;
+    private _onHour = (e: Event) => this._follow((e as CustomEvent<HourLink>).detail);
 
     constructor() {
         super();
@@ -586,6 +582,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
     connectedCallback(): void {
         // The "now" dot and the countdown move with the clock, not with HA.
         if (!this._clock) this._clock = setInterval(() => this._render(), 60_000);
+        // The same listener twice is one
+        window.addEventListener(HOUR_EVENT, this._onHour);
         if (!this._resizeObserver && typeof ResizeObserver !== 'undefined') {
             this._resizeObserver = new ResizeObserver(() => this._fit());
             this._resizeObserver.observe(this);
@@ -595,6 +593,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
     disconnectedCallback(): void {
         if (this._clock) clearInterval(this._clock);
         this._clock = undefined;
+        window.removeEventListener(HOUR_EVENT, this._onHour);
+        this._link = null;
         this._resizeObserver?.disconnect();
         this._resizeObserver = undefined;
     }
@@ -647,7 +647,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const id = this.config.weather_entity;
         const state = id ? this._hass?.states[id]?.state : undefined;
         if (state && state !== 'unavailable' && state !== 'unknown') {
-            const weatherClass = getWeatherClass(state, false, undefined, undefined, this._hass?.config?.time_zone);
+            const weatherClass = getWeatherClass(state, false, undefined, undefined, this._hass?.config?.time_zone,
+                { night: phase === 'night' });
             if ((SKY_CONDITIONS as readonly string[]).includes(weatherClass)) return weatherClass as SkyCondition;
         }
         return phase === 'night' ? 'clear-night' : 'sunny';
@@ -707,16 +708,17 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const colorized = this.config.color_palette !== 'theme';
 
         if (!sun || !sun.sunrise || !sun.sunset) {
+            this._path = null;
             this._mount('<div class="st-no-data">No sun data yet.<br>Choose a sun entity, usually sun.sun.</div>', null);
             return;
         }
 
         const now = new Date();
-        const nowHour = now.getHours() + now.getMinutes() / 60;
-        const riseH = isoToHours(sun.sunrise);
-        const setH = isoToHours(sun.sunset);
-        const dawnH = sun.dawn ? isoToHours(sun.dawn) : Math.max(0, riseH - 0.5);
-        const duskH = sun.dusk ? isoToHours(sun.dusk) : Math.min(24, setH + 0.5);
+        const nowHour = hourOfDay(now, this._hass);
+        const riseH = isoToHours(sun.sunrise, this._hass);
+        const setH = isoToHours(sun.sunset, this._hass);
+        const dawnH = sun.dawn ? isoToHours(sun.dawn, this._hass) : Math.max(0, riseH - 0.5);
+        const duskH = sun.dusk ? isoToHours(sun.dusk, this._hass) : Math.min(24, setH + 0.5);
         const dayLength = setH - riseH;
 
         // Headline: whichever of sunrise / sunset comes next
@@ -740,16 +742,20 @@ class AnimatedSunTrackerCard extends HTMLElement {
 
         // Sun path
         const geo = this.config.compact ? COMPACT_PATH : REGULAR_PATH;
-        const path = sunPath(riseH, setH, geo);
-        const dayFill = `${path} L${VW},${geo.horizon} L0,${geo.horizon} Z`;
+        // South of the equator the sun crosses from right to left, unless the card says which way
+        const dir = this.config.direction;
+        const rtl = dir === 'right_to_left' || (dir !== 'left_to_right' && (this._hass?.config?.latitude ?? 0) < 0);
+        this._path = { riseH, setH, rtl };
+        const path = sunPath(riseH, setH, geo, rtl);
+        const dayFill = `${path} L${xFor(24, rtl)},${geo.horizon} L${xFor(0, rtl)},${geo.horizon} Z`;
         const nowElevation = pathElevation(nowHour, riseH, setH);
-        const dotLeft = (nowHour / 24) * 100;
+        const dotLeft = hourFrac(nowHour, rtl) * 100;
         const dotTop = (yFor(nowElevation, geo) / VH) * 100;
         // Twilight as a warm glow on the horizon where the sun crosses it,
         // as wide as the twilight itself (dawn → sunrise, sunset → dusk).
         const twilight = (sunHour: number, twilightHours: number) => {
             const rx = Math.max(70, (Math.abs(twilightHours) / 24) * VW * 2.4);
-            return `<ellipse cx="${xFor(sunHour).toFixed(1)}" cy="${geo.horizon}" rx="${rx.toFixed(1)}" ry="${geo.twilightRy}" fill="url(#twilight)" class="st-twilight"/>`;
+            return `<ellipse cx="${xFor(sunHour, rtl).toFixed(1)}" cy="${geo.horizon}" rx="${rx.toFixed(1)}" ry="${geo.twilightRy}" fill="url(#twilight)" class="st-twilight"/>`;
         };
 
         const compact = !!this.config.compact;
@@ -758,16 +764,16 @@ class AnimatedSunTrackerCard extends HTMLElement {
             <div class="st-hero">
                 ${this.config.title && !compact ? `<div class="st-title">${escapeHtml(this.config.title)}</div>` : ''}
                 <div class="st-eyebrow">
-                    <ha-icon icon="${nextIsSunset ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up'}"></ha-icon>
+                    ${icon(nextIsSunset ? 'sunset' : 'sunrise', 'st-glyph')}
                     <span>${t(nextIsSunset ? 'sunset' : 'sunrise')}</span>
                 </div>
                 <div class="st-time">${time(nextIso)}</div>
                 ${countdown ? `<div class="st-countdown">${escapeHtml(countdown)}</div>` : ''}
             </div>` : (this.config.title && !compact ? `<div class="st-hero"><div class="st-title">${escapeHtml(this.config.title)}</div></div>` : '');
 
-        const metric = (kind: string, icon: string, label: string, valueHtml: string, wrap = false) => `
+        const metric = (kind: string, iconName: IconName, label: string, valueHtml: string, wrap = false) => `
                 <div class="st-metric" data-kind="${escapeHtml(kind)}">
-                    <div class="st-metric-label"><ha-icon icon="${escapeHtml(icon)}"></ha-icon><span title="${escapeHtml(label)}">${escapeHtml(label)}</span></div>
+                    <div class="st-metric-label">${icon(iconName, 'st-glyph')}<span title="${escapeHtml(label)}">${escapeHtml(label)}</span></div>
                     <div class="st-metric-value${wrap ? ' wrap' : ''}">${valueHtml}</div>
                 </div>`;
         const showDetails = !compact && this.config.show_details !== false;
@@ -777,12 +783,12 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const detailsHtml = showDetails ? `
             <div class="st-metrics">
                 ${nextIsSunset
-                    ? metric('sunrise', 'mdi:weather-sunset-up', t('sunrise'), time(sun.sunrise))
-                    : metric('sunset', 'mdi:weather-sunset-down', t('sunset'), time(sun.sunset))}
-                ${metric('noon', 'mdi:white-balance-sunny', t('solar_noon'), time(sun.noon))}
-                ${metric('daylight', 'mdi:timer-sand', t('daylight'), escapeHtml(formatDuration(dayLength, hass)))}
-                ${metric('first-light', 'mdi:weather-sunset', t('first_light'), time(sun.dawn))}
-                ${metric('last-light', 'mdi:weather-night', t('last_light'), time(sun.dusk))}
+                    ? metric('sunrise', 'sunrise', t('sunrise'), time(sun.sunrise))
+                    : metric('sunset', 'sunset', t('sunset'), time(sun.sunset))}
+                ${metric('noon', 'noon', t('solar_noon'), time(sun.noon))}
+                ${metric('daylight', 'daylight', t('daylight'), escapeHtml(formatDuration(dayLength, hass)))}
+                ${metric('first-light', 'first-light', t('first_light'), time(sun.dawn))}
+                ${metric('last-light', 'last-light', t('last_light'), time(sun.dusk))}
                 ${moon ? metric('moon', moon.icon, t('moon'), escapeHtml(moon.phaseName), true) : ''}
             </div>` : '';
 
@@ -812,7 +818,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
                             ${twilight(setH, duskH - setH)}
                             <path d="${dayFill}" class="st-day-fill" clip-path="url(#above)"/>
                             <line x1="0" y1="${geo.horizon}" x2="${VW}" y2="${geo.horizon}" class="st-horizon"/>
-                            <line x1="${xFor(nowHour).toFixed(1)}" y1="0" x2="${xFor(nowHour).toFixed(1)}" y2="${VH}" class="st-now-line"/>
+                            <line x1="${xFor(nowHour, rtl).toFixed(1)}" y1="0" x2="${xFor(nowHour, rtl).toFixed(1)}" y2="${VH}" class="st-now-line"/>
                             <path d="${path}" class="st-path-night" clip-path="url(#below)"/>
                             <path d="${path}" class="st-path-day" clip-path="url(#above)"/>
                         </svg>
@@ -844,7 +850,28 @@ class AnimatedSunTrackerCard extends HTMLElement {
             else card.style.removeProperty(name);
         }
         card.innerHTML = content;
+        // Following a needle, the minute's render keeps its hour
+        if (this._link) this._follow();
         this._fit();
+    }
+
+    /**
+     * A weather card's needle moved, or came home; without one, the minute's render keeps the needle's hour. The
+     * forecast bundle, which drew the needle, puts the sun and the now line there, and the card's sky, under
+     * .following, which turns the sky's 3.2 s dissolve off.
+     */
+    private _follow(link?: HourLink): void {
+        if (link) {
+            if (!link.source) return;
+            if (link.sun !== this.config.sun_entity || (link.at === null && !this._link)) return;
+            this._link = link.at === null ? null : link;
+            // Now again: the sky dissolves back as it always does
+            if (!this._link) { this._shadow.querySelector('.st-card')?.classList.remove('following'); this._render(); return; }
+        }
+        const card = this._shadow.querySelector('.st-card') as HTMLElement | null;
+        if (card && this._path && this._link) {
+            window.AnimatedWeatherCardForecast?.followTracker?.({ card, hass: this._hass, weather: this.config.weather_entity, ...this._path, compact: !!this.config.compact }, this._link);
+        }
     }
 }
 
