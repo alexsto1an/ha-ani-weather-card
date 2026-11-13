@@ -389,6 +389,43 @@ describe('the slide: it stays where it\'s left', () => {
         window.removeEventListener(HOUR_EVENT, listen);
     });
 
+    it('names the hour under the needle in a capsule, from "Now" as a hand takes hold, counting back on the way home', () => {
+        const hourly = createHourly({ W: FC_WORDS.en, lang: 'en', hours: hours(new Timeline(forecast(), 'hourly', Date.now()).slots, makeHass() as never), metric: 'temp', has: { temp: true, feels: true, chance: true, amount: true }, noun: 'rain', pitch: 50, conditionName: c => c });
+        const root = document.createElement('div');
+        root.className = 'animated-weather-card';
+        root.innerHTML = '<div class="sky"></div>';
+        root.append(hourly.el);
+        document.body.append(root);
+        mounted.push(root);
+        const cap = hourly.el.querySelector('.fc-cap') as HTMLElement;
+        expect(cap.getAttribute('aria-hidden')).toBe('true');
+        expect(cap.textContent).toBe('Now');
+        const tl = new Timeline(forecast(), 'hourly', Date.now());
+        const host = {
+            element: root, surface: 'card', config: () => ({ entity: 'weather.home' }), hass: () => makeHass(), forecast: () => ({ hourly: null, daily: null, dailyType: null, settled: true }), layers: () => undefined,
+            skyColors: () => ({ top: '#203050', mid: '#304060', bottom: '#405070', glow: 'rgba(255,255,255,0.3)', scrim: 'rgba(0,0,0,0.2)' }),
+            phase: () => 'day', current: () => 21, temperature: (v: number) => String(Math.round(v)), conditionName: (s: string) => s, fit() {}, refresh() {}, seen: () => true, still: () => false, moreInfo() {},
+        } as unknown as ForecastHost;
+        const slide = attachSlide({ host, root, tl, ruler: hourly, sliderHost: hourly.el, sliderLabel: 'Hours ahead', valueText: () => '', onSlot: () => {}, group: () => [] });
+        const slider = hourly.el.querySelector('[role="slider"]') as HTMLElement;
+        // jsdom lays nothing out: the labels are 20 px wide
+        const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(20);
+        for (let i = 0; i < 3; i++) slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        // Taken, the card says so (the capsule shows while it's pulled) and the capsule names the hour three on
+        expect(root.classList.contains('awc-pulling')).toBe(true);
+        expect(cap.textContent).toBe(hourly.hours[3].hour);
+        // The lens: the label the capsule names, sitting under it, is faded; one far from it is whole
+        const labels = [...hourly.el.querySelectorAll<HTMLElement>('.fc-col .fc-hr')];
+        expect(labels[3].style.getPropertyValue('--fc-lens')).not.toBe('');
+        expect(labels[9].style.getPropertyValue('--fc-lens')).toBe('');
+        slide.home(true);
+        expect(cap.textContent).toBe('Now');
+        expect(root.classList.contains('awc-pulling')).toBe(false);
+        expect(labels.every(l => l.style.getPropertyValue('--fc-lens') === '')).toBe(true);
+        width.mockRestore();
+        slide.destroy();
+    });
+
     it('tells the days where its needle is, every frame it moves, and once it\'s home', () => {
         const { slide, needles, drag } = rig();
         drag(-150);

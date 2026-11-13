@@ -22,7 +22,7 @@ const PARTS = `
 .fc-strip { position: relative; will-change: transform; }
 .fc-cols { position: relative; height: var(--fc-cols-h, 42px); }
 .fc-col { position: absolute; top: 0; width: var(--fc-pitch); display: grid; justify-items: center; row-gap: var(--fc-glyph-gap, 6px); }
-.fc-hr { font-size: var(--fc-label, 11px); line-height: var(--fc-label-lh, 14px); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; white-space: nowrap; min-height: var(--fc-label-lh, 14px); }
+.fc-hr { font-size: var(--fc-label, 11px); line-height: var(--fc-label-lh, 14px); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; white-space: nowrap; min-height: var(--fc-label-lh, 14px); opacity: var(--fc-lens, 1); }
 .fc-hr .awc-ampm { font-size: max(11px, 1em); font-weight: 500; letter-spacing: 0.02em; margin-left: 0.2em; }
 /* Midnight: the day's name in the hour's place, and a hairline on the day's boundary. Never a pill: white is selection. */
 .fc-col.fc-mid::before { content: ''; position: absolute; left: 0; top: 0; width: 1px; height: var(--fc-mid-h, 100px); background: currentColor; opacity: 0.2; }
@@ -40,13 +40,22 @@ const PARTS = `
 .fc-val { position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform, opacity; font-size: var(--fc-value, 15px); line-height: var(--fc-value-lh, 20px); font-weight: var(--fc-value-w, 600); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .fc-val .fc-pct { font-style: normal; font-size: 0.74em; font-weight: 600; margin-left: 0.04em; }
 .fc-val .fc-u { font-style: normal; font-size: max(11px, 0.7em); font-weight: 500; letter-spacing: 0.02em; margin-left: 0.22em; }
-/* The needle: the hour the sky is showing. A notch over the first column, there only while the row is away from now */
-.fc-needle {
-  position: absolute; left: calc(var(--fc-pitch) / 2 - 1px); top: -7px; width: 2px; height: 5px; border-radius: 1px; background: currentColor;
-  opacity: 0; transform: scaleY(0.4); transform-origin: 50% 100%;
-  transition: opacity 120ms ${OUT}, transform 160ms ${PRESS};
+/* The needle: a capsule naming the hour under it, on the labels' line; its fill grows behind words that never move */
+.fc-cap {
+  position: absolute; top: calc(-1 * var(--fc-cap-py, 3px)); left: 0; z-index: 1; box-sizing: border-box; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; height: calc(var(--fc-label-lh, 14px) + 2 * var(--fc-cap-py, 3px));
+  padding: 0 var(--fc-cap-px, 7px); white-space: nowrap; text-shadow: none;
+  font-size: var(--fc-label, 11px); line-height: var(--fc-label-lh, 14px); font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
 }
-.fc-away .fc-needle { opacity: 1; transform: none; transition: opacity 160ms ${PRESS}, transform 160ms ${PRESS}; }
+.fc-cap::before {
+  content: ''; position: absolute; inset: 0; border-radius: 999px; background: currentColor;
+  opacity: 0; transform: scale(0.9); transition: opacity 120ms ${PRESS}, transform 120ms ${PRESS};
+}
+.fc-cap-t { position: relative; font-weight: inherit; color: var(--awc-sky-top, #16283f); opacity: 0; transition: opacity 120ms ${PRESS}; }
+.fc-cap-t .awc-ampm { font-size: max(11px, 1em); font-weight: 500; letter-spacing: 0.02em; margin-left: 0.2em; }
+:is(.awc-pulling, .awc-focus) .fc-cap::before { opacity: 1; transform: none; transition: opacity 180ms ${PRESS}, transform 180ms ${PRESS}; }
+:is(.awc-pulling, .awc-focus) .fc-cap-t { opacity: 1; transition: opacity 180ms ${PRESS}; }
+.fc-hourly[data-lens-fade] .fc-hr { transition: opacity 150ms ${PRESS}; }
 .fc-sr, .awc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; list-style: none; }
 
 /* ── The chips: one white capsule, words beside it. No outline, no track, no glass. ── */
@@ -102,6 +111,7 @@ const PARTS = `
 
 /* ── Theme palette: no sky, so no gradient (the ramp is 1.07:1 on white). One solid ink on the divider's colour. ── */
 .theme-colors .fc-hr, .theme-colors .fc-d-lo, .theme-colors .fc-chips-row .fc-chip > span { color: var(--secondary-text-color); opacity: 1; }
+.theme-colors .fc-hr { opacity: var(--fc-lens, 1); }
 .theme-colors .fc-chips-sel { background: var(--primary-text-color); }
 .theme-colors .fc-chips-sel .fc-chip { color: var(--ha-card-background, var(--card-background-color, #fff)); }
 .theme-colors .fc-chips-row .fc-chip:focus-visible { box-shadow: 0 0 0 2px var(--ha-card-background, var(--card-background-color, #fff)), 0 0 0 4px var(--primary-color); }
@@ -111,7 +121,8 @@ const PARTS = `
 .theme-colors .fc-dot { background: var(--primary-color); }
 .theme-colors .fc-col.fc-mid::before { background: var(--divider-color); opacity: 1; }
 .theme-colors .fc-base { stroke: var(--divider-color); stroke-opacity: 1; }
-.theme-colors .fc-needle { background: var(--primary-color); }
+.theme-colors .fc-cap::before { background: var(--primary-text-color); }
+.theme-colors .fc-cap-t { color: var(--ha-card-background, var(--card-background-color, #fff)); }
 `;
 
 /** The slide: who owns the gesture, the sky stepping aside for the hand, the slider, the rail */
@@ -265,7 +276,7 @@ const CARD_CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fc-day, .fc-chips-sel, .fc-chip > span, .fc-needle, .awc-needle, .awc-tick, .awc-now { transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
+  .fc-day, .fc-chips-sel, .fc-chip > span, .fc-cap::before, .fc-cap-t, .awc-needle, .awc-tick, .awc-now { transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
 }
 `;
 
@@ -301,7 +312,7 @@ const FCARD_CSS = `
 .fc-fcard[data-variant="wide"] .fc-daily { margin-top: 0; align-self: center; --fc-d-row: 30px; }
 /* The strip: labels, icons and the line with its values. No chips, no words: the compact weather card above says now. */
 .fc-fcard[data-variant="strip"] { padding-top: 16px; --fc-glyph-gap: 4px; --fc-cols-h: 36px; --fc-plot-gap: 2px; --fc-mid-h: 84px; }
-.fc-fcard[data-variant="strip"] .fc-needle { top: -6px; }
+
 .fc-empty { margin: 0; padding: 24px var(--awc-pad); font-size: 15px; line-height: 20px; opacity: var(--awc-secondary, 0.8); }
 .theme-colors .fc-sentence { color: var(--primary-text-color); }
 `;
@@ -487,8 +498,8 @@ const WALL_CSS = `
 .fw-turn { font-family: var(--awc-font-display); font-size: 48px; line-height: 53px; font-weight: 400; letter-spacing: -0.022em; margin-bottom: 14px; white-space: nowrap; overflow: hidden; }
 .fw-band { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); column-gap: 40px; align-items: end; }
 .fw-hours { min-width: 0; --fc-label: 21px; --fc-label-lh: 26px; --fc-value: 40px; --fc-value-lh: 44px; --fc-value-w: 500; --fc-cols-h: 64px; --fc-glyph-gap: 6px; --fc-plot-gap: 8px; --fc-stroke: 4px; --fc-mid-h: 140px; --fc-bleed: 28px; }
-.fw-hours .fc-hr { font-weight: 500; letter-spacing: 0; opacity: 0.8; }
-.fw-hours .fc-needle { top: -10px; width: 3px; height: 7px; }
+.fw-hours .fc-hr { font-weight: 500; letter-spacing: 0; opacity: calc(0.8 * var(--fc-lens, 1)); }
+.fw-hours .fc-cap { --fc-cap-py: 4px; --fc-cap-px: 12px; font-weight: 500; letter-spacing: 0; }
 .fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-bar: 8px; }
 .fw-week .fc-d-name { font-size: 17px; font-weight: 600; }
 .fw-week .fc-d-hi { font-weight: 500; }

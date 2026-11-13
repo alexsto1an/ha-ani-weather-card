@@ -98,6 +98,11 @@ export interface Hourly {
     remeasure(): void;
     retint(): void;
     step(done?: () => void): void;
+    /** The needle's capsule, and the hour it names (0: "Now"); the slide calls select as the needle crosses an hour */
+    cap: HTMLElement | null;
+    select(k: number): void;
+    /** While the capsule shows, the labels that reach it fade */
+    lens(on: boolean): void;
     destroy(): void;
 }
 
@@ -123,7 +128,7 @@ export function createHourly(o: HourlyOptions): Hourly {
     el.style.setProperty('--fc-pitch', `${pitch}px`);
     el.style.setProperty('--fc-plot', `${H}px`);
     let metric: Metric = o.has[o.metric] ? o.metric : (METRICS.find(m => o.has[m]) ?? 'temp');
-    const noop = { el, pitch, hours: hrs, empty: true, setOffset() {}, offset: () => 0, setMetric() {}, metric: () => metric, remeasure() {}, retint() {}, step(d?: () => void) { d?.(); }, destroy() { el.remove(); } };
+    const noop = { el, pitch, hours: hrs, empty: true, setOffset() {}, offset: () => 0, setMetric() {}, metric: () => metric, remeasure() {}, retint() {}, step(d?: () => void) { d?.(); }, cap: null, select() {}, lens() {}, destroy() { el.remove(); } };
     if (!n) { el.hidden = true; return noop; }
     if (o.current !== undefined && isFinite(o.current)) hrs[0] = { ...hrs[0], temp: o.current };
     el.dataset.metric = metric;
@@ -188,7 +193,7 @@ export function createHourly(o: HourlyOptions): Hourly {
           <path class="fc-line" mask="url(#${id})"/>${o.startDot ? '<circle class="fc-start" r="5"/>' : ''}
         </svg>
         <div class="fc-vals" aria-hidden="true">${hrs.map(() => '<span class="fc-val"></span>').join('')}</div>
-      </div></div><i class="fc-needle" aria-hidden="true"></i>
+      </div></div><span class="fc-cap" aria-hidden="true"><b class="fc-cap-t">${esc(W.now)}</b></span>
       <ol class="fc-sr"></ol>`;
     const strip = el.querySelector('.fc-strip') as HTMLElement;
     const line = el.querySelector('.fc-line') as SVGPathElement, area = el.querySelector('.fc-area') as SVGPathElement;
@@ -358,20 +363,89 @@ export function createHourly(o: HourlyOptions): Hourly {
     function setOffset(px: number) {
         offset = px;
         strip.style.transform = `translate3d(${(-px).toFixed(2)}px, 0, 0)`;
+        if (lensOn || lensed.size) lens();
+    }
+
+    // ── The needle: the hour it names, in a capsule as wide as the row's widest name, centred on the first column ──
+    const cap = el.querySelector('.fc-cap') as HTMLElement;
+    const capText = cap.firstElementChild as HTMLElement;
+    let capK = 0, capW = 0;
+    const plain = (h: HourRow, i: number) => (i === 0 ? W.now : h.midnight ? h.day : `${h.hour}${h.period ? ` ${h.period}` : ''}`);
+    function sizeCap() {
+        if (!cap.isConnected) return;
+        const cs = getComputedStyle(cap);
+        const ctx = document.createElement('canvas').getContext('2d');
+        if (!ctx || typeof ctx.measureText !== 'function') return;
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const ls = parseFloat(cs.letterSpacing) || 0;
+        let w = 0;
+        for (const t of new Set(hrs.map(plain))) w = Math.max(w, ctx.measureText(t).width + ls * t.length);
+        if (!w) return;
+        // Even, so its centre lands on the column's centre at any pitch, and 2 px of slack for the period's own weight
+        const total = 2 * Math.ceil((w + 2 + 2 * (parseFloat(cs.paddingLeft) || 0)) / 2);
+        if (total === capW) return;
+        capW = total;
+        cap.style.width = `${total}px`;
+        cap.style.left = `${Math.round(pitch / 2 - total / 2)}px`;
+    }
+    function select(k: number) {
+        if (!capW) sizeCap();
+        if (k === capK || !hrs[k]) return;
+        capK = k;
+        capText.innerHTML = label(hrs[k], k);
+    }
+    // ── The lens: while the capsule shows, a label fades as it reaches the capsule and comes back once clear of it, so
+    // an hour never peeks out beside the capsule that names it. Only the few labels near the needle are touched. ──
+    const hrEls = [...el.querySelectorAll<HTMLElement>('.fc-col .fc-hr')];
+    let hrW: number[] | null = null;
+    let lensOn = false;
+    const lensed = new Set<number>();
+    let fadeTimer = 0;
+    function lens() {
+        const half = (capW || pitch * 0.8) / 2;
+        const keep = new Set<number>();
+        if (lensOn) {
+            hrW ??= hrEls.map(e => e.offsetWidth);
+            const reach = half + pitch + 12;
+            const lo = Math.max(0, Math.floor((offset - reach) / pitch)), hi = Math.min(n - 1, Math.ceil((offset + reach) / pitch));
+            for (let i = lo; i <= hi; i++) {
+                if (!hrW[i]) continue;
+                // The gap between the label's near edge and the capsule's: hidden from 2 px, whole again at 12 px
+                const gap = Math.abs(i * pitch - offset) - hrW[i] / 2 - half;
+                const t = clamp((gap - 2) / 10);
+                const v = t * t * (3 - 2 * t);
+                if (v >= 0.999) continue;
+                keep.add(i);
+                hrEls[i].style.setProperty('--fc-lens', v.toFixed(3));
+            }
+        }
+        for (const i of lensed) if (!keep.has(i)) hrEls[i].style.removeProperty('--fc-lens');
+        lensed.clear();
+        for (const i of keep) lensed.add(i);
+    }
+    /** On while the capsule shows: the labels at its edges fade there and come back as it lets go, crossing with it */
+    function setLens(on: boolean) {
+        if (on === lensOn) return;
+        lensOn = on;
+        el.dataset.lensFade = '';
+        clearTimeout(fadeTimer);
+        fadeTimer = window.setTimeout(() => { delete el.dataset.lensFade; }, 200);
+        lens();
     }
 
     writeValues(metric);
     writeSr();
     draw();
     // Web fonts change the figures' widths: measure again once they're in
-    document.fonts?.ready.then(() => { if (el.isConnected) { st.widths = vals.map(s => (s.dataset.t ? s.offsetWidth : 0)); draw(); } }).catch(() => {});
+    document.fonts?.ready.then(() => { if (el.isConnected) { st.widths = vals.map(s => (s.dataset.t ? s.offsetWidth : 0)); capW = 0; sizeCap(); draw(); } }).catch(() => {});
 
     return {
         el, pitch, hours: hrs, empty: false,
         setOffset, offset: () => offset,
         setMetric, metric: () => metric,
         /** Lay out again after the row was hidden when it was built */
-        remeasure() { st.widths = vals.map(s => (s.dataset.t ? s.offsetWidth : 0)); draw(); },
+        remeasure() { st.widths = vals.map(s => (s.dataset.t ? s.offsetWidth : 0)); hrW = null; sizeCap(); draw(); },
+        cap, select, lens: setLens,
         retint,
         /** The hour passing: the row steps one column (600 ms); `done` rebuilds it an hour on */
         step(done?: () => void) {

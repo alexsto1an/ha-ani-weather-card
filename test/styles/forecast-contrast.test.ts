@@ -106,6 +106,21 @@ describe('the wall', () => {
     });
 });
 
+describe('the needle\'s capsule', () => {
+    it('names its hour in the sky\'s top colour on white, 7:1 in every sky, and in the chips\' colours on a theme', () => {
+        let worst = Infinity, where = '';
+        for (const condition of SKY_CONDITIONS) for (const phase of SKY_PHASES) {
+            const top = parse(skyColors(condition, phase).top).rgb;
+            const ratio = contrastRatio(top, [1, 1, 1]);
+            if (ratio < worst) { worst = ratio; where = `${condition}/${phase}`; }
+        }
+        expect(worst, `worst at ${where}`).toBeGreaterThanOrEqual(7);
+        expect(FORECAST_CSS).toMatch(/\.fc-cap-t \{[^}]*color: var\(--awc-sky-top, #16283f\);/);
+        expect(FORECAST_CSS).toMatch(/\.theme-colors \.fc-cap::before \{ background: var\(--primary-text-color\); \}/);
+        expect(FORECAST_CSS).toMatch(/\.theme-colors \.fc-cap-t \{ color: var\(--ha-card-background, var\(--card-background-color, #fff\)\); \}/);
+    });
+});
+
 describe('the icons, lit by their own hour', () => {
     /** What the row's floor does: the brightest sky the icon is seen over, sampled where the row sits */
     const lum = (c: typeof SKY_CONDITIONS[number], p: SkyPhase) => Math.max(...grid([0.12, 0.5, 0.88], [0.43, 0.6, 0.75]).map(([x, y]) => relativeLuminance(sampleSkyAt(c, p, x, y, SKY_GLOW))));

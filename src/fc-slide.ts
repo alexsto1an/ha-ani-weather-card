@@ -78,6 +78,11 @@ export interface Ruler {
     pitch: number;
     el: HTMLElement;
     setOffset(px: number): void;
+    /** The needle's capsule: it names the hour under the needle (0: "Now") and carries the sky's top colour */
+    cap?: HTMLElement | null;
+    select?(k: number): void;
+    /** On while the slide is away from rest: labels that reach the capsule fade */
+    lens?(on: boolean): void;
 }
 
 export interface SlideOptions {
@@ -352,6 +357,7 @@ export function attachSlide(o: SlideOptions): Slide {
         const track = root.querySelector('.sun-track') as HTMLElement | null;
         track?.style.setProperty('--awc-pull-sun', clamp(home.n.sun).toFixed(3));
         root.classList.add('awc-pulling');
+        ext?.lens?.(true);
         pxs = pxPerSlot();
         void prewarm();
     }
@@ -364,6 +370,7 @@ export function attachSlide(o: SlideOptions): Slide {
         }
         const top = cssOf(vis.sky.top);
         for (const el of o.mirror?.() ?? []) el.style.setProperty('--awc-sky-top', top);
+        ext?.cap?.style.setProperty('--awc-sky-top', top);
         for (const [k, v] of Object.entries(COLOR_VARS)) root.style.setProperty(v, cssOf(vis.cols[k]));
         const track = root.querySelector('.sun-track') as HTMLElement | null;
         if (track) {
@@ -425,6 +432,7 @@ export function attachSlide(o: SlideOptions): Slide {
     const groupOpacity = (v: number | null) => { for (const el of o.group()) el.style.opacity = v === null ? '' : v.toFixed(3); };
     function showSlot(k: number) {
         const s = k === 0 ? null : tl.slots[k];
+        ext?.select?.(k);
         o.onSlot(s, k);
         slider.setAttribute('aria-valuenow', String(k));
         slider.setAttribute('aria-valuetext', o.valueText(s, k));
@@ -436,6 +444,8 @@ export function attachSlide(o: SlideOptions): Slide {
         stepSky(dt);
         emit();
         if (o.onNeedle) { const h = slotsAt(state.offset); o.onNeedle(Date.now() + h * tl.slotMs, temperatureAt(h)); }
+        // On the way home the capsule counts the hours back as they pass under it, and is "Now" once the words have crossed
+        if (rel) ext?.select?.(rel.swapped ? 0 : slotOf(state.offset));
         // The readout follows the needle: while held, while settling, and on the keys
         if (!rel) {
             const k = slotOf(state.offset);
@@ -454,9 +464,10 @@ export function attachSlide(o: SlideOptions): Slide {
         Object.assign(state, { active: false, settling: false, parked: false, dragging: false, keyboard: false, following: false, k: -1, offset: 0, v: 0, raw: 0 });
         rel = null;
         root.classList.remove('awc-pulling', 'awc-dial', 'awc-held');
-        if (ext) ext.setOffset(0); else if (railRuler) railRuler.style.transform = '';
+        if (ext) { ext.setOffset(0); ext.lens?.(false); } else if (railRuler) railRuler.style.transform = '';
         if (sky) for (const k of SKY_KEYS) sky.style.removeProperty(`--awc-sky-${k}`);
         for (const el of o.mirror?.() ?? []) el.style.removeProperty('--awc-sky-top');
+        ext?.cap?.style.removeProperty('--awc-sky-top');
         for (const v of Object.values(COLOR_VARS)) root.style.removeProperty(v);
         const track = root.querySelector('.sun-track') as HTMLElement | null;
         if (track) { track.style.transform = ''; track.style.removeProperty('--awc-pull-sun'); }
