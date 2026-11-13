@@ -802,7 +802,7 @@ Free-text conditions can also reach these skies:
 
 The cards follow your Home Assistant profile: its language, its 12/24-hour time format and its time zone, the server's or the device's.
 
-- **From Home Assistant:** the weather condition (with the forecast on, the card says it its own way in its nine languages, "Rain" for Rainy), the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
+- **From Home Assistant:** the weather condition (with the forecast on, the card names it itself in its nine languages: "Rain" for Rainy), the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
 - **The cards' own words:** "Feels like", "Indoors", sunrise and sunset, the sun tracker's labels and the forecast's words, from "Rain from 17:00 to 19:00" to the chips and the days, are translated into:
   - English
   - German
