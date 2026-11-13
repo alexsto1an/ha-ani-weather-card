@@ -64,7 +64,7 @@ The card ships as six bundles:
 | --- | --- |
 | `animated-weather-card.js` | Always. It holds the three cards, their skies and weather, and the page's forecast subscriptions |
 | `animated-weather-card-editor.js` | The first time someone opens a card's settings |
-| `animated-weather-card-forecast.js` | Only for cards with `show_forecast`, `show_clock` or `layout: nightstand`, and for the forecast card. It draws the forecast, the clock, the slide, the forecast card, the view that opens on tap, the nightstand and the wall |
+| `animated-weather-card-forecast.js` | Only for cards with `show_forecast`, `show_clock`, `show_date`, `hero: clock` or `layout: nightstand`, and for the forecast card. It draws the forecast, the clock, the slide, the forecast card, the view that opens on tap, the nightstand and the wall |
 | `animated-weather-card-note.js` | Only for cards that write their own note (`show_note`) |
 | `animated-weather-card-planes.js` | Only for cards with a flights sensor (`flights_entity`), or `dev_mode` |
 | `animated-weather-card-dev.js` | Only for cards with `dev_mode: true` |
@@ -147,10 +147,11 @@ src/
 
 This section is for maintainers. A release starts from a pushed `vX.Y.Z` tag, and `.github/workflows/release.yml` does the rest.
 
-1. Set the new version in two places:
+1. Set the new version in three places. `npm version X.Y.Z --no-git-tag-version` sets the first two, and the tests check that all of them agree:
    - `package.json`
+   - `package-lock.json`, in its `version` and in `packages[""].version`
    - `CARD_VERSION` in `src/constants.ts`
-2. Move the CHANGELOG's **Unreleased** entries under the new version.
+2. Move the CHANGELOG's **Unreleased** entries under `## [X.Y.Z] - <date>`. At the CHANGELOG's foot, add the version's compare link (`[X.Y.Z]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v<previous>...vX.Y.Z`) and point `[Unreleased]` at `vX.Y.Z...HEAD`.
 3. Run `npm run build`, then commit the rebuilt bundles together with the version changes.
 4. Tag that commit and push the tag:
 
@@ -158,6 +159,8 @@ This section is for maintainers. A release starts from a pushed `vX.Y.Z` tag, an
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+
+5. Once the release is published, replace its generated notes with the version's CHANGELOG section.
 
 The workflow then:
 

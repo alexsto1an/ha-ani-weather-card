@@ -107,6 +107,8 @@ export interface TextFieldOptions {
     type?: 'text' | 'number';
     min?: number;
     max?: number;
+    /** The step a number may take; 'any' for a fraction */
+    step?: number | 'any';
 }
 
 /**
@@ -118,7 +120,7 @@ export interface TextFieldOptions {
  */
 export function textField(options: TextFieldOptions): string {
     const tag = customElements.get('ha-input') || !customElements.get('ha-textfield') ? 'ha-input' : 'ha-textfield';
-    const { id, label, value, placeholder, hint, type, min, max } = options;
+    const { id, label, value, placeholder, hint, type, min, max, step } = options;
     const attributes = [
         `id="${escapeHtml(id)}"`,
         `label="${escapeHtml(label)}"`,
@@ -127,6 +129,7 @@ export function textField(options: TextFieldOptions): string {
         type ? `type="${type}"` : '',
         min !== undefined ? `min="${min}"` : '',
         max !== undefined ? `max="${max}"` : '',
+        step !== undefined ? `step="${step}"` : '',
         !hint ? '' : tag === 'ha-input' ? `hint="${escapeHtml(hint)}"` : `helper="${escapeHtml(hint)}" helperPersistent`,
     ].filter(Boolean);
     return `<${tag} ${attributes.join(' ')}></${tag}>`;

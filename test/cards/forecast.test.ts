@@ -433,6 +433,15 @@ describe('the forecast card', () => {
         expect(mount({ compact: true }, makeHass(), 'animated-forecast-card').getGridOptions().rows).toBe(2);
         expect(mount({ forecast_days: 3 }, makeHass(), 'animated-forecast-card').getGridOptions().rows).toBe(5);
     });
+    it('has no note: it hides the card\'s own text, so it neither shows one nor loads the note writer', async () => {
+        const card = mount({ show_note: true }, makeHass(), 'animated-forecast-card');
+        await settle();
+        expect(card.querySelector('.weather-note')).toBeNull();
+        expect(document.querySelector('script[src*="animated-weather-card-note"]')).toBeNull();
+        expect(card.getGridOptions().rows).toBe(7);
+        expect(mount({ note_entity: 'sensor.note' }, makeHass(), 'animated-forecast-card').getGridOptions().rows).toBe(7);
+    });
+
     it('says so when the entity has no forecast', async () => {
         const hass = makeHass(0);
         const card = mount({}, hass, 'animated-forecast-card');
@@ -890,8 +899,10 @@ describe('the time as the big value (hero: clock), and the date (show_date)', ()
         const hass = makeHass();
         (hass.states['weather.home'].attributes as Record<string, unknown>).temperature = 23;
         card.hass = hass;
-        await new Promise(r => setTimeout(r, 400));
-        expect(card.querySelector('.awc-temp-lead .temperature-value')?.textContent).toBe('23');
+        // The new reading fades through; a busy machine gets three seconds
+        const lead = () => card.querySelector('.awc-temp-lead .temperature-value')?.textContent;
+        for (let i = 0; i < 150 && lead() !== '23'; i++) await new Promise(r => setTimeout(r, 20));
+        expect(lead()).toBe('23');
         expect(clockText(card)).toMatch(/^\d{2}:\d{2}$/);
     });
 
@@ -1082,6 +1093,8 @@ describe('one needle across the page', () => {
     });
 
     const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+    // The spring home takes about half a second; a busy machine gets three
+    const until = async (done: () => boolean) => { for (let i = 0; i < 150 && !done(); i++) await wait(20); };
 
     it('the forecast card follows another card\'s needle on its weather, row, sky and days, and comes home with it', async () => {
         const fc = mount({}, makeHass(), 'animated-forecast-card');
@@ -1107,7 +1120,7 @@ describe('one needle across the page', () => {
         expect(slider.getAttribute('aria-valuenow')).toBe('5');
         // Home with the card it follows
         sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
-        await wait(800);
+        await until(() => slider.getAttribute('aria-valuenow') === '0' && !list.hasAttribute('data-fc-follow'));
         expect(slider.getAttribute('aria-valuenow')).toBe('0');
         expect(list.hasAttribute('data-fc-follow')).toBe(false);
         expect(rows.some(r => r.hasAttribute('data-fc-at'))).toBe(false);
@@ -1165,7 +1178,9 @@ describe('one needle across the page', () => {
         expect(heard.filter(l => l.source === fc)).toHaveLength(0);
         // Home on the weather card brings both home
         theirs.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-        await wait(900);
+        const daily = fc.querySelector('[data-fc-daily]') as HTMLElement;
+        await until(() => theirs.getAttribute('aria-valuenow') === '0' && own.getAttribute('aria-valuenow') === '0'
+            && !daily.hasAttribute('data-fc-follow') && heard.some(l => l.at === null && l.source === card));
         expect(theirs.getAttribute('aria-valuenow')).toBe('0');
         expect(own.getAttribute('aria-valuenow')).toBe('0');
         expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(false);

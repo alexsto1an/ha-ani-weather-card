@@ -31,6 +31,30 @@ describe('the hours\' graph in both editors (forecast_graph)', () => {
     }
 });
 
+describe('the forecast card\'s days in its editor (forecast_days)', () => {
+    let editor: Editor;
+    afterEach(() => editor?.remove());
+
+    it('offers 0, 3, 5, 7 and 10, and shows another count YAML set among them', async () => {
+        editor = document.createElement('animated-forecast-card-editor') as Editor;
+        editor.setConfig({ type: 'custom:animated-forecast-card', entity: 'weather.home' });
+        document.body.appendChild(editor);
+        await flush();
+        let select = editor.querySelector('#forecast_days') as Select;
+        expect(select.options.map(o => o.value)).toEqual(['0', '3', '5', '7', '10']);
+        expect(select.value).toBe('7');
+        editor.remove();
+        editor = document.createElement('animated-forecast-card-editor') as Editor;
+        editor.setConfig({ type: 'custom:animated-forecast-card', entity: 'weather.home', forecast_days: 6 });
+        document.body.appendChild(editor);
+        await flush();
+        select = editor.querySelector('#forecast_days') as Select;
+        expect(select.options.map(o => o.value)).toEqual(['0', '3', '5', '6', '7', '10']);
+        expect(select.value).toBe('6');
+        expect(select.options.find(o => o.value === '6')?.label).toBe('6 days');
+    });
+});
+
 describe('the big value and the date in the weather card\'s editor (hero, show_date)', () => {
     let editor: Editor;
     afterEach(() => editor?.remove());

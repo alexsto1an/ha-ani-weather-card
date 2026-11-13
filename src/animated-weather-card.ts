@@ -684,10 +684,11 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     /**
      * The note sits under the conditions on the full card; the one-line
      * strip has no room. Dev mode shows sample weather, which a real note
-     * wouldn't be about.
+     * wouldn't be about. The forecast card hides the card's own text, so it
+     * neither shows a note nor asks the AI for one.
      */
     private noteEnabled(): boolean {
-        return !!(this.config?.note_entity || this.config?.show_note) && !this.config.compact && !this.config.dev_mode;
+        return !!(this.config?.note_entity || this.config?.show_note) && !this.config.compact && !this.config.dev_mode && this.surface !== 'forecast';
     }
 
     /**

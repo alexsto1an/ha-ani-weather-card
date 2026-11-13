@@ -102,7 +102,7 @@ The [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks
 
 ### What you need
 
-- **A weather entity.** Any weather integration works: Met.no, OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others. The card's forecast reads the one your integration already provides: its row of hours needs an hourly forecast, and a daily or twice-daily one gives the rest.
+- **A weather entity.** Any weather integration works: Met.no, OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others. The card's forecast reads the one your integration already provides: its row of hours needs an hourly forecast, and a daily or twice-daily one gives the rest. The forecast needs Home Assistant 2023.9 or later.
 - **Optional:** an AI integration with an AI Task (Home Assistant 2025.8 or later) for the weather note, the [Moon](https://www.home-assistant.io/integrations/moon/) integration for the tracker's moon phase, and the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for planes.
 
 The card ships as six files that sit in the same folder:
@@ -487,6 +487,8 @@ cards:
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does |
 
+The weather card's `animate`, `spill_particles`, `engine_settings` and `custom_colors` work on it too, and with `outdoor_sensor_entity` its reading for now comes from your own sensor.
+
 In the sections view it asks for 12 × 7, or 12 × 5 with three days or fewer. Without the hours, it asks for as many rows as its days need: five for a week.
 
 ### A note from your AI
@@ -671,7 +673,7 @@ sunset_hour: 19
 | `show_indoor` | `true` | Show the indoor reading |
 | `indoor_style` | `label` | How the indoor reading starts: `label` (the word "Indoors", translated), `icon` (a house) or `both` |
 | `show_flight_labels` | `true` | Show a tag beside each plane. Tags only appear in open sky, never over the temperature |
-| `plane_speed` | `1` | How fast planes cross, from `0.25` (a quarter of their usual pace) to `2` |
+| `plane_speed` | `1` | How fast planes cross, from `0.25` (a quarter of their usual pace) to `2`. The editor offers the usual pace, half and a quarter; faster is set in YAML |
 | `planes_on_load` | `false` | Also fly the planes already overhead when the dashboard opens, not only those that arrive |
 | `flight_label` | `flight` | What a plane's tag says: `flight` (the flight number and aircraft type), `route` ("Lisbon → Paris", or the airport codes on a narrow card) or `both` (the route, with the flight under it). A flight with no route keeps its number |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
@@ -710,7 +712,7 @@ sunset_hour: 19
 | `show_note` | `false` | Write a note under the conditions with Home Assistant's AI Task, from the forecast. Needs Home Assistant 2025.8 or later and an AI integration. Five rows in the sections view |
 | `note_tone` | `snarky` | The note's voice: `snarky`, `calm`, `friendly` or `dry`. Serious weather always gets plain advice |
 | `note_ai_task_entity` | the default | The AI Task entity that writes it. Without it, the default from Settings → System → AI |
-| `note_calendar` | — | The calendar your hours out come from, or a list of them, for what to wear. Timed events count; all-day, cancelled and online ones don't. Only the times reach the AI |
+| `note_calendar` | — | The calendar your hours out come from, or a list of them, for what to wear. The editor sets one; a list is set in YAML. Timed events count; all-day, cancelled and online ones don't. Only the times reach the AI |
 | `note_entity` | — | Show a note from an entity instead of the AI: a text helper, a template sensor or a summary sensor. Its state is the one-line version |
 | `note_attribute` | `note` | The entity's attribute with a longer version, shown where there's room for two lines |
 | `note_max_age` | `180` | Minutes after a note was written (an entity's `generated_at` attribute) that it's hidden. `0` keeps it up. An entity note without `generated_at` stays until the entity changes it |
@@ -777,9 +779,9 @@ Its options, with examples, are under [The forecast card](#the-forecast-card).
 | `moon_entity` | — | A moon phase sensor, such as the Moon integration's `sensor.moon_phase` |
 | `weather_entity` | — | Share this weather entity's sky: its condition at the current time of day. Without it, the sky is clear |
 | `compact` | `false` | One line about 110 px tall: the next sunrise or sunset beside the sun's path. Two rows in the sections view |
-| `title` | — | A title above the headline |
+| `title` | — | A title above the headline. Not on the compact tracker |
 | `show_header` | `true` | Show the next sunrise or sunset and the time until it |
-| `show_details` | `true` | Show first and last light, solar noon, daylight and the moon phase |
+| `show_details` | `true` | Show first and last light, solar noon, daylight and the moon phase. The compact tracker has no details |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
 | `direction` | `auto` | Which way the sun crosses the path. `auto` runs it right to left south of the equator, from your Home Assistant location, and left to right north of it. `left_to_right` or `right_to_left` sets it |
 | `tap_action` | `more-info` | What a tap does. By default it opens the sun entity's details. Takes the same actions as the weather card, except `forecast` |

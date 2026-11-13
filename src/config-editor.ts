@@ -369,7 +369,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               ${textField({ id: 'wake_time', label: 'Wake time', placeholder: '07:00', value: this._config.wake_time, hint: 'When you get up without an alarm' })}
             </div>
             <div class="option nightstand-only">
-              ${textField({ id: 'bed_time', label: 'Bed time', placeholder: '22:30', value: this._config.bed_time, hint: 'When night begins without a light sensor' })}
+              ${textField({ id: 'bed_time', label: 'Bed time', placeholder: '22:30', value: this._config.bed_time, hint: 'When night begins without a light sensor: by default, 8 h 30 min before the alarm or wake time' })}
             </div>
             <div class="option nightstand-only">
               <ha-select id="night" label="Night"></ha-select>
@@ -384,7 +384,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               </label>
             </div>
             <div class="option nightstand-only">
-              ${textField({ id: 'night_lux', label: 'Dark below (lx)', type: 'number', min: 1, placeholder: '5', value: this._config.night_lux !== undefined ? String(this._config.night_lux) : '', hint: 'Night when the light sensor reads less for a minute; day again at three times it' })}
+              ${textField({ id: 'night_lux', label: 'Dark below (lx)', type: 'number', min: 0.1, step: 'any', placeholder: '5', value: this._config.night_lux !== undefined ? String(this._config.night_lux) : '', hint: 'Night when the light sensor reads less for a minute; day again at three times it' })}
             </div>
           </div>
         </div>
@@ -565,7 +565,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-          <p class="section-note" id="sky-note" style="display: ${colorPalette === 'default' ? 'block' : 'none'}">Each background color becomes a full sky for that condition. Applies to the colorized palette only.</p>
+          <p class="section-note" id="sky-note" style="display: ${colorPalette === 'default' ? 'block' : 'none'}">Each sky color becomes the whole sky for that condition, and Fog colors the fog. These apply to the colorized palette only.</p>
           
           <div class="color-grid" id="color-grid" style="display: ${colorPalette === 'default' ? 'grid' : 'none'}; opacity: ${colorPalette === 'default' ? '1' : '0.5'}">
             <div class="color-option">
@@ -597,6 +597,11 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <label>Cloudy sky</label>
               <input type="color" id="cloudy_bg" value="${escapeHtml(customColors.cloudy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.cloudy_bg)}" />
               <button class="color-reset" data-target="cloudy_bg" ${customColors.cloudy_bg ? '' : 'hidden'}>Reset</button>
+            </div>
+            <div class="color-option">
+              <label>Fog</label>
+              <input type="color" id="fog_color" value="${escapeHtml(customColors.fog_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.fog_color)}" />
+              <button class="color-reset" data-target="fog_color" ${customColors.fog_color ? '' : 'hidden'}>Reset</button>
             </div>
           </div>
           <p class="section-note">These apply on either palette.</p>
@@ -981,7 +986,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
 
         // Color inputs
         const colorInputs = [
-            'sunny_bg', 'rainy_bg', 'snowy_bg', 'stormy_bg', 'windy_bg', 'cloudy_bg',
+            'sunny_bg', 'rainy_bg', 'snowy_bg', 'stormy_bg', 'windy_bg', 'cloudy_bg', 'fog_color',
             'temperature_color', 'text_color', 'sun_color', 'rain_color', 'snow_color'
         ];
 
@@ -1173,6 +1178,8 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         stormy_bg: skyColors('stormy', 'day').mid,
         windy_bg: skyColors('windy', 'day').mid,
         cloudy_bg: skyColors('cloudy', 'day').mid,
+        // The sky palette's fog (gsap-effects.ts)
+        fog_color: '#e0e0e0',
         text_color: toHex(oklchToSrgb(SKY_TEXT)),
         temperature_color: toHex(oklchToSrgb(SKY_TEXT)),
         sun_color: '#ffd67a',

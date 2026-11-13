@@ -34,6 +34,17 @@ describe('the editor\'s colours and planes', () => {
         expect(config).toMatchObject({ custom_colors: { temperature_color: '#ffffff' } });
     });
 
+    it('offers the fog\'s colour with the skies, on the colorized palette, writing custom_colors.fog_color', async () => {
+        await open({});
+        const skies = editor.querySelector('#color-grid') as HTMLElement;
+        const fog = skies.querySelector('#fog_color') as HTMLInputElement;
+        expect(skies.style.display).toBe('grid');
+        expect(fog.value).toBe('#e0e0e0');
+        fog.value = '#c8d0e0';
+        fog.dispatchEvent(new Event('change'));
+        expect(config).toMatchObject({ custom_colors: { fog_color: '#c8d0e0' } });
+    });
+
     it('sets how dark the nightstand\'s room has to be, writing nothing when it\'s cleared', async () => {
         await open({ layout: 'nightstand', night_sensor: 'sensor.lux' });
         const field = editor.querySelector('#night_lux') as HTMLInputElement;
@@ -41,6 +52,11 @@ describe('the editor\'s colours and planes', () => {
         field.value = '30';
         field.dispatchEvent(new Event('input'));
         expect(config).toMatchObject({ night_lux: 30 });
+        // Any positive number, as the card reads it: a dark room's sensor can stay under 1 lx
+        expect(field.getAttribute('step')).toBe('any');
+        field.value = '0.5';
+        field.dispatchEvent(new Event('input'));
+        expect(config).toMatchObject({ night_lux: 0.5 });
         field.value = '';
         field.dispatchEvent(new Event('input'));
         expect(config).not.toHaveProperty('night_lux');

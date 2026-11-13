@@ -22,7 +22,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'First light', last_light: 'Last light', moon: 'Moon',
         in_duration: 'in {duration}',
         note_reading: 'Reading the forecast', note_writing: 'Writing the note',
-
     },
     de: {
         feels_like: 'Gefühlt', indoors: 'Innen',
@@ -30,7 +29,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Morgendämmerung', last_light: 'Abenddämmerung', moon: 'Mond',
         in_duration: 'in {duration}',
         note_reading: 'Vorhersage wird gelesen', note_writing: 'Notiz wird geschrieben',
-
     },
     es: {
         feels_like: 'Sensación térmica', indoors: 'Interior',
@@ -38,7 +36,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Alba', last_light: 'Anochecer', moon: 'Luna',
         in_duration: 'en {duration}',
         note_reading: 'Leyendo el pronóstico', note_writing: 'Escribiendo la nota',
-
     },
     fr: {
         feels_like: 'Ressenti', indoors: 'Intérieur',
@@ -46,7 +43,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Aube', last_light: 'Crépuscule', moon: 'Lune',
         in_duration: 'dans {duration}',
         note_reading: 'Lecture des prévisions', note_writing: 'Rédaction de la note',
-
     },
     it: {
         feels_like: 'Percepita', indoors: 'Interno',
@@ -54,7 +50,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Prima luce', last_light: 'Ultima luce', moon: 'Luna',
         in_duration: 'tra {duration}',
         note_reading: 'Lettura delle previsioni', note_writing: 'Scrittura della nota',
-
     },
     nl: {
         feels_like: 'Voelt als', indoors: 'Binnen',
@@ -62,7 +57,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Ochtendschemering', last_light: 'Avondschemering', moon: 'Maan',
         in_duration: 'over {duration}',
         note_reading: 'Verwachting lezen', note_writing: 'Notitie schrijven',
-
     },
     pl: {
         feels_like: 'Odczuwalna', indoors: 'Wewnątrz',
@@ -70,7 +64,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Świt', last_light: 'Zmierzch', moon: 'Księżyc',
         in_duration: 'za {duration}',
         note_reading: 'Czytanie prognozy', note_writing: 'Pisanie notatki',
-
     },
     pt: {
         feels_like: 'Sensação térmica', indoors: 'Interior',
@@ -78,7 +71,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Aurora', last_light: 'Crepúsculo', moon: 'Lua',
         in_duration: 'em {duration}',
         note_reading: 'Leitura da previsão', note_writing: 'Escrita da nota',
-
     },
     ro: {
         feels_like: 'Resimțită', indoors: 'Interior',
@@ -86,7 +78,6 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         first_light: 'Zori', last_light: 'Amurg', moon: 'Lună',
         in_duration: 'în {duration}',
         note_reading: 'Citesc prognoza', note_writing: 'Scriu nota',
-
     },
 };
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun, num, whole } from '../../src/fc-core';
 import { turningLine, timeParts, timeText, highLow, week, hours, available, relative, dateText, conditionNoun } from '../../src/fc-data';
 import { FC_WORDS, fill } from '../../src/fc-words';
-import { nextAlarm, alertBefore, nightMode } from '../../src/fc-night';
+import { nextAlarm, alertBefore, nightMode, parseHm } from '../../src/fc-night';
 import type { ForecastEntry } from '../../src/forecast-data';
 import type { HomeAssistant } from '../../src/types';
 
@@ -161,6 +161,15 @@ describe('the nightstand\'s night option', () => {
     it('on and off as strings or, from a YAML-mode dashboard, as true and false; anything else is auto', () => {
         expect([nightMode('on'), nightMode(true), nightMode('off'), nightMode(false)]).toEqual(['on', 'on', 'off', 'off']);
         expect([nightMode(undefined), nightMode('auto'), nightMode('yes'), nightMode(1)]).toEqual(['auto', 'auto', 'auto', 'auto']);
+    });
+});
+
+describe('the nightstand\'s times', () => {
+    it('read "07:00" and "6:30", and, from a YAML-mode dashboard, an unquoted 23:00 or 6:30, which YAML 1.1 makes minutes', () => {
+        expect([parseHm('07:00', 0), parseHm('6:30', 0), parseHm('23:00', 0), parseHm('0:15', 0)]).toEqual([420, 390, 1380, 15]);
+        // PyYAML reads bed_time: 23:00 as 1380 and wake_time: 6:30 as 390
+        expect([parseHm(1380, 0), parseHm(390, 0)]).toEqual([1380, 390]);
+        expect([parseHm(undefined, 510), parseHm('soon', 510), parseHm(NaN, 510), parseHm(true, 510)]).toEqual([510, 510, 510, 510]);
     });
 });
 

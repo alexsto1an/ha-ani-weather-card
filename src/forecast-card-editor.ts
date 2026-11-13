@@ -165,7 +165,11 @@ export class AnimatedForecastCardEditor extends HTMLElement {
         };
         bindSelect('forecast_metric', METRICS, c.forecast_metric ?? 'temp', v => ({ forecast_metric: v === 'temp' ? undefined : v as ForecastCardConfig['forecast_metric'] }));
         bindSelect('forecast_graph', GRAPH_OPTIONS, c.forecast_graph ?? 'line', v => ({ forecast_graph: v === 'line' ? undefined : v as ForecastCardConfig['forecast_graph'] }));
-        bindSelect('forecast_days', DAYS, String(c.forecast_days ?? 7), v => ({ forecast_days: v === '7' ? undefined : Number(v) }));
+        // The usual counts, and any other YAML set (0 to 10), so the select shows what the card does
+        const days = String(c.forecast_days ?? 7);
+        const dayOptions = DAYS.some(d => d.value === days) || !Number.isFinite(Number(days)) ? DAYS
+            : [...DAYS, { value: days, label: `${days} day${days === '1' ? '' : 's'}` }].sort((a, b) => Number(a.value) - Number(b.value));
+        bindSelect('forecast_days', dayOptions, days, v => ({ forecast_days: v === '7' ? undefined : Number(v) }));
         const onSwitch = (id: string, apply: (checked: boolean) => Partial<ForecastCardConfig>) => {
             this.querySelector(`#${id}`)?.addEventListener('change', (e: Event) => {
                 this._update(apply((e.target as HTMLInputElement).checked));

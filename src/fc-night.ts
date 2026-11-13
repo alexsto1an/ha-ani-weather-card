@@ -37,8 +37,14 @@ const ZONE = { day: MINUTE.day, night: { out: 240, outEase: 'cubic-bezier(0.5, 0
 const SEVERE = new Set(['lightning', 'lightning-rainy', 'hail', 'pouring', 'snowy', 'snowy-rainy', 'exceptional']);
 
 const minsOf = (d: Date) => d.getHours() * 60 + d.getMinutes();
-const parseHm = (v: string | undefined, fallback: number) => {
-    const m = /^(\d{1,2}):(\d{2})/.exec(v ?? '');
+/**
+ * A time of day ("07:00", "6:30") in minutes after midnight. A YAML-mode
+ * dashboard is read as YAML 1.1, where an unquoted 23:00 or 6:30 is a
+ * base-60 number (1380, 390), so a number counts as minutes.
+ */
+export const parseHm = (v: unknown, fallback: number): number => {
+    if (typeof v === 'number') return Number.isFinite(v) ? ((Math.round(v) % 1440) + 1440) % 1440 : fallback;
+    const m = /^(\d{1,2}):(\d{2})/.exec(typeof v === 'string' ? v : '');
     return m ? (Number(m[1]) % 24) * 60 + Number(m[2]) % 60 : fallback;
 };
 function nextAt(now: Date, m: number): Date { const d = new Date(now); d.setHours(Math.floor(m / 60), m % 60, 0, 0); if (d <= now) d.setDate(d.getDate() + 1); return d; }
