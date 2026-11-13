@@ -15,7 +15,7 @@ import {
     noteFor, quietOptions, solarAt, solarElevation, solarTimes, stationStates, sunAt, sunAttributes, trackerYaml, weatherState,
     wmoCondition, SUN_TIMES,
 } from '../../demo/scene.mjs';
-import { MOON_ICONS, PAGE_FILES, iconNames, resolveIcons } from '../../demo/build.mjs';
+import { PAGE_FILES, iconNames, resolveIcons } from '../../demo/build.mjs';
 import { LOGO_PHASES, logoSvg } from '../../demo/logo.mjs';
 
 describe('the demo\'s sample world', () => {
@@ -93,7 +93,7 @@ describe('the demo\'s sample world', () => {
         for (let day = 0; day < 30; day++) {
             const state = moonPhase(new Date(newMoon.getTime() + day * 86400000));
             expect(hass.formatEntityState({ state })).not.toBe(state);
-            expect(MOON_ICONS).toContain(`mdi:moon-${state.replace('_moon', '').replace('_', '-')}`);
+            expect(state).toMatch(/^(new_moon|waxing_crescent|first_quarter|waxing_gibbous|full_moon|waning_gibbous|last_quarter|waning_crescent)$/);
         }
     });
 
@@ -749,9 +749,8 @@ describe('the demo\'s sample world', () => {
 });
 
 describe('the demo build', () => {
-    it('ships every icon the cards name, including the moon phases built at runtime', () => {
+    it('ships every icon the cards and the page name', () => {
         const names = iconNames();
-        for (const moon of MOON_ICONS) expect(names).toContain(moon);
         expect(names).toContain('mdi:navigation');
         // The page's own glyphs: weather options, the plane, copy, the steppers
         for (const condition of CONDITIONS) {

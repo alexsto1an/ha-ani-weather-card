@@ -84,7 +84,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
 - **Respects reduced motion.** If reduced motion is on in your system settings, the sky stays still: the same colour and light, with no moving weather.
 - **Readable in every sky.** Text sits above the weather, and every built-in sky is tested to meet WCAG AA contrast for the card's text. Screen readers hear temperature and condition changes, and decorative layers are hidden from them.
-- **Light to load.** The card is about 81 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
+- **Light to load.** The card is about 82 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
 - **Set up visually.** Every weather card option is in the visual editor. YAML is there when you want it.
 
 ## Built with AI.
@@ -896,8 +896,8 @@ src/
 ## Credits
 
 - [GSAP](https://gsap.com) moves the weather. It's bundled into the card under its [standard license](https://gsap.com/standard-license).
-- The Senja weather glyphs draw the forecast's icons and the weather card's own: humidity, wind, pressure, sunrise and sunset, and the indoor reading.
-- [Material Design Icons](https://pictogrammers.com/library/mdi/), through Home Assistant, draw the wind and pressure arrows and the sun tracker's icons.
+- The Senja weather glyphs draw the forecast's icons, the weather card's own (humidity, wind, pressure, sunrise and sunset, and the indoor reading) and the sun tracker's, its moon phases included.
+- [Material Design Icons](https://pictogrammers.com/library/mdi/), through Home Assistant, draw the wind and pressure arrows and the editors' icons.
 - The [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) by AlexandrErohin supplies the planes.
 - The Home Assistant community gave feedback along the way. Thank you.
 

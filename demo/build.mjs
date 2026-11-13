@@ -21,26 +21,17 @@ export const PAGE_FILES = [
 /** The pages: each wears the mark in its top bar. */
 const PAGES = ['index.html', 'setup/index.html'];
 
-/** The tracker builds these names at runtime from the moon sensor's state. */
-export const MOON_ICONS = [
-    'new', 'waxing-crescent', 'first-quarter', 'waxing-gibbous',
-    'full', 'waning-gibbous', 'last-quarter', 'waning-crescent',
-].map(phase => `mdi:moon-${phase}`);
-
 const sourceFiles = (dir, pattern) => readdirSync(dir).flatMap(name => {
     const path = join(dir, name);
     return statSync(path).isDirectory() ? sourceFiles(path, pattern) : pattern.test(path) ? [path] : [];
 });
 
-/** Every mdi: icon the cards name in their source, the page's own icons, and the moon phases. */
+/** Every mdi: icon the cards name in their source, and the page's own icons. */
 export function iconNames(srcDir = join(root, 'src'), demoDir = here) {
-    const names = new Set(MOON_ICONS);
+    const names = new Set();
     const files = [...sourceFiles(srcDir, /\.ts$/), ...sourceFiles(demoDir, /\.(m?js|html)$/)];
     for (const file of files) {
-        for (const [name] of readFileSync(file, 'utf8').matchAll(/mdi:[a-z0-9-]+/g)) {
-            // `mdi:moon-${…}` leaves a bare prefix behind; the phases are above
-            if (!name.endsWith('-')) names.add(name);
-        }
+        for (const [name] of readFileSync(file, 'utf8').matchAll(/mdi:[a-z0-9-]+/g)) names.add(name);
     }
     return [...names].sort();
 }

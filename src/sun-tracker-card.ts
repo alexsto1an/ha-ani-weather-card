@@ -16,12 +16,12 @@
  */
 
 import { SunData } from './weather-data';
-import { iconBoxCss } from './styles/icon-box';
 import { localizeString, localeKey, formatTime, formatDuration, hourOfDay, timeHtml as splitTimeHtml } from './localize';
 import { HomeAssistant } from './types';
 import { escapeHtml, getWeatherClass, lookup } from './utils';
 import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
 import { loadEditorBundle } from './bundles';
+import { IconName, icon } from './icons';
 import { HOUR_EVENT, HourLink } from './hour-link';
 import { COMPACT_PATH, PathGeometry, REGULAR_PATH, VH, VW, pathElevation, xFor, yFor } from './sun-path';
 
@@ -56,7 +56,7 @@ export interface SunTrackerConfig {
 interface MoonData {
     phase: string;       // e.g. "waning_gibbous"
     phaseName: string;   // e.g. "Waning Gibbous"
-    icon: string;        // e.g. "mdi:moon-waning-gibbous"
+    icon: IconName;      // e.g. "moon-waning-gibbous"
 }
 
 // ── Moon helpers ──
@@ -71,15 +71,19 @@ const MOON_PHASE_NAMES: Record<string, string> = {
     waning_crescent:  'Waning Crescent',
 };
 
+/** The icon for each of Home Assistant's eight moon phases (icons.ts) */
+const MOON_PHASE_ICONS: Record<string, IconName> = {
+    new_moon: 'moon-new', waxing_crescent: 'moon-waxing-crescent', first_quarter: 'moon-first-quarter', waxing_gibbous: 'moon-waxing-gibbous',
+    full_moon: 'moon-full', waning_gibbous: 'moon-waning-gibbous', last_quarter: 'moon-last-quarter', waning_crescent: 'moon-waning-crescent',
+};
+
 /**
- * The icon for one of Home Assistant's eight moon phases: mdi:moon-{phase}
- * with hyphens, except that new_moon and full_moon are mdi:moon-new and
- * mdi:moon-full. The moon entity can be any sensor, so any other state
- * gets a plain moon rather than an icon name built from it.
+ * The icon for a moon phase. The moon entity can be any sensor, so a state
+ * that isn't one of the eight phases gets the plain moon, never an icon
+ * picked by it.
  */
-function moonPhaseToIcon(phase: string): string {
-    if (lookup(MOON_PHASE_NAMES, phase) === undefined) return 'mdi:weather-night';
-    return `mdi:moon-${phase.replace(/_moon$/, '').replace(/_/g, '-')}`;
+function moonPhaseToIcon(phase: string): IconName {
+    return lookup(MOON_PHASE_ICONS, phase) ?? 'last-light';
 }
 
 /**
@@ -148,7 +152,6 @@ const SKY_TEXT_HEX = toHex(oklchToSrgb(SKY_TEXT));
 
 // ── Styles ──
 const STYLES = `
-${iconBoxCss('')}
     :host {
         display: block;
         height: 100%;
@@ -261,9 +264,14 @@ ${iconBoxCss('')}
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .st-eyebrow ha-icon,
-    .st-metric-label ha-icon {
+    /* The tracker's icons (icons.ts): inline SVG, sized like ha-icon and in the text's colour */
+    .st-eyebrow .awc-icon,
+    .st-metric-label .awc-icon {
         --mdc-icon-size: 13px;
+        display: inline-block;
+        width: var(--mdc-icon-size);
+        height: var(--mdc-icon-size);
+        fill: currentColor;
         /* Optical: centred on the capitals of the uppercase label */
         margin-top: -0.5px;
         flex-shrink: 0;
@@ -361,8 +369,8 @@ ${iconBoxCss('')}
     .st-card:not(.sky) .st-dot.below {
         background: var(--st-path-night);
     }
-    .st-card:not(.sky) .st-eyebrow ha-icon,
-    .st-card:not(.sky) .st-metric-label ha-icon {
+    .st-card:not(.sky) .st-eyebrow .awc-icon,
+    .st-card:not(.sky) .st-metric-label .awc-icon {
         color: var(--st-icon);
     }
     /* The headline time is the tracker's hero, like the weather card's temperature */
@@ -750,16 +758,16 @@ class AnimatedSunTrackerCard extends HTMLElement {
             <div class="st-hero">
                 ${this.config.title && !compact ? `<div class="st-title">${escapeHtml(this.config.title)}</div>` : ''}
                 <div class="st-eyebrow">
-                    <ha-icon icon="${nextIsSunset ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up'}"></ha-icon>
+                    ${icon(nextIsSunset ? 'sunset' : 'sunrise', 'st-glyph')}
                     <span>${t(nextIsSunset ? 'sunset' : 'sunrise')}</span>
                 </div>
                 <div class="st-time">${time(nextIso)}</div>
                 ${countdown ? `<div class="st-countdown">${escapeHtml(countdown)}</div>` : ''}
             </div>` : (this.config.title && !compact ? `<div class="st-hero"><div class="st-title">${escapeHtml(this.config.title)}</div></div>` : '');
 
-        const metric = (kind: string, icon: string, label: string, valueHtml: string, wrap = false) => `
+        const metric = (kind: string, iconName: IconName, label: string, valueHtml: string, wrap = false) => `
                 <div class="st-metric" data-kind="${escapeHtml(kind)}">
-                    <div class="st-metric-label"><ha-icon icon="${escapeHtml(icon)}"></ha-icon><span title="${escapeHtml(label)}">${escapeHtml(label)}</span></div>
+                    <div class="st-metric-label">${icon(iconName, 'st-glyph')}<span title="${escapeHtml(label)}">${escapeHtml(label)}</span></div>
                     <div class="st-metric-value${wrap ? ' wrap' : ''}">${valueHtml}</div>
                 </div>`;
         const showDetails = !compact && this.config.show_details !== false;
@@ -769,12 +777,12 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const detailsHtml = showDetails ? `
             <div class="st-metrics">
                 ${nextIsSunset
-                    ? metric('sunrise', 'mdi:weather-sunset-up', t('sunrise'), time(sun.sunrise))
-                    : metric('sunset', 'mdi:weather-sunset-down', t('sunset'), time(sun.sunset))}
-                ${metric('noon', 'mdi:white-balance-sunny', t('solar_noon'), time(sun.noon))}
-                ${metric('daylight', 'mdi:timer-sand', t('daylight'), escapeHtml(formatDuration(dayLength, hass)))}
-                ${metric('first-light', 'mdi:weather-sunset', t('first_light'), time(sun.dawn))}
-                ${metric('last-light', 'mdi:weather-night', t('last_light'), time(sun.dusk))}
+                    ? metric('sunrise', 'sunrise', t('sunrise'), time(sun.sunrise))
+                    : metric('sunset', 'sunset', t('sunset'), time(sun.sunset))}
+                ${metric('noon', 'noon', t('solar_noon'), time(sun.noon))}
+                ${metric('daylight', 'daylight', t('daylight'), escapeHtml(formatDuration(dayLength, hass)))}
+                ${metric('first-light', 'first-light', t('first_light'), time(sun.dawn))}
+                ${metric('last-light', 'last-light', t('last_light'), time(sun.dusk))}
                 ${moon ? metric('moon', moon.icon, t('moon'), escapeHtml(moon.phaseName), true) : ''}
             </div>` : '';
 

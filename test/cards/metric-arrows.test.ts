@@ -87,12 +87,14 @@ describe('icon boxes', () => {
     // glyph keeps centring and the wind arrow's rotation on the glyph.
     const box = /ha-icon \{[^}]*display: inline-flex;[^}]*width: var\(--mdc-icon-size, 24px\);[^}]*height: var\(--mdc-icon-size, 24px\);/;
 
-    it('sizes icon wrappers to their glyph in the card, the editor and the sun tracker', () => {
+    it('sizes icon wrappers to their glyph in the card and the editor; the sun tracker draws its own icons', () => {
         expect(getMainCardStyles()).toMatch(new RegExp('animated-weather-card ' + box.source));
         expect(getConfigEditorStyles()).toMatch(new RegExp('\\.card-config ' + box.source));
         const tracker = document.createElement('animated-sun-tracker-card') as HTMLElement & { setConfig(c: object): void };
         tracker.setConfig({ sun_entity: 'sun.sun' });
-        expect(tracker.shadowRoot!.querySelector('style')!.textContent).toMatch(box);
+        const css = tracker.shadowRoot!.querySelector('style')!.textContent!;
+        expect(css).not.toMatch(box);
+        expect(css).toMatch(/\.st-metric-label \.awc-icon \{[^}]*--mdc-icon-size: 13px;[^}]*width: var\(--mdc-icon-size\);[^}]*height: var\(--mdc-icon-size\);[^}]*fill: currentColor;/);
     });
 });
 

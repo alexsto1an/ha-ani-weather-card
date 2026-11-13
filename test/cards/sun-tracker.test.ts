@@ -120,7 +120,7 @@ describe('sun tracker card', () => {
         expect(css).toMatch(/--st-hero: var\(--primary-color, var\(--primary-text-color\)\);/);
         expect(css).toMatch(/\.st-card:not\(\.sky\) \.st-time \{\s*color: var\(--st-hero\);/);
         expect(css).toMatch(/--st-day-fill: var\(--primary-color\);/);
-        expect(css).toMatch(/\.st-card:not\(\.sky\) \.st-metric-label ha-icon \{\s*color: var\(--st-icon\);/);
+        expect(css).toMatch(/\.st-card:not\(\.sky\) \.st-metric-label \.awc-icon \{\s*color: var\(--st-icon\);/);
         expect(css).toMatch(/--st-icon: var\(--state-icon-color, var\(--primary-color\)\);/);
         expect(css).toMatch(/\.st-card:not\(\.sky\) \.st-dot \{[^}]*background: var\(--state-sun-above_horizon-color/);
         expect(css).toMatch(/\.st-card:not\(\.sky\) \.st-dot\.below \{[^}]*background: var\(--st-path-night\);/);
@@ -147,17 +147,24 @@ describe('sun tracker card', () => {
         tracker.remove();
     });
 
-    it('names a real mdi icon for every moon phase', () => {
+    it('draws each of the eight moon phases, and the rest of its icons, from the Senja set', () => {
         const tracker = mount({ moon_entity: 'sensor.moon_phase' });
-        const icon = (state: string) => {
+        const root = tracker.shadowRoot!;
+        const phases = ['new_moon', 'waxing_crescent', 'first_quarter', 'waxing_gibbous', 'full_moon', 'waning_gibbous', 'last_quarter', 'waning_crescent'];
+        const drawn = phases.map(state => {
             const base = sunHass(30);
             tracker.hass = { ...base, states: { ...base.states, 'sensor.moon_phase': { entity_id: 'sensor.moon_phase', state, attributes: {} } } };
-            return tracker.shadowRoot!.querySelector('.st-metric[data-kind="moon"] ha-icon')!.getAttribute('icon');
-        };
-        expect(icon('new_moon')).toBe('mdi:moon-new');
-        expect(icon('full_moon')).toBe('mdi:moon-full');
-        expect(icon('waxing_gibbous')).toBe('mdi:moon-waxing-gibbous');
-        expect(icon('last_quarter')).toBe('mdi:moon-last-quarter');
+            const svg = root.querySelector('.st-metric[data-kind="moon"] svg.awc-icon')!;
+            expect(svg.getAttribute('viewBox')).toBe('0 0 25 25');
+            return [svg.getAttribute('data-icon'), svg.querySelector('path')!.getAttribute('d')];
+        });
+        expect(drawn.map(d => d[0])).toEqual(phases.map(p => 'moon-' + p.replace(/_moon$/, '').replace(/_/g, '-')));
+        // Eight different drawings, none empty
+        expect(new Set(drawn.map(d => d[1])).size).toBe(8);
+        expect(root.querySelector('ha-icon')).toBeNull();
+        const kinds = [...root.querySelectorAll('.st-metric')].map(m => [m.getAttribute('data-kind'), m.querySelector('svg')!.getAttribute('data-icon')]);
+        expect(kinds).toEqual(expect.arrayContaining([['noon', 'noon'], ['daylight', 'daylight'], ['first-light', 'first-light'], ['last-light', 'last-light']]));
+        expect(root.querySelector('.st-eyebrow svg.awc-icon')!.getAttribute('data-icon')).toMatch(/^sun(rise|set)$/);
         tracker.remove();
     });
 

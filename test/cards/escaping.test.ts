@@ -47,14 +47,14 @@ describe('the sun tracker\'s moon', () => {
         tracker.setConfig({ sun_entity: 'sun.sun', moon_entity: 'sensor.moon' });
         document.body.appendChild(tracker);
         const root = tracker.shadowRoot!;
-        const icon = () => root.querySelector('.st-metric[data-kind="moon"] ha-icon')!.getAttribute('icon');
+        const icon = () => root.querySelector('.st-metric[data-kind="moon"] svg.awc-icon')!.getAttribute('data-icon');
 
         tracker.hass = hass('waning_gibbous');
-        expect(icon()).toBe('mdi:moon-waning-gibbous');
+        expect(icon()).toBe('moon-waning-gibbous');
 
-        // Any sensor can be the moon entity: its state never becomes an icon name
+        // Any sensor can be the moon entity: its state never picks an icon, and gets the plain moon
         tracker.hass = hass(BREAKOUT);
-        expect(icon()).toBe('mdi:weather-night');
+        expect(icon()).toBe('last-light');
         tracker.hass = hass(TAGS);
         expect(handlers(root)).toEqual([]);
         expect(root.querySelector('img')).toBeNull();
@@ -63,7 +63,7 @@ describe('the sun tracker\'s moon', () => {
 
         // A state named like something every object inherits isn't a phase either
         tracker.hass = hass('constructor');
-        expect(icon()).toBe('mdi:weather-night');
+        expect(icon()).toBe('last-light');
         expect(root.querySelector('.st-metric[data-kind="moon"] .st-metric-value')!.textContent).toBe('Constructor');
     });
 });
