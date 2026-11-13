@@ -95,14 +95,20 @@ describe('the view that opens on tap', () => {
 });
 
 describe('the wall', () => {
-    it('its body text: the date and today\'s line full strength, the hour labels and lows tinted', () => {
-        check('date', grid(range(0.55, 0.72, 0.03), range(0.2, 0.3, 0.03)), at(SKY_GLOW_WIDE));
-        check('today', grid(range(0.04, 0.6, 0.04), range(0.3, 0.38, 0.02)), at(SKY_GLOW_WIDE));
-        check('labels and lows', grid(range(0.03, 0.97, 0.04), range(0.72, 0.97, 0.05)), at(SKY_GLOW_WIDE), 0.8);
+    // Measured on the real card from 640 × 540 to 1920 × 1080 and portrait 800 × 1272 and 1080 × 1920 (wallLayout): the
+    // time and date stop at 0.62 of the width (max-width 60%), today's line at 0.74 (72%, feels like steps out first) and 0.5 of the height;
+    // the hour labels start at 0.48 of the height or lower (a portrait too short to keep them there lays out beside)
+    it('its body text: the date tinted, today\'s line full strength, the hour labels and the days\' lows tinted from 0.48 down', () => {
+        check('date', grid(range(0.02, 0.62, 0.03), range(0.02, 0.12, 0.02)), at(SKY_GLOW_WIDE), 0.8);
+        check('today', grid(range(0.02, 0.74, 0.03), range(0.2, 0.5, 0.02)), at(SKY_GLOW_WIDE));
+        check('labels and lows', grid(range(0.02, 0.98, 0.03), range(0.48, 0.98, 0.025)), at(SKY_GLOW_WIDE), 0.8);
+        check('day names and highs', grid(range(0.02, 0.98, 0.03), range(0.48, 0.98, 0.025)), at(SKY_GLOW_WIDE));
     });
-    it('its large text: the clock tinted, the turning line and the hours\' figures full strength (3:1)', () => {
-        check('clock', grid(range(0.41, 0.56, 0.03), range(0.2, 0.3, 0.03)), at(SKY_GLOW_WIDE), 0.8, 3);
-        check('turning line and figures', grid(range(0.03, 0.75, 0.04), range(0.6, 0.92, 0.04)), at(SKY_GLOW_WIDE), 1, 3);
+    it('its large text: the clock, the turning line and the hours\' figures full strength (3:1)', () => {
+        check('clock', grid(range(0.02, 0.22, 0.02), range(0.02, 0.12, 0.02)), at(SKY_GLOW_WIDE), 1, 3);
+        // The temperature, 15% over its tiers' base: to 0.45 of the width and half the height
+        check('temperature', grid(range(0.02, 0.45, 0.03), range(0.04, 0.5, 0.02)), at(SKY_GLOW_WIDE), 1, 3);
+        check('turning line and figures', grid(range(0.02, 0.98, 0.03), range(0.44, 0.92, 0.03)), at(SKY_GLOW_WIDE), 1, 3);
     });
 });
 

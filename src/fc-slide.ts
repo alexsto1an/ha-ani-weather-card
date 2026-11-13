@@ -113,6 +113,8 @@ export interface SlideOptions {
     dropScale?: number;
     /** The needle's time (ms) and the temperature there, every frame it moves; null once home (the days follow it) */
     onNeedle?(at: number | null, temperature: number | null): void;
+    /** A lift settles on every nth hour, the ruler's own marks (the wall's two-hour columns); 1 by default */
+    settleEvery?: number;
 }
 
 export interface Slide {
@@ -622,7 +624,8 @@ export function attachSlide(o: SlideOptions): Slide {
         setTimeout(() => { state.swallow = false; }, 0);
         state.dragging = false; state.keyboard = false;
         const carry = Math.abs(vPx) > 120 ? vPx * SLIDE.momentum : 0;
-        const to = clamp(Math.round((state.offset + carry) / pxs), 0, maxK());
+        const every = Math.max(1, o.settleEvery ?? 1);
+        const to = clamp(Math.round((state.offset + carry) / (pxs * every)) * every, 0, maxK());
         state.settleTo = to * pxs;
         const d = state.settleTo - state.offset;
         // A flick that heads where it lands decelerates into it; anything else springs to the nearest hour

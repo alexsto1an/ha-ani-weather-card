@@ -378,15 +378,15 @@ To have a tap do something else, set `tap_action`, or pick it under **Interactio
 
 ### The wall
 
-With the forecast on, a card of at least 640 × 540 px, such as two sections columns by ten rows on a wall tablet, or a panel view, lays itself out for reading across the room:
+With the forecast on, a card of at least 640 × 540 px, such as two sections columns by ten rows on a wall tablet, a panel view or a TV, lays itself out for reading across the room. Every size follows the panel's, so a bigger screen is the same picture seen from further away:
 
-- the temperature at 192 px
-- the clock as a quiet line on the temperature's baseline, with the date
-- the condition, with the high, the low and feels like
-- open sky, then the line on what turns at 48 px
-- under it, two-hour columns with 40 px figures above one line (six on a wall tablet; on a narrower wall, as many as the figures have room for, never fewer than three), beside five days of ranges, which show the day the hour falls in as you drag
+- top left, on one edge: the time and the date, the temperature (about a third of the panel's height), and the condition with the high, the low and feels like
+- open sky, where the sun and the clouds are
+- at the foot, the line on what turns over the hours: two-hour columns of time, icon and temperature on one line each, with the temperature's line under them (five columns on a wall tablet, up to ten on a large panel)
+- beside the hours, set apart, five days of ranges, each row on one of the hours' lines; they show the day the hour falls in as you drag
+- on a portrait tablet, the week goes under the hours, seven days where there's room
 
-There are no chips, and the slide works the same.
+There are no chips, and the slide works the same: let go and the row settles on a labelled hour.
 
 ```yaml
 title: Weather

@@ -84,6 +84,10 @@ export interface HourlyOptions {
     above?: boolean;
     /** The line starts at a dot on the needle (the wall) */
     startDot?: boolean;
+    /** The start dot's radius, px (5) */
+    dotR?: number;
+    /** With above: every value on one line at the plot's top, the line free below them (the wall), not each over its point */
+    flat?: boolean;
     conditionName(c: string): string;
 }
 export interface Hourly {
@@ -179,7 +183,9 @@ export function createHourly(o: HourlyOptions): Hourly {
     };
 
     // ── Markup ──
-    const label = (h: HourRow, i: number) => (i === 0 ? esc(W.now) : h.midnight ? esc(h.day) : `${esc(h.hour)}${h.period ? `<span class="awc-ampm">${esc(h.period)}</span>` : ''}`);
+    // Columns every n hours: when midnight itself isn't shown, the day's name goes to its first shown hour
+    const dayStart = (i: number) => hrs[i].midnight || (every > 1 && shown(i) && i > 0 && hrs[i - 1].midnight && !shown(i - 1));
+    const label = (h: HourRow, i: number) => (i === 0 ? esc(W.now) : dayStart(i) ? esc(h.day) : `${esc(h.hour)}${h.period ? `<span class="awc-ampm">${esc(h.period)}</span>` : ''}`);
     const gl = o.glyphs !== false;
     const cols = hrs.map((h, i) => `<div class="fc-col${h.midnight && i > 0 ? ' fc-mid' : ''}" style="left:${(i * pitch).toFixed(2)}px"><span class="fc-hr">${shown(i) ? label(h, i) : ''}</span>${gl ? '<span class="fc-g"></span>' : ''}</div>`).join('');
     const xw = n * pitch;
@@ -190,7 +196,7 @@ export function createHourly(o: HourlyOptions): Hourly {
           <path class="fc-base" d="M${(pitch / 2).toFixed(1)} ${base + 1}H${(xw - pitch / 2).toFixed(1)}"/>
           <path class="fc-area"/>
           <g class="fc-bars"></g>
-          <path class="fc-line" mask="url(#${id})"/>${o.startDot ? '<circle class="fc-start" r="5"/>' : ''}
+          <path class="fc-line" mask="url(#${id})"/>${o.startDot ? `<circle class="fc-start" r="${o.dotR ?? 5}"/>` : ''}
         </svg>
         <div class="fc-vals" aria-hidden="true">${hrs.map(() => '<span class="fc-val"></span>').join('')}</div>
       </div></div><span class="fc-cap" aria-hidden="true"><b class="fc-cap-t">${esc(W.now)}</b></span>
@@ -276,7 +282,7 @@ export function createHourly(o: HourlyOptions): Hourly {
             const op = keep ? 1 : st.vOp;
             const s = vals[i];
             if (!w) { if (s.style.opacity !== '0') s.style.opacity = '0'; gaps[i].setAttribute('width', '0'); continue; }
-            const top = line_ ? st.y[i] - vh / 2 : st.y[i] - vh - (o.valueLift ?? 1);
+            const top = line_ ? st.y[i] - vh / 2 : o.flat ? 0 : st.y[i] - vh - (o.valueLift ?? 1);
             s.style.transform = `translate3d(${(xs[i] - w / 2).toFixed(2)}px, ${top.toFixed(2)}px, 0)`;
             s.style.opacity = op.toFixed(3);
             // The line's gaps travel with their values, and open and close with their light
@@ -364,7 +370,9 @@ export function createHourly(o: HourlyOptions): Hourly {
     const cap = el.querySelector('.fc-cap') as HTMLElement;
     const capText = cap.firstElementChild as HTMLElement;
     let capK = 0, capW = 0;
+    // The capsule names every hour it passes, so only midnight itself is the day's name there
     const plain = (h: HourRow, i: number) => (i === 0 ? W.now : h.midnight ? h.day : `${h.hour}${h.period ? ` ${h.period}` : ''}`);
+    const capLabel = (h: HourRow, i: number) => (i === 0 ? esc(W.now) : h.midnight ? esc(h.day) : `${esc(h.hour)}${h.period ? `<span class="awc-ampm">${esc(h.period)}</span>` : ''}`);
     function sizeCap() {
         if (!cap.isConnected) return;
         const cs = getComputedStyle(cap);
@@ -386,7 +394,7 @@ export function createHourly(o: HourlyOptions): Hourly {
         if (!capW) sizeCap();
         if (k === capK || !hrs[k]) return;
         capK = k;
-        capText.innerHTML = label(hrs[k], k);
+        capText.innerHTML = capLabel(hrs[k], k);
     }
     // ── The lens: while the capsule shows, a label fades as it reaches the capsule and comes back once clear of it, so
     // an hour never peeks out beside the capsule that names it. Only the few labels near the needle are touched. ──

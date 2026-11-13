@@ -467,45 +467,93 @@ animated-weather-card[data-qn-night] .lightning svg path { filter: none !importa
 }
 `;
 
-/** The wall: take 5's composition, drawn with the row's and the list's parts */
+/** The wall: the hero's column and the band's five lines, every size a --fw-* the panel's wallLayout sets */
 const WALL_CSS = `
 .animated-weather-card[data-fw] .weather-info > :not(.fw) { display: none !important; }
 .fw {
-  --pad: 28px; --t0: 192px; --colB: max(40%, 334px);
   position: absolute; inset: 0; z-index: 30; box-sizing: border-box; pointer-events: none;
-  color: var(--weather-text-color); text-shadow: 0 1px 12px var(--weather-text-shadow);
+  color: var(--weather-text-color); text-shadow: 0 1px 12px var(--weather-text-shadow); font-variant-numeric: tabular-nums;
 }
 .fw :is(button, .fc-hourly, .fc-daily) { pointer-events: auto; }
 .fw p { margin: 0; }
-/* Room: the temperature, its cap line on the padding line */
-.fw-temp { color: var(--awc-hero-color, inherit); position: absolute; left: var(--pad); top: var(--pad); margin: calc(var(--t0) * -0.1005) 0 0 -0.055em; font-family: var(--awc-font-display); font-size: var(--t0); font-weight: 200; line-height: 0.9; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fw-deg { letter-spacing: 0; margin-left: 0.02em; }
-/* The clock, quiet: on the temperature's baseline, with the date (D11: an eleventh of the temperature's ink) */
-.fw-when { position: absolute; left: var(--colB); top: calc(var(--pad) + var(--t0) * 0.705); display: flex; align-items: baseline; column-gap: 12px; white-space: nowrap; transform: translateY(-100%); line-height: 1; }
-.fw-clock { font-family: var(--awc-font-display); font-size: 40px; line-height: 44px; font-weight: 400; letter-spacing: -0.01em; opacity: 0.8; margin-bottom: -8px; font-variant-numeric: tabular-nums; }
-.fw-clock .awc-ampm { font-size: max(11px, 0.42em); margin-left: 0.2em; }
-.fw-date { font-size: 21px; line-height: 26px; font-weight: 400; letter-spacing: -0.008em; }
-.fw-away { display: none; align-items: center; column-gap: 12px; font-size: 21px; line-height: 26px; }
+/* The hero: one column on the margin's edge. The time and date, the temperature, today */
+.fw-hero { position: absolute; left: var(--fw-pad); right: var(--fw-pad); top: var(--fw-pad); display: flex; flex-direction: column; align-items: flex-start; }
+.fw-when { display: flex; align-items: baseline; column-gap: 0.55em; max-width: 60%; height: calc(var(--fw-clock) * 1.1); margin-top: calc(var(--fw-clock) * -0.17); white-space: nowrap; font-size: var(--fw-body); line-height: 1; }
+.fw-clock { font-family: var(--awc-font-display); font-size: var(--fw-clock); line-height: 1.1; font-weight: 500; letter-spacing: -0.005em; }
+.fw-clock .awc-ampm { font-size: 0.62em; margin-left: 0.12em; }
+.fw-date { font-weight: 400; opacity: 0.8; }
+.fw-away { display: none; align-items: baseline; column-gap: 0.55em; }
 .fw[data-away] .fw-away { display: inline-flex; }
 .fw[data-away] :is(.fw-clock, .fw-date) { display: none; }
-.fw-at { font-weight: 600; font-variant-numeric: tabular-nums; }
-.fw-rel { font-weight: 400; opacity: 0.8; margin-left: 8px; }
-/* Today, on the condition's line (the hand). Pulled, the high, the low and feels-like step out in place */
-.fw-today { position: absolute; left: var(--pad); top: calc(var(--pad) + var(--t0) * 0.705 + 22px); display: flex; align-items: baseline; column-gap: 0.9em; font-size: 21px; line-height: 26px; font-weight: 400; white-space: nowrap; }
+.fw-at { font-family: var(--awc-font-display); font-size: var(--fw-clock); line-height: 1.1; font-weight: 500; }
+.fw-at .awc-ampm { font-size: 0.62em; margin-left: 0.12em; }
+.fw-rel { font-family: var(--awc-font); font-size: var(--fw-body); font-weight: 400; opacity: 0.8; margin-left: 0.4em; }
+.fw .awc-now { align-self: center; height: calc(var(--fw-body) * 1.2); padding: 0 0.75em 0 0.6em; gap: 0.3em; font-size: calc(var(--fw-body) * 0.78); line-height: 1; transform-origin: center; }
+.fw .awc-now i { width: 0.36em; height: 0.36em; border-width: 0 0 0.1em 0.1em; }
+/* The temperature: its box is its figures' cap line to their baseline */
+.fw-temp {
+  color: var(--awc-hero-color, inherit); margin: calc(var(--fw-t0) * (0.17 - 0.1005)) 0 calc(var(--fw-t0) * -0.0945) -0.055em;
+  font-family: var(--awc-font-display); font-size: var(--fw-t0); font-weight: 200; line-height: 0.9; letter-spacing: -0.045em; white-space: nowrap;
+}
+.fw-deg { letter-spacing: 0; margin-left: 0.02em; }
+/* Today: the condition, its high and low as one pair, feels like. Dragged, the high, low and feels like step out for the hour's chance */
+.fw-today { display: flex; align-items: baseline; column-gap: 0.9em; max-width: 72%; margin-top: calc(var(--fw-t0) * 0.105); font-size: var(--fw-body); line-height: 1.3; font-weight: 400; white-space: nowrap; }
 .fw-cond { font-weight: 600; }
-.fw .awc-hl-pair b { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; }
-.fw[data-away] :is(.fw-hl, .fw-feels) { visibility: hidden; }
-/* Next: the line that says what turns, the hours under it, the week beside them */
-.fw-next { position: absolute; left: var(--pad); right: var(--pad); bottom: var(--pad); }
-.fw-turn { font-family: var(--awc-font-display); font-size: 48px; line-height: 53px; font-weight: 400; letter-spacing: -0.022em; margin-bottom: 14px; white-space: nowrap; overflow: hidden; }
-.fw-band { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); column-gap: 40px; align-items: end; }
-.fw-hours { min-width: 0; --fc-label: 21px; --fc-label-lh: 26px; --fc-value: 40px; --fc-value-lh: 44px; --fc-value-w: 500; --fc-cols-h: 64px; --fc-glyph-gap: 6px; --fc-plot-gap: 8px; --fc-stroke: 4px; --fc-mid-h: 140px; --fc-bleed: 28px; }
+.fw .awc-hl-pair + .awc-hl-pair { margin-left: -0.35em; }
+.fw .awc-hl-pair b { font-size: 0.7em; line-height: 0; font-weight: 600; letter-spacing: 0.06em; }
+.fw-today[data-tight] .fw-feels { display: none; }
+.fw[data-away] :is(.fw-hl, .fw-feels) { display: none; }
+.fw-chance:empty { display: none; }
+/* The band: the turning line over the hours, the days beside them sharing the band's height (under them in portrait) */
+.fw-next {
+  position: absolute; left: var(--fw-pad); right: var(--fw-pad); bottom: var(--fw-pad);
+  display: grid; grid-template-columns: var(--fw-hours-w) var(--fw-week-w); column-gap: var(--fw-gutter); align-items: end;
+}
+.fw-turn { grid-area: 1 / 1; min-width: 0; font-family: var(--awc-font-display); font-size: calc(var(--fw-sentence) * var(--fw-turn-k, 1)); line-height: var(--fw-line); font-weight: 400; letter-spacing: -0.016em; white-space: nowrap; overflow: hidden; }
+.fw-turn .awc-ampm { font-size: 0.62em; }
+.fw-hours {
+  grid-area: 2 / 1; min-width: 0;
+  --fc-label: var(--fw-label); --fc-label-lh: var(--fw-label-lh); --fc-value: var(--fw-figure); --fc-value-lh: var(--fw-value-h); --fc-value-w: 500;
+  --fc-cols-h: var(--fw-cols-h); --fc-glyph-gap: var(--fw-glyph-gap); --fc-plot-gap: var(--fw-plot-gap); --fc-stroke: var(--fw-stroke);
+  --fc-mid-h: calc(var(--fw-line) * 3); --fc-bleed: var(--fw-pad);
+}
+/* The columns sit flush: the first figure on the margin's edge, the last on the band's; nothing of the next one shows */
+.fw-hours :is(.fc-strip, .fc-cap) { margin-left: var(--fw-shift); }
+.fw-hours .fc-clip {
+  margin-right: calc(-1 * var(--fw-fade)); padding-right: var(--fw-fade);
+  -webkit-mask-image: linear-gradient(90deg, transparent calc(var(--fw-pad) - 13px), #000 calc(var(--fw-pad) - 1px), #000 calc(100% - var(--fw-fade)), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent calc(var(--fw-pad) - 13px), #000 calc(var(--fw-pad) - 1px), #000 calc(100% - var(--fw-fade)), transparent 100%);
+}
+/* The slider's focus ring clears the needle's capsule and the row's fade */
+.fw-hours .awc-slider { inset: calc(var(--fw-line) * -0.1) calc(var(--fw-fade) * -1) calc(var(--fw-line) * -0.1) calc(var(--fw-pad) * -0.5); border-radius: 12px; }
 .fw-hours .fc-hr { font-weight: 500; letter-spacing: 0; opacity: calc(0.8 * var(--fc-lens, 1)); }
-.fw-hours .fc-cap { --fc-cap-py: 4px; --fc-cap-px: 12px; font-weight: 500; letter-spacing: 0; }
-.fw-week .fc-daily { --fc-d-row: 30px; --fc-d-size: 21px; --fc-d-lh: 26px; --fc-d-day: 52px; --fc-d-glyph: 24px; --fc-d-lo: 44px; --fc-d-hi: 44px; --fc-bar: 8px; }
-.fw-week .fc-d-name { font-size: 17px; font-weight: 600; }
+/* Now, where the needle rests: the ruler's anchor, at full strength */
+.fw-hours .fc-col:first-child .fc-hr { font-weight: 600; opacity: var(--fc-lens, 1); }
+.fw-hours .fc-hr .awc-ampm { font-size: 0.72em; }
+.fw-hours .fc-val { letter-spacing: -0.01em; }
+/* The needle's capsule on the labels' line, its own height, not the line's */
+.fw-hours .fc-cap { --fc-cap-px: calc(var(--fw-label) * 0.6); top: calc(var(--fw-line) / 2 - var(--fw-label) * 0.8); height: calc(var(--fw-label) * 1.6); line-height: 1; font-weight: 500; letter-spacing: 0; }
+/* A day's boundary halfway between the columns either side of it */
+.fw-hours .fc-col.fc-mid:nth-child(odd)::before { left: calc(var(--fc-pitch) * -0.5); }
+.fw-hours .fc-col.fc-mid:nth-child(even)::before { left: calc(var(--fc-pitch) * 0.5); }
+.fw-hours .fc-col.fc-mid::before { opacity: 0.18; }
+/* The days: the band's height, row for row */
+.fw-week { grid-area: 1 / 2 / 3 / 3; align-self: end; min-width: 0; }
+.fw-week .fc-daily {
+  --fc-d-row: var(--fw-day-row); --fc-d-size: var(--fw-day); --fc-d-lh: calc(var(--fw-day) * 1.25); --fc-d-day: max(calc(var(--fw-day) * 2.3), var(--fw-day-name, 0px));
+  --fc-d-glyph: var(--fw-day-glyph); --fc-d-lo: calc(var(--fw-day) * 2.25); --fc-d-hi: calc(var(--fw-day) * 2.25); --fc-bar: var(--fw-bar); --fc-d-gap: calc(var(--fw-day) * 0.5);
+}
+/* Beside the days, the turning line and the figures sit on their day's baseline, not just its middle (0.356 em: the
+   system font's baseline below the middle of its line) */
+.fw:not([data-stack]) .fw-turn { position: relative; top: calc((var(--fw-day) - var(--fw-sentence) * var(--fw-turn-k, 1)) * 0.356); }
+.fw:not([data-stack]) .fw-hours .fc-vals { margin-top: calc((var(--fw-day) - var(--fw-figure)) * 0.356); }
+.fw-week .fc-d-name { font-weight: 500; }
 .fw-week .fc-d-hi { font-weight: 500; }
-.theme-colors .fw :is(.fw-clock, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }
+.fw-week .fc-dot { left: calc(var(--fw-bar) * -0.6); width: calc(var(--fw-bar) * 1.2); height: calc(var(--fw-bar) * 1.2); margin-top: calc(var(--fw-bar) * -0.6); }
+/* Portrait: the days under the hours, the band's whole width */
+.fw[data-stack] .fw-next { grid-template-columns: minmax(0, 1fr); }
+.fw[data-stack] .fw-week { grid-area: 3 / 1; margin-top: var(--fw-week-gap); }
+.theme-colors .fw :is(.fw-date, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }
 .theme-colors .fw-temp { color: var(--awc-hero-color, var(--primary-color)); }
 `;
 

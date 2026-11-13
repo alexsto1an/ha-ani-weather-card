@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import '../../src/animated-weather-card';
 import '../../src/animated-weather-card-forecast';
 import { attachSlide, SLIDE } from '../../src/fc-slide';
-import { wallCols } from '../../src/fc-wall';
+import { wallLayout } from '../../src/fc-wall';
 import { createChips, createHourly, hourCols } from '../../src/fc-row';
 import { TimeText } from '../../src/fc-clock';
 import { glyph, glyphKey, GLYPH_KEYS, litTints } from '../../src/fc-glyphs';
@@ -637,19 +637,70 @@ describe('the slide: it stays where it\'s left', () => {
 });
 
 describe('the wall', () => {
-    it('shows six two-hour columns where they have room, and on a narrower wall only as many as its figures can hold apart', () => {
-        expect(wallCols(882, [21, 22, 20])).toBe(6);
-        expect(wallCols(562, [-11, -2])).toBe(6);
-        // A 720 px wall: four columns of two-digit figures
-        expect(wallCols(322, [21, 22, 20])).toBe(4);
-        // Three glyphs ("-11", "102") need wider columns
-        expect(wallCols(402, [-2, -11])).toBe(4);
-        expect(wallCols(402, [101, 99])).toBe(4);
-        // Never fewer than three
-        expect(wallCols(252, [21])).toBe(3);
-        expect(wallCols(120, [-15])).toBe(3);
-        // An hour with no figure doesn't count
-        expect(wallCols(322, [null, 5])).toBe(4);
+    it('sizes the panel as one picture: the temperature a third of the height, every tier a damped step of its base, within bounds', () => {
+        const tablet = wallLayout(814, 630), small = wallLayout(638, 538), panel = wallLayout(1918, 1078);
+        expect(tablet.t0).toBe(210);
+        expect(panel.t0).toBe(360);
+        expect(small.t0).toBe(179);
+        // A bigger panel reads from further away, but the hero grows faster than the tiers under it
+        expect(panel.t0 / tablet.t0).toBeGreaterThan(panel.figure / tablet.figure);
+        expect(panel.figure).toBeGreaterThan(tablet.figure);
+        for (const L of [tablet, small, panel]) {
+            expect(L.t0).toBeGreaterThanOrEqual(161);
+            expect(L.t0).toBeLessThanOrEqual(414);
+            // The hours and the days keep apart: two blocks, not one
+            expect(L.gutter).toBeGreaterThanOrEqual(Math.min(160, Math.max(64, 0.1 * (L.w - 2 * L.pad))) - 0.5);
+            expect(L.t0 / L.sentence).toBeGreaterThan(4.5);
+            expect(L.label).toBeGreaterThanOrEqual(17);
+        }
+        // Never wider than the panel lets a three-figure temperature stand
+        expect(wallLayout(1918, 2400).t0).toBeLessThanOrEqual(Math.round(0.32 * 1918));
+    });
+    it('lays the band out as five lines of one height, the five days riding them, and stacks the week under the hours in portrait', () => {
+        for (const [w, h] of [[638, 538], [814, 630], [1278, 758], [1918, 1078], [1918, 540]]) {
+            const L = wallLayout(w, h);
+            expect(L.stack).toBe(false);
+            expect(L.days).toBe(5);
+            expect(L.dayRow).toBe(L.line);
+            expect(L.bandH).toBe(5 * L.line);
+            expect(L.hoursH).toBe(4 * L.line);
+            expect(L.pad + L.bandH).toBeLessThan(0.45 * h);
+            expect(L.hoursW + L.gutter + L.weekW).toBe(w - 2 * L.pad);
+        }
+        const portrait = wallLayout(798, 1270);
+        expect(portrait.stack).toBe(true);
+        expect(portrait.days).toBe(7);
+        expect(portrait.weekW).toBe(portrait.hoursW);
+        // The hour labels stay in the lower half, where the tinted tier holds 4.5:1 across the width
+        expect(portrait.iconY[0]).toBeGreaterThan(0.48);
+        for (const [w, h] of [[768, 1024], [800, 1000], [798, 1270], [1078, 1918]]) {
+            const L = wallLayout(w, h);
+            expect(L.stack).toBe(true);
+            expect((h - L.pad - L.bandH + L.line) / h).toBeGreaterThanOrEqual(0.48);
+        }
+        // A short portrait lays out beside: stacked, its labels would rise above the lower half and leave no sky
+        expect(wallLayout(640, 700).stack).toBe(false);
+        expect(wallLayout(700, 800).stack).toBe(false);
+    });
+    it('puts the first figure on the margin and the last on the band\'s edge, an even column apart, as many as fit at 2.5 figures', () => {
+        for (const [w, h] of [[638, 538], [814, 630], [1278, 758], [1918, 1078], [798, 1270]]) {
+            const L = wallLayout(w, h);
+            expect(L.inset + (L.cols - 1) * L.col).toBeCloseTo(L.hoursW - L.inset, 6);
+            expect(L.cols).toBeGreaterThanOrEqual(3);
+            expect(L.cols).toBeLessThanOrEqual(10);
+            // Figures never touch: the widest and 0.7 of one between two
+            expect(L.col).toBeGreaterThanOrEqual(Math.max(2 * L.inset, 2 * 0.62 * L.figure) + 0.7 * L.figure - 0.01);
+            // The row's first label sits a quarter column in, so the strip moves by the difference
+            expect(L.shift).toBeCloseTo(L.inset - L.col / 4, 1);
+        }
+        expect(wallLayout(814, 630).cols).toBe(5);
+        expect(wallLayout(1918, 1078).cols).toBe(10);
+        // Three glyphs ("-11", "102") need wider columns, so fewer of them
+        const two = wallLayout(814, 630, 2), three = wallLayout(814, 630, 3);
+        expect(three.cols).toBeLessThan(two.cols);
+        expect(three.inset).toBeGreaterThan(two.inset);
+        // Twelve-hour labels ("11 PM") are wider than the figures on a small wall
+        expect(wallLayout(638, 538, 2, true).inset).toBeGreaterThan(wallLayout(638, 538, 2, false).inset);
     });
 });
 
