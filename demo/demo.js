@@ -204,6 +204,7 @@ function buildScene(layout = 'regular', extra = {}) {
         entity: ENTITIES.weather,
         sun_entity: ENTITIES.sun,
         flights_entity: ENTITIES.flights,
+        flight_label: 'route',
         compact: layout === 'compact',
         color_palette: palette,
         ...extra,

@@ -1158,16 +1158,18 @@ function standInConnection(forecast, delays) {
  * The traffic over a city, each kind at the height and speed it flies, so
  * every family the card draws comes by: an A320neo descending to land, a
  * 787 and a 747 freighter at cruise, a turboprop climbing out, a regional
- * jet, a helicopter, a business jet up high and a Cessna low down.
+ * jet, a helicopter, a business jet up high and a Cessna low down. The
+ * airliners say where they're from and going, as Flightradar24 does; the
+ * helicopter and the Cessna fly with no route, as light aircraft do.
  */
 const FLIGHTS = [
-    { flight_number: 'TP1352', aircraft_code: 'A20N', heading: 78, altitude: 12000, ground_speed: 300, vertical_speed: -600 },
-    { flight_number: 'EK191', aircraft_code: 'B789', heading: 255, altitude: 34000, ground_speed: 480, vertical_speed: 0 },
-    { flight_number: 'TP1104', aircraft_code: 'AT76', heading: 62, altitude: 7000, ground_speed: 240, vertical_speed: 600 },
-    { flight_number: 'CV7341', aircraft_code: 'B748', heading: 242, altitude: 36000, ground_speed: 500, vertical_speed: 0 },
-    { flight_number: 'IB8742', aircraft_code: 'CRJ9', heading: 110, altitude: 17000, ground_speed: 340, vertical_speed: -1200 },
+    { flight_number: 'TP1352', airport_origin_city: 'Lisbon', airport_origin_code_iata: 'LIS', airport_destination_city: 'Paris', airport_destination_code_iata: 'ORY', aircraft_code: 'A20N', heading: 78, altitude: 12000, ground_speed: 300, vertical_speed: -600 },
+    { flight_number: 'EK191', airport_origin_city: 'Dubai', airport_origin_code_iata: 'DXB', airport_destination_city: 'Lisbon', airport_destination_code_iata: 'LIS', aircraft_code: 'B789', heading: 255, altitude: 34000, ground_speed: 480, vertical_speed: 0 },
+    { flight_number: 'TP1104', airport_origin_city: 'Lisbon', airport_origin_code_iata: 'LIS', airport_destination_city: 'Porto', airport_destination_code_iata: 'OPO', aircraft_code: 'AT76', heading: 62, altitude: 7000, ground_speed: 240, vertical_speed: 600 },
+    { flight_number: 'CV7341', airport_origin_city: 'Luxembourg', airport_origin_code_iata: 'LUX', airport_destination_city: 'Lisbon', airport_destination_code_iata: 'LIS', aircraft_code: 'B748', heading: 242, altitude: 36000, ground_speed: 500, vertical_speed: 0 },
+    { flight_number: 'IB8742', airport_origin_city: 'Madrid', airport_origin_code_iata: 'MAD', airport_destination_city: 'Lisbon', airport_destination_code_iata: 'LIS', aircraft_code: 'CRJ9', heading: 110, altitude: 17000, ground_speed: 340, vertical_speed: -1200 },
     { flight_number: '', callsign: 'CSHGE', aircraft_code: 'EC35', heading: 290, altitude: 1500, ground_speed: 120, vertical_speed: 0 },
-    { flight_number: 'NJE731', aircraft_code: 'C68A', heading: 40, altitude: 41000, ground_speed: 450, vertical_speed: 0 },
+    { flight_number: 'NJE731', airport_origin_city: 'Lisbon', airport_origin_code_iata: 'LIS', airport_destination_city: 'London', airport_destination_code_iata: 'LTN', aircraft_code: 'C68A', heading: 40, altitude: 41000, ground_speed: 450, vertical_speed: 0 },
     { flight_number: '', callsign: 'CSAZT', aircraft_code: 'C172', heading: 200, altitude: 2500, ground_speed: 105, vertical_speed: 0 },
 ];
 
@@ -1193,8 +1195,9 @@ export function configYaml({ layout = 'regular', colors = 'sky', station = false
         'entity: weather.forecast_home',
         'sun_entity: sun.sun',
         ...(station ? STATION.map(row => `${row.option}: ${row.entity}`) : []),
-        '# Planes fly over from the Flightradar24 integration',
+        '# Planes fly over from the Flightradar24 integration, tagged with where they\'re going',
         'flights_entity: sensor.flightradar24_current_in_area',
+        'flight_label: route',
         ...(layout === 'compact' ? ['compact: true'] : [
             '# A note from your AI, written from the forecast',
             'show_note: true',

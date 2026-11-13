@@ -14,6 +14,12 @@ import { getDevPanelStyles } from './styles/dev-panel';
 const log = (message: string, ...args: unknown[]) => devLog(true, message, ...args);
 
 /** One of each aircraft family the planes draw (aircraft.ts), by ICAO type code */
+const DEMO_ROUTES = [
+    { originCity: 'Lisbon', originCode: 'LIS', destinationCity: 'Paris', destinationCode: 'CDG' },
+    { originCity: 'Dubai', originCode: 'DXB', destinationCity: 'Lisbon', destinationCode: 'LIS' },
+    { originCity: 'Frankfurt am Main', originCode: 'FRA', destinationCity: 'Rio de Janeiro', destinationCode: 'GIG' },
+    { originCity: '', originCode: '', destinationCity: '', destinationCode: '' },
+];
 const DEMO_AIRCRAFT = ['A20N', 'B738', 'B789', 'B77W', 'B748', 'CRJ9', 'C68A', 'AT76', 'C172', 'EC35'];
 
 /**
@@ -810,6 +816,8 @@ export class DevPanel {
             id: `demo-${Date.now()}`,
             label: `DEMO${Math.floor(100 + Math.random() * 900)}`,
             aircraftCode: DEMO_AIRCRAFT[Math.floor(Math.random() * DEMO_AIRCRAFT.length)],
+            // A route, so flight_label: route has something to show
+            ...DEMO_ROUTES[Math.floor(Math.random() * DEMO_ROUTES.length)],
             altitudeFt: Math.round(2000 + Math.random() * 36000),
             groundSpeedKt: Math.round(180 + Math.random() * 320),
             heading: Math.round(Math.random() * 360),

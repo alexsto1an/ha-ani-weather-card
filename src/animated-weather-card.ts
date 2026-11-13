@@ -1463,6 +1463,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.planes.flyOver(flights, {
             night: this.config?.color_palette !== 'theme' && this.isNightForPlanes(),
             showLabels: this.config?.show_flight_labels !== false,
+            labelMode: this.config?.flight_label,
         });
     }
 

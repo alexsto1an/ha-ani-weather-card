@@ -223,6 +223,8 @@ export interface AnimatedWeatherCardConfig {
     /** Minutes after its `generated_at` that a note is hidden as stale (default 180, 0 never) */
     note_max_age?: number;
     show_flight_labels?: boolean;
+    /** What a plane's tag says: "flight" (number and aircraft, default), "route" ("Lisbon → Paris") or "both" */
+    flight_label?: 'flight' | 'route' | 'both';
     show_attributes?: boolean;
     show_attribute_labels?: boolean;
     show_attribute_icons?: boolean;

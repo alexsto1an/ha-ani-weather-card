@@ -379,13 +379,14 @@ cards:
                     <p>The tracker names the moon's phase among its details. Add Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a> under <b>Settings → Devices &amp; services</b>, and give the tracker its sensor as <code>moon_entity</code>, as above.</p>
 
                     <h3 id="planes">Planes</h3>
-                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Set <code>show_flight_labels: false</code> to fly them without their tags.</p>
+                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Each is tagged with its flight number and aircraft; set <code>flight_label: route</code> to tag it with where it's going instead ("Lisbon → Paris", or the airport codes on a narrow card), or <code>both</code> for the route over the flight. A light aircraft with no route keeps its number. Set <code>show_flight_labels: false</code> to fly them without tags.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-weather-card
 entity: weather.forecast_home
 sun_entity: sun.sun
-flights_entity: sensor.flightradar24_current_in_area</code></pre>
+flights_entity: sensor.flightradar24_current_in_area
+flight_label: route</code></pre>
                     </div>
 
                     <h3 id="theme">Your theme</h3>

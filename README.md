@@ -302,7 +302,7 @@ color_palette: theme
 
 ### Planes overhead
 
-This needs the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24). Set `show_flight_labels: false` to fly the planes without their tags.
+This needs the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24). Each plane is tagged with its flight number and aircraft. Set `flight_label: route` to tag it with where it's going instead, "Lisbon → Paris", or `both` for the route with the flight under it. On a narrow card, a long route shows the airport codes, "FRA → GIG", so it's readable before the plane leaves. A flight with no route, like most light aircraft, keeps its number. Set `show_flight_labels: false` to fly the planes without tags.
 
 Each flight is drawn from the side as its aircraft, picked from the ICAO type code Flightradar24 reports: a narrow-body airliner (A320, 737, E190), a wide-body (787, 777, A350), a four-engine jet (747, A380), a jet with its engines at the tail (CRJ, MD-80, and business jets at their own length), a turboprop (ATR, Dash 8), a light aircraft (Cessna, Piper) or a helicopter. An unknown type flies as an airliner. Longer aircraft look longer, though less than in life, so a low 747 never covers the temperature. After dark, with the sky palette, a plane is its lights: steady green at the near wingtip of a plane flying right and red flying left, white strobes that flash twice, a red beacon and a white tail light. With `color_palette: theme` it stays a silhouette in your theme's colour.
 
@@ -641,7 +641,8 @@ sunset_hour: 19
 | `show_sun` | `true` | Show the next sunset or sunrise in the metric row. Needs `sun_entity` |
 | `show_indoor` | `true` | Show the indoor reading |
 | `indoor_style` | `label` | How the indoor reading starts: `label` (the word "Indoors", translated), `icon` (a house) or `both` |
-| `show_flight_labels` | `true` | Show the flight number and aircraft type beside each plane. Labels only appear in open sky, never over the temperature |
+| `show_flight_labels` | `true` | Show a tag beside each plane. Tags only appear in open sky, never over the temperature |
+| `flight_label` | `flight` | What a plane's tag says: `flight` (the flight number and aircraft type), `route` ("Lisbon → Paris", or the airport codes on a narrow card) or `both` (the route, with the flight under it). A flight with no route keeps its number |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
 
 **Forecast and clock**

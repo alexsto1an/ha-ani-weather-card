@@ -286,6 +286,9 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
                 <span>Flight labels on planes</span>
               </label>
             </div>
+            <div class="option">
+              <ha-select id="flight_label" label="Plane labels show"></ha-select>
+            </div>
 
             <div class="group-title">Motion</div>
             <div class="option">
@@ -712,6 +715,14 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         this.querySelector('#show_note')?.addEventListener('change', (e) => {
             this._updateConfig('show_note', (e.target as HTMLInputElement).checked || undefined);
             this.syncNoteOptions();
+        });
+
+        this._bindSelect('flight_label', [
+            { value: 'flight', label: 'Flight number and aircraft' },
+            { value: 'route', label: 'Route (Lisbon → Paris)' },
+            { value: 'both', label: 'Route and flight number' },
+        ], this._config?.flight_label || 'flight', (value) => {
+            this._updateConfig('flight_label', value === 'flight' ? undefined : value);
         });
 
         this._bindSelect('note_tone', [

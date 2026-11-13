@@ -107,7 +107,7 @@ describe('the demo\'s sample world', () => {
     it('writes YAML for exactly what the hero card is set up with', () => {
         const plain = configYaml({});
         expect(plain).toBe('type: custom:animated-weather-card\nentity: weather.forecast_home\nsun_entity: sun.sun\n'
-            + '# Planes fly over from the Flightradar24 integration\nflights_entity: sensor.flightradar24_current_in_area\n'
+            + '# Planes fly over from the Flightradar24 integration, tagged with where they\'re going\nflights_entity: sensor.flightradar24_current_in_area\nflight_label: route\n'
             + '# A note from your AI, written from the forecast\nshow_note: true\n');
 
         const compact = configYaml({ layout: 'compact', colors: 'theme' }).split('\n');

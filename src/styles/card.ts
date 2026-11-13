@@ -1161,5 +1161,8 @@ ${iconBoxCss('animated-weather-card')}
           text-shadow: 0 1px 4px var(--weather-text-shadow);
           font-variant-numeric: tabular-nums;
         }
+        /* With both, the flight sits under the route, quieter */
+        .plane-label > span { display: block; }
+        .plane-flight { font-weight: 500; opacity: 0.72; }
 
 `;

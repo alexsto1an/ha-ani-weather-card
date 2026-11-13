@@ -17,6 +17,11 @@ export interface FlightInfo {
     label: string;
     /** ICAO aircraft type code, e.g. "B77W". Empty if unknown. */
     aircraftCode: string;
+    /** Where it's from and going: the cities ("Lisbon") and the airports' IATA codes ("LIS"). Empty if unknown. */
+    originCity: string;
+    originCode: string;
+    destinationCity: string;
+    destinationCode: string;
     altitudeFt: number | null;
     groundSpeedKt: number | null;
     /** True track in degrees, 0 = north, 90 = east. */
@@ -69,6 +74,10 @@ export function normalizeFlight(raw: unknown): FlightInfo | null {
         id,
         label: toText(r.flight_number) || toText(r.callsign),
         aircraftCode: toText(r.aircraft_code),
+        originCity: toText(r.airport_origin_city),
+        originCode: toText(r.airport_origin_code_iata),
+        destinationCity: toText(r.airport_destination_city),
+        destinationCode: toText(r.airport_destination_code_iata),
         altitudeFt: toNumber(r.altitude),
         groundSpeedKt: toNumber(r.ground_speed),
         heading: toNumber(r.heading),

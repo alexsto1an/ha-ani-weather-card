@@ -21,6 +21,7 @@ function flight(id: string, overrides: Partial<FlightInfo> = {}): FlightInfo {
         id,
         label: 'BA117',
         aircraftCode: 'B77W',
+        originCity: 'London', originCode: 'LHR', destinationCity: 'New York', destinationCode: 'JFK',
         altitudeFt: 30000,
         groundSpeedKt: 450,
         heading: 90,
@@ -84,10 +85,41 @@ describe('PlanesAnimation', () => {
         expect(element.querySelector('.plane-label')).toBeNull();
     });
 
+    it('tags a plane with its route, with its flight under it, or keeps the number when it has no route', () => {
+        const ROUTE: FlyoverOptions = { ...DAY, labelMode: 'route' };
+        planes.flyOver([flight('a')], ROUTE);
+        expect(element.querySelector('.plane-label')?.textContent).toBe('London → New York');
+        planes.flyOver([flight('b')], { ...DAY, labelMode: 'both' });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        const both = element.querySelectorAll('.plane-label')[1];
+        expect([...both.children].map(c => [c.className, c.textContent])).toEqual([['plane-route', 'London → New York'], ['plane-flight', 'BA117 · B77W']]);
+        // Codes when the cities aren't known; the number when there's no route at all, as for a light aircraft
+        planes.flyOver([flight('c', { originCity: '', destinationCity: '' })], ROUTE);
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(element.querySelectorAll('.plane-label')[2].textContent).toBe('LHR → JFK');
+        completeTimeline(0); completeTimeline(1); completeTimeline(2);
+        planes.flyOver([flight('d', { label: 'N123AB', aircraftCode: 'C172', originCity: '', originCode: '', destinationCity: 'Lisbon', destinationCode: 'LIS' })], ROUTE);
+        expect(element.querySelector('.plane-label')?.textContent).toBe('N123AB · C172');
+    });
+
+    it('flies a long city route as airport codes, so it reaches open sky before the plane leaves', () => {
+        // jsdom lays nothing out: a 400 px card, and a route that would take more than its share
+        const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+            return this.classList.contains('plane-route') ? 220 : 400;
+        });
+        planes.flyOver([flight('a', { originCity: 'Frankfurt am Main', originCode: 'FRA', destinationCity: 'Rio de Janeiro', destinationCode: 'GIG' })], { ...DAY, labelMode: 'route' });
+        expect(element.querySelector('.plane-label')?.textContent).toBe('FRA → GIG');
+        width.mockRestore();
+    });
+
     it('renders label text literally, never as HTML', () => {
         planes.flyOver([flight('a', { label: '<img src=x onerror=alert(1)>', aircraftCode: '' })], DAY);
         expect(element.querySelector('.plane-label img')).toBeNull();
         expect(element.querySelector('.plane-label')?.textContent).toBe('<img src=x onerror=alert(1)>');
+        planes.flyOver([flight('b', { originCity: '<b>x</b>', destinationCity: '<script>' })], { ...DAY, labelMode: 'both' });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(element.querySelector('.plane-label b, .plane-label script')).toBeNull();
+        expect(element.querySelectorAll('.plane-label')[1].querySelector('.plane-route')?.textContent).toBe('<b>x</b> → <script>');
     });
 
     it('hides an eastbound label until the plane clears the hero text, and fades a westbound one before it', () => {
