@@ -309,10 +309,7 @@ describe('Clouds over the sun', () => {
         expect(gsap.to.mock.calls.filter(([target]) => target === track).at(-1)?.[1].opacity).toBeCloseTo(0.9, 2);
     });
 
-    it('are drawn solid on the theme palette over an opaque card, hiding the sun themselves, and see-through over a glass one', async () => {
-        // jsdom has no CSS.supports; the browsers that mix colours say yes
-        const had = (window as unknown as { CSS?: unknown }).CSS;
-        (window as unknown as { CSS: unknown }).CSS = { supports: () => true };
+    it('on the theme palette, ride over twins in an opaque card\'s fill that hide the sun, moved with them; none over a glass card', async () => {
         const element = makeCardElement();
         const root = element.querySelector('.animated-weather-card') as HTMLElement;
         const fill = document.createElement('ha-card');
@@ -325,25 +322,43 @@ describe('Clouds over the sun', () => {
         const bridge = new ModularIntegrationBridge(element, { ...cardConfig, color_palette: 'theme' }, undefined, 12);
         const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn>; timeline: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
         await bridge.startModularAnimation('clouds', 1);
+        // A twin for each cloud, under the clouds' layer, in the card's fill, at full strength
+        const clouds = Array.from(root.querySelectorAll<HTMLElement>('.clouds-layer .cloud-gsap'));
+        const twins = Array.from(root.querySelectorAll<HTMLElement>('.clouds-occluders .cloud-occluder'));
+        expect(twins).toHaveLength(clouds.length);
+        expect(root.querySelector('.clouds-occluders')!.nextElementSibling).toBe(root.querySelector('.clouds-layer'));
+        expect(twins[0].style.opacity).toBe('1');
+        expect([twins[0], ...Array.from(twins[0].querySelectorAll<HTMLElement>('div'))].some(el => el.style.background === 'var(--awc-card-bg)')).toBe(true);
+        // Its track carries the cloud's place, and the drift moves both
+        const ownTrack = clouds[0].parentElement!, twinTrack = twins[0].parentElement!;
+        expect(twinTrack.dataset.awcF).toBe(ownTrack.dataset.awcF);
+        const drifts = gsap.timeline.mock.results.map(r => r.value).filter(tl => !tl.vars.onRepeat);
+        expect(drifts.some(tl => tl.fromTo.mock.calls.some(([targets]: [unknown]) => Array.isArray(targets) && targets.includes(ownTrack) && targets.includes(twinTrack)))).toBe(true);
+
         const looks = gsap.timeline.mock.results.map(r => r.value).find(tl => tl.vars.onRepeat);
-        const near = Array.from(root.querySelectorAll<HTMLElement>('.cloud-gsap')).find(c => c.dataset.awcO === '0.66')!;
+        const near = clouds.find(c => c.dataset.awcO === '0.66')!;
         place(near, 380, 30, 120, 60);
         looks.vars.onRepeat();
-        expect(root.hasAttribute('data-solid-clouds')).toBe(true);
+        expect(root.hasAttribute('data-occlude')).toBe(true);
         expect(root.style.getPropertyValue('--awc-card-bg')).toBe('rgb(28, 28, 28)');
-        // The cloud hides the sun where it lies over it: its flat disc isn't dimmed, nor the cloud thickened
+        // The twin hides the sun: its flat disc isn't dimmed, nor the cloud thickened
         expect(gsap.to.mock.calls.some(([target]) => target === track)).toBe(false);
         expect(gsap.to.mock.calls.some(([target]) => target === near)).toBe(false);
-        // A see-through fill (a glass theme): no solid colour looks the same, so the clouds stay see-through
+        // A see-through fill (a glass theme): a twin would show, so they're off
         fill.style.backgroundColor = 'rgba(30, 30, 50, 0.45)';
         looks.vars.onRepeat();
-        expect(root.hasAttribute('data-solid-clouds')).toBe(false);
-        // Stopped, the clouds take the attribute with them
-        fill.style.backgroundColor = 'rgb(28, 28, 28)';
-        looks.vars.onRepeat();
+        expect(root.hasAttribute('data-occlude')).toBe(false);
+        // Stopped, the twins go with their clouds
         await bridge.stopModularAnimation('clouds');
-        expect(root.hasAttribute('data-solid-clouds')).toBe(false);
-        (window as unknown as { CSS?: unknown }).CSS = had;
+        expect(root.querySelectorAll('.cloud-occluder, .cloud-gsap')).toHaveLength(0);
+        expect(root.hasAttribute('data-occlude')).toBe(false);
+    });
+
+    it('have no twins on the sky palette', async () => {
+        const element = makeCardElement();
+        const bridge = new ModularIntegrationBridge(element, cardConfig, undefined, 12);
+        await bridge.startModularAnimation('clouds', 1);
+        expect(element.querySelector('.clouds-occluders')).toBeNull();
     });
 
     it('measure nothing while the sun isn\'t showing', async () => {

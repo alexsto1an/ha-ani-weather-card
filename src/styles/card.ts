@@ -238,22 +238,15 @@ ${iconBoxCss('animated-weather-card')}
           opacity: 0.16 !important;
           filter: none !important;
         }
-        /* Seen at 16%, the sun showed through them, as if in front. Where the
-           browser mixes colours and the card's fill is an opaque colour (the
-           clouds animation reads it into --awc-card-bg and sets
-           data-solid-clouds), a cloud is drawn solid in the colour it shows,
-           its ink 16% over that fill, so it looks the same and hides what's
-           behind it. */
-        @supports (color: color-mix(in srgb, red, blue)) {
-          .animated-weather-card.theme-colors[data-solid-clouds] {
-            --awc-cloud-near: color-mix(in srgb, var(--secondary-text-color, #888) 16%, var(--awc-card-bg, transparent));
-            --awc-cloud-mid: var(--awc-cloud-near);
-            --awc-cloud-far: var(--awc-cloud-near);
-            /* Above the card, over the dashboard, a solid cloud shows at the 16% it was (the spill's mask) */
-            --awc-above: rgba(0, 0, 0, 0.16);
-          }
-          .animated-weather-card.theme-colors[data-solid-clouds]:not(.condition-out) .cloud-gsap { opacity: 1 !important; }
-        }
+        /* Seen at 16%, the sun showed through them, as if in front. Under each
+           cloud rides a twin in the card's own fill (.cloud-occluder, read into
+           --awc-card-bg by the clouds animation), in a layer clipped to the
+           card: unseen against the card, it hides the sun behind the cloud,
+           while the cloud itself, above the card and where clouds overlap,
+           is drawn as it always was. Only over an opaque fill (data-occlude):
+           over a see-through one or an image the twin would show. */
+        .clouds-occluders { position: absolute; left: 0; right: 0; bottom: 0; top: var(--awc-cloud-overhang); clip-path: inset(0 round calc(var(--ha-card-border-radius, 12px) - var(--ha-card-border-width, 1px))); }
+        .animated-weather-card:not([data-occlude]) .clouds-occluders { display: none; }
         .animated-weather-card.theme-colors .secondary,
         .animated-weather-card.theme-colors .attribute-label,
         .animated-weather-card.theme-colors .hero-meta {
@@ -834,6 +827,7 @@ ${iconBoxCss('animated-weather-card')}
            inline opacity GSAP keeps writing to clouds and stars. */
         .animated-weather-card.condition-out .animation-container,
         .animated-weather-card.condition-out .cloud-gsap,
+        .animated-weather-card.condition-out .cloud-occluder,
         .animated-weather-card.condition-out .star-gsap,
         .animated-weather-card.condition-out .moon-gsap,
         .animated-weather-card.condition-out .snow-accumulation,
@@ -886,8 +880,8 @@ ${iconBoxCss('animated-weather-card')}
           --awc-cloud-overhang: ${CLOUD_OVERHANG_PX}px;
           top: calc(-1 * var(--awc-cloud-overhang));
           clip-path: inset(0 round 0 0 var(--ha-card-border-radius, 12px) var(--ha-card-border-radius, 12px));
-          -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--awc-above, #000) calc(var(--awc-cloud-overhang) / 2), var(--awc-above, #000) var(--awc-cloud-overhang), #000 var(--awc-cloud-overhang));
-          mask-image: linear-gradient(to bottom, transparent 0, var(--awc-above, #000) calc(var(--awc-cloud-overhang) / 2), var(--awc-above, #000) var(--awc-cloud-overhang), #000 var(--awc-cloud-overhang));
+          -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 calc(var(--awc-cloud-overhang) / 2));
+          mask-image: linear-gradient(to bottom, transparent 0, #000 calc(var(--awc-cloud-overhang) / 2));
         }
 
         .rain-layer, .snow-layer, .sleet-layer, .wind-layer {

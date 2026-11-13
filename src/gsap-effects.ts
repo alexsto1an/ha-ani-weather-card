@@ -235,9 +235,10 @@ export function cloudPartMask(width: number, height: number, blur: number, dpr: 
     return url;
 }
 
-/** Remove every cloud and its track, and stop them moving. */
+/** Remove every cloud and its track, and their twins, and stop them moving. */
 export function removeClouds(root: ParentNode): void {
-    root.querySelectorAll('.cloud-track, .cloud-gsap').forEach(el => {
+    const scope = (root as Element).closest?.('.clouds-container') ?? root;
+    scope.querySelectorAll('.cloud-track, .cloud-gsap, .cloud-occluder').forEach(el => {
         window.AnimatedWeatherCardGsap?.killTweensOf(el);
         el.remove();
     });
@@ -380,7 +381,23 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
             track.dataset.awcB = String(bottom);
             track.appendChild(cloud);
             window.AnimatedWeatherCardGsap.set(cloud, { opacity: layer.opacity });
-            window.AnimatedWeatherCardGsap.set(track, {
+            // On the theme palette, a twin in the card's fill rides under it, clipped to the card, to hide the sun
+            // behind it (styles/card.ts: .clouds-occluders). Its track carries the same place, so a floor moves it too.
+            const tracks: HTMLElement[] = [track];
+            if (config?.color_palette === 'theme') {
+                const twins = cloudLayer.parentElement?.querySelector('.clouds-occluders')
+                    ?? cloudLayer.insertAdjacentElement('beforebegin', Object.assign(document.createElement('div'), { className: 'clouds-occluders' }));
+                const twin = cloud.cloneNode(true) as HTMLElement;
+                twin.className = 'cloud-occluder';
+                twin.style.opacity = '1';
+                for (const el of [twin, ...Array.from(twin.querySelectorAll<HTMLElement>('div'))]) if (el.style.background) el.style.background = 'var(--awc-card-bg)';
+                const shadow = track.cloneNode(false) as HTMLElement;
+                shadow.appendChild(twin);
+                twins?.appendChild(shadow);
+                tracks.push(shadow);
+            }
+            const moved = tracks.length > 1 ? tracks : track;
+            window.AnimatedWeatherCardGsap.set(moved, {
                 xPercent: 0,
                 x: -margin,
                 y: cloudY(frac, bottom, band, cardHeight),
@@ -394,7 +411,7 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
                 repeat: -1,
                 repeatDelay: Math.random() * 1.5,
             });
-            tl.fromTo(track, { xPercent: 0, x: -margin }, { xPercent: 100, x: margin, duration, ease: 'none' });
+            tl.fromTo(moved, { xPercent: 0, x: -margin }, { xPercent: 100, x: margin, duration, ease: 'none' });
             tl.progress(Math.random());
 
             cloudTimelines.push(tl);

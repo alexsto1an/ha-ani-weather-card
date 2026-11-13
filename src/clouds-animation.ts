@@ -99,7 +99,7 @@ export class CloudsAnimation extends BaseAnimation {
         const cloudLayer = this.element.querySelector(this.layerSelector);
         if (cloudLayer) removeClouds(cloudLayer);
         this.lightSun(1);
-        this.element.querySelector('.animated-weather-card')?.removeAttribute('data-solid-clouds');
+        this.element.querySelector('.animated-weather-card')?.removeAttribute('data-occlude');
 
         devLog(this.config.devMode, 'Clouds animation stopped');
     }
@@ -131,8 +131,8 @@ export class CloudsAnimation extends BaseAnimation {
      * opacity. Nothing is measured while the sun isn't showing.
      */
     protected veilSun(instant = false): void {
-        // Solid on the theme palette, the clouds hide the sun themselves, and its flat disc has no light to dim
-        if (this.solidClouds()) { this.lightSun(1, instant); return; }
+        // On the theme palette, the clouds' twins hide the sun behind them, and its flat disc has no light to dim
+        if (this.occlude()) { this.lightSun(1, instant); return; }
         const sun = this.element.querySelector('.sun-track .sun') as HTMLElement | null;
         const s = sun?.getBoundingClientRect();
         const clouds = Array.from(this.element.querySelectorAll<HTMLElement>('.cloud-gsap'));
@@ -147,7 +147,7 @@ export class CloudsAnimation extends BaseAnimation {
         const layer = this.element.querySelector(this.containerSelector);
         const fade = layer ? parseFloat(getComputedStyle(layer).opacity) : 1;
         const shown = Number.isFinite(fade) ? fade : 1;
-        // What each cloud shows of its own opacity: less on the theme palette's faint clouds, or while it fades out
+        // What each cloud shows of its own opacity: less on the theme palette's faint clouds (without twins), or while it fades out
         const hide = clouds.map(cloud => Math.min(base(cloud), parseFloat(getComputedStyle(cloud).opacity) || 0) * HIDE * shown);
         // The body and its puffs: pills and circles, as boxes with round ends
         const parts = clouds.map(cloud => [cloud, ...Array.from(cloud.children)].map(el => el.getBoundingClientRect()).filter(b => b.width && b.height));
@@ -170,24 +170,22 @@ export class CloudsAnimation extends BaseAnimation {
     }
 
     /**
-     * On the theme palette, draw the clouds solid, mixed with the card's
-     * fill (styles/card.ts), where the browser mixes colours and the fill is
-     * an opaque colour. Over a see-through fill or an image (a card-mod
-     * background, a glass theme) no solid colour looks the same as the
-     * faint cloud, so they stay see-through. Read on every look, so a new
-     * theme follows.
+     * On the theme palette, the clouds' twins (gsap-effects.ts) hide the sun
+     * in the card's fill: shown where that fill is an opaque colour, read
+     * into --awc-card-bg. Over a see-through fill or an image (a card-mod
+     * background, a glass theme) a twin would show, so they stay off. Read
+     * on every look, so a new theme follows.
      */
-    protected solidClouds(): boolean {
+    protected occlude(): boolean {
         const card = this.element.querySelector('.animated-weather-card') as HTMLElement | null;
         if (!card || this.cardConfig.color_palette !== 'theme') return false;
         const fill = card.closest('ha-card');
         const bg = fill ? getComputedStyle(fill) : null;
         // An opaque colour computes without an alpha: rgb(), or color() and the like without a slash
-        const solid = !!bg && (bg.backgroundImage || 'none') === 'none' && !/rgba|\/|transparent/.test(bg.backgroundColor)
-            && !!window.CSS?.supports?.('color', 'color-mix(in srgb, red, blue)');
-        if (solid && card.style.getPropertyValue('--awc-card-bg') !== bg!.backgroundColor) card.style.setProperty('--awc-card-bg', bg!.backgroundColor);
-        card.toggleAttribute('data-solid-clouds', solid);
-        return solid;
+        const opaque = !!bg && (bg.backgroundImage || 'none') === 'none' && !!bg.backgroundColor && !/rgba|\/|transparent/.test(bg.backgroundColor);
+        if (opaque && card.style.getPropertyValue('--awc-card-bg') !== bg!.backgroundColor) card.style.setProperty('--awc-card-bg', bg!.backgroundColor);
+        card.toggleAttribute('data-occlude', opaque);
+        return opaque;
     }
 
     /** Ease a cloud to an opacity, capped short of opaque */
