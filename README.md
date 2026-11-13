@@ -38,7 +38,9 @@ Turn on `show_note` and the card hands Home Assistant's AI the hours ahead: when
 
 ## Drag through the hours.
 
-Turn on `show_forecast` and the card adds today's high and low, a line on what turns ("Rain from 17:00 to 19:00", "Dry all day") and the next hours in a row under the temperature. Drag the card sideways and its sky, its weather, the temperature and the readings go to the hour you stop at, and stay there until you come back to now. A tap opens the whole forecast: the hours, the week and every reading your weather entity reports. The forecast also comes as a card of its own, and the card can be a bedside clock. [Set it up](#the-forecast-and-the-clock).
+Turn on `show_forecast` and the card adds today's high and low, a line on what turns ("Rain from 17:00 to 19:00", "Dry all day") and the next hours in a row at its foot, drawn as a line, a soft area or bars. Drag the card sideways and its sky, its weather, the temperature and the readings go to the hour you stop at, and stay there until you come back to now. A forecast card or a sun tracker on the same weather goes there with it. A tap opens the whole forecast: the hours, the week and every reading your weather entity reports. The forecast also comes as a card of its own, the card can show the time, and it can be a bedside clock, red on black at night, or a panel you read across the room. [Set it up](#the-forecast-and-the-clock).
+
+![The weather card with the forecast on a partly cloudy afternoon at 13:10, and the same card dragged to 17:00: rain falls behind the numbers, and the location line reads Now, 17:00, in 4 hr.](docs/images/forecast.webp)
 
 ## A sun tracker to match.
 
@@ -48,7 +50,7 @@ The download includes a second card, just for the sun. It shows the sun's path a
 
 ## Better together.
 
-Stack a compact sun tracker under the weather card and the two read as one piece. They share your weather entity's sky, their text lines up, and rain falling out of the weather card passes behind the tracker. [Set it up](#weather-and-sun-tracker).
+Stack a compact sun tracker under the weather card and the two read as one piece. They share your weather entity's sky, their text lines up, and rain falling out of the weather card passes behind the tracker. With the forecast on, drag the weather card through the hours and the tracker's sun goes there too. [Set it up](#weather-and-sun-tracker).
 
 ![A weather card with a compact sun tracker underneath, by day and by night](docs/images/pair.webp)
 
@@ -58,6 +60,7 @@ The card works in a narrow phone column, a sections grid or on a wall tablet acr
 
 - **Metrics:** they share one row when they fit and fold into a grid when they don't, measured against the actual labels in your language.
 - **Wide cards:** the metrics move beside a larger temperature.
+- **Wall panels:** with the forecast on, a frame of 640 × 540 px or more lays itself out for reading across the room, every size following the panel's.
 - **Short sections rows:** the card steps down to tighter layouts instead of clipping.
 - **The forecast:** in a shorter frame, its chips, icons and row give way before the temperature shrinks.
 - **One line:** `compact: true` gives you a single strip.
@@ -66,7 +69,7 @@ The card works in a narrow phone column, a sections grid or on a wall tablet acr
 
 ## Planes, actually overhead.
 
-Connect the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) and each flight that enters your area crosses the card once. It flies at its real heading, altitude and speed, with its flight number and aircraft type beside it. Each is drawn as its aircraft, from its type: an airliner, a wide-body, a 747, a regional or business jet, a turboprop, a light aircraft or a helicopter, longer for a longer aircraft. Cruising traffic flies small and high, and arrivals come in lower and larger. After dark, a plane is its lights: green or red at the wingtip facing you, flashing white strobes and a red beacon.
+Connect the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) and each flight that enters your area crosses the card once. It flies at its real heading, altitude and speed, with its flight number and aircraft type beside it, or where it's going. Each is drawn as its aircraft, from its type: an airliner, a wide-body, a 747, a regional or business jet, a turboprop, a light aircraft or a helicopter, longer for a longer aircraft. Cruising traffic flies small and high, and arrivals come in lower and larger. After dark, a plane is its lights: green or red at the wingtip facing you, flashing white strobes and a red beacon.
 
 ![A Boeing 787 crossing a clear afternoon sky, and a 747 crossing a clear night, shown by its lights](docs/images/planes.webp)
 
@@ -84,7 +87,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
 - **Respects reduced motion.** If reduced motion is on in your system settings, the sky stays still: the same colour and light, with no moving weather.
 - **Readable in every sky.** Text sits above the weather, and every built-in sky is tested to meet WCAG AA contrast for the card's text. Screen readers hear temperature and condition changes, and decorative layers are hidden from them.
-- **Light to load.** The card is about 82 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
+- **Light to load.** The card is about 84 KB gzipped, with GSAP, its animation library, inside, so it moves without internet access. The visual editor, the forecast, the note writer, the planes and the developer panel load only when they're needed.
 - **Set up visually.** Every weather card option is in the visual editor. YAML is there when you want it.
 
 ## Built with AI.
@@ -99,7 +102,7 @@ The [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks
 
 ### What you need
 
-- **A weather entity.** Any weather integration works: Met.no, OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others.
+- **A weather entity.** Any weather integration works: Met.no, OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others. The card's forecast reads the one your integration already provides: its row of hours needs an hourly forecast, and a daily or twice-daily one gives the rest.
 - **Optional:** an AI integration with an AI Task (Home Assistant 2025.8 or later) for the weather note, the [Moon](https://www.home-assistant.io/integrations/moon/) integration for the tracker's moon phase, and the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for planes.
 
 The card ships as six files that sit in the same folder:
@@ -315,7 +318,7 @@ flights_entity: sensor.flightradar24_current_in_area
 
 ### The forecast and the clock
 
-The clock puts the time at the start of the location line: "13:10  Home". The forecast adds today's high and low beside the condition, a line on what turns under it, and the hours ahead in a row between the temperature and the readings. Both read the forecast your weather integration already provides.
+The clock puts the time at the start of the location line: "13:10  Home". The forecast adds today's high and low beside the condition, a line on what turns under it, and the hours ahead in a row at the card's foot, under the readings. Both read the forecast your weather integration already provides.
 
 ```yaml
 type: custom:animated-weather-card
@@ -379,11 +382,15 @@ To have a tap do something else, set `tap_action`, or pick it under **Interactio
 
 ### The wall
 
-With the forecast on, a card of at least 640 × 540 px, such as two sections columns by ten rows on a wall tablet, a panel view or a TV, lays itself out for reading across the room. Every size follows the panel's, so a bigger screen is the same picture seen from further away:
+With the forecast on, a card of at least 640 × 540 px, such as two sections columns by ten rows on a wall tablet, a panel view or a TV, lays itself out for reading across the room. Every size follows the panel's, so a bigger screen is the same picture seen from further away.
+
+![The wall on a 1280 × 800 tablet: the time, the date and the temperature at the top left, open sky, and at the foot the line on what turns over the hours, with five days beside them](docs/images/wall-panel.webp)
+
+What it shows:
 
 - top left, on one edge: the time and the date, the temperature (about a third of the panel's height), and the condition with the high, the low and feels like
 - open sky, where the sun and the clouds are
-- at the foot, the line on what turns over the hours: two-hour columns of time, icon and temperature on one line each, with the temperature's line under them (five columns on a wall tablet, up to ten on a large panel)
+- at the foot, the line on what turns over the hours: two-hour columns of time, icon and temperature on one line each, with the temperature's line under them (eight on a 1280 × 800 tablet, from three or four on the smallest wall to ten on a TV)
 - beside the hours, set apart, five days of ranges, each row on one of the hours' lines; they show the day the hour falls in as you drag
 - on a portrait tablet, the week goes under the hours, seven days where there's room
 
@@ -403,6 +410,8 @@ cards:
 
 `layout: nightstand` makes the weather card a bedside clock. The time is the hero, "3:12" with no leading zero, and the weather says what the hour needs. It asks the sections view for six rows, and a tap does nothing unless you set `tap_action`.
 
+![The nightstand by day, the time beside the temperature, the condition and the day's range, and at night, red on black, with the alarm and the night's line: 9° Rain until 7 AM](docs/images/nightstand.webp)
+
 ```yaml
 type: custom:animated-weather-card
 entity: weather.forecast_home
@@ -415,7 +424,7 @@ wake_time: "07:00"
 
 - **By day:** the date, the temperature, the condition, the line on what turns, and today's range with a dot for now. From an hour before bed time, with an alarm set, the alarm takes the date's place.
 - **At night:** the card goes red on black, like a bedside clock's night mode: no sky, and a deep red for the time, the alarm ("Alarm 6:45") and one line, which keeps a dark room's night vision. The weather still moves behind them, very faintly, in the same red: rain, snow, clouds, the moon and the stars. With `night_red: false` it turns its real sky down under a veil instead, and the words keep two warm colours with no transparency. Dawn, day and dusk are untouched either way. That line is the temperature and the condition, then what's coming ("16° Partly cloudy · Dry tonight", "9° Rain until 7 AM"), or what's wrong before you're up: severe weather, rain at 60% or more, gusts of 60 km/h (37 mph) or more, or frost at the alarm. A warning is set a step heavier, and screen readers hear it as a status. Nothing changes under the veil but the minute. Night comes and goes over eight seconds.
-- **When night falls.** With `night: auto`, the default, a light sensor beside it decides: night under 5 lx held for a minute, day again over 15 lx held for 10 seconds, so a phone screen or a passing car doesn't flip it. Without one, night runs from `bed_time` to the alarm, or to `wake_time` without an alarm. `bed_time` defaults to 8 hours 30 minutes before that. `night: on` and `night: off` fix it.
+- **When night falls.** With `night: auto`, the default, a light sensor beside it decides: night under 5 lx held for a minute, day again over 15 lx held for 10 seconds, so a phone screen or a passing car doesn't flip it. If the screen's own glow or a street light keeps the room above 5 lx at night, raise `night_lux`: day comes back at three times it. Without one, night runs from `bed_time` to the alarm, or to `wake_time` without an alarm. `bed_time` defaults to 8 hours 30 minutes before that. `night: "on"` and `night: "off"` fix it, in quotes, since YAML reads a bare on and off as true and false.
 - **The alarm.** `alarm_entity` is a timestamp sensor with your next alarm: the Android Companion app's next alarm sensor, or an input_datetime that an iOS Shortcut sets. The card uses it when it's within 18 hours.
 - **Screen care.** The words move by a pixel every 15 minutes, against burn-in.
 - **Narrow frames** put the weather under the time.
@@ -425,6 +434,8 @@ wake_time: "07:00"
 `type: custom:animated-forecast-card`
 
 The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. Its row and a weather card's on the same entity move together: drag either and the other goes to the same hour, its sky too, and dragging it moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
+
+![The forecast card on a partly cloudy afternoon, with the line on what turns, the hours with their chips and seven days, beside the compact weather card with the forecast strip under it](docs/images/forecast-card.webp)
 
 ```yaml
 type: custom:animated-forecast-card
@@ -619,7 +630,7 @@ sunset_hour: 19
 | --- | --- | --- |
 | `entity` | required | Your weather entity |
 | `name` | entity's name | The location shown above the temperature |
-| `sun_entity` | — | Usually `sun.sun`. Adds the next sunset (by day) or sunrise (by night) to the metric row. The sky follows `sun.sun` with or without it |
+| `sun_entity` | — | Usually `sun.sun`. Adds the next sunset (by day) or sunrise (by night) to the metric row. The sky follows it, or `sun.sun` without it |
 | `outdoor_sensor_entity` | — | A temperature sensor to show instead of the weather entity's temperature |
 | `feels_like_entity` | — | An apparent temperature sensor. Without it, the card uses the weather entity's `apparent_temperature` if it has one |
 | `humidity_sensor_entity` | — | A humidity sensor to show instead of the weather entity's humidity |
@@ -656,12 +667,12 @@ sunset_hour: 19
 | `show_clock` | `false` | The time at the start of the location line: "13:10  Home". It changes only on the minute and follows your profile's 12- or 24-hour setting and time zone. It goes with the location line in a short frame, and on the compact strip it leads the quiet line. It adds no rows |
 | `show_forecast` | `false` | Today's high and low beside the condition, the line on what turns under it, the hourly row with its chips, and the slide through the hours. A tap opens the forecast view. Eight rows in the sections view, or five without an hourly forecast |
 | `forecast_metric` | `temp` | What the row shows first: `temp`, `feels` (feels like), `chance` (the chance of rain) or `amount` (the rain amount) |
-| `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone). The forecast card, the view on tap and the wall follow it |
+| `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone). The view on tap and the wall follow it; the forecast card has its own |
 | `layout` | `default` | `nightstand` makes the card a bedside clock, with the time as the hero. Six rows in the sections view |
 | `alarm_entity` | — | Nightstand: a timestamp sensor with your next alarm, such as the Android Companion app's next alarm sensor, or an input_datetime an iOS Shortcut sets. It's used when it's within 18 hours |
 | `wake_time` | `"07:00"` | Nightstand: when you get up without an alarm |
 | `bed_time` | 8 h 30 min before waking | Nightstand: when night begins without a light sensor. By default, 8 hours 30 minutes before the alarm, or before `wake_time` without one |
-| `night` | `auto` | Nightstand: `auto` (from `night_sensor`, else from bed time to the alarm or wake time), `on` or `off` |
+| `night` | `auto` | Nightstand: `auto` (from `night_sensor`, else from bed time to the alarm or wake time), `"on"` or `"off"`, in quotes |
 | `night_sensor` | — | Nightstand: an illuminance sensor beside it. Night under `night_lux` held for a minute, day again over three times it held for 10 seconds |
 | `night_red` | `true` | Nightstand: red on black at night, like a bedside clock's night mode. `false` keeps the sky under a veil, in two warm colours |
 | `night_lux` | `5` | Nightstand: how dark the room has to be, in lux, for night. A room where the screen or a street light keeps the sensor above 5 lx at night needs a higher value, such as `30` |
@@ -670,7 +681,7 @@ sunset_hour: 19
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `tap_action` | `more-info` | What a tap on the weather does. Takes Home Assistant's [card actions](https://www.home-assistant.io/dashboards/actions/): `more-info`, `navigate`, `url`, `perform-action`, `assist` or `none`, and the card's own `forecast`, which opens the forecast view. By default it opens the weather entity's details, or the forecast view with `show_forecast`; with `layout: nightstand`, a tap does nothing by default |
+| `tap_action` | `more-info` | What a tap on the weather does. Takes Home Assistant's [card actions](https://www.home-assistant.io/dashboards/actions/): `more-info`, `navigate`, `url`, `perform-action`, `assist` or `none`, and the card's own `forecast`, which opens the forecast view while `show_forecast` is on. By default it opens the weather entity's details, or the forecast view with `show_forecast`; with `layout: nightstand`, a tap does nothing by default |
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does. With it set, a single tap waits a quarter of a second to tell the two apart |
 
@@ -714,7 +725,7 @@ Set these under `engine_settings:`. The editor's sliders cover the useful range,
 | `rainCount` | `1` | 0.5–3× | 0.1–10× | Amount of rain |
 | `snowCount` | `1` | 0.5–3× | 0.1–10× | Amount of snow |
 | `leafCount` | `1` | 0.5–3× | 0.1–10× | Amount of leaves on windy days |
-| `cloudCount` | `3` | 1–6 | 1–20 | Number of clouds |
+| `cloudCount` | `3` | 1–6 | 1–20 | Number of clouds, and of stars on a clear night: five per cloud, at least 15 |
 | `cloudBaseSize` | `1` | 0.5–2× | 0.3–2.5× | Cloud size |
 | `splashBounce` | `80` | 40–120 | 40–120 | How high raindrops spring back after they splash |
 
@@ -752,7 +763,7 @@ Its options, with examples, are under [The forecast card](#the-forecast-card).
 | `show_details` | `true` | Show first and last light, solar noon, daylight and the moon phase |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
 | `direction` | `auto` | Which way the sun crosses the path. `auto` runs it right to left south of the equator, from your Home Assistant location, and left to right north of it. `left_to_right` or `right_to_left` sets it |
-| `tap_action` | `more-info` | What a tap does. By default it opens the sun entity's details. Takes the same actions as the weather card |
+| `tap_action` | `more-info` | What a tap does. By default it opens the sun entity's details. Takes the same actions as the weather card, except `forecast` |
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does |
 
@@ -791,7 +802,7 @@ Free-text conditions can also reach these skies:
 
 The cards follow your Home Assistant profile: its language, its 12/24-hour time format and its time zone, the server's or the device's.
 
-- **From Home Assistant:** the weather condition, the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
+- **From Home Assistant:** the weather condition (with the forecast on, the card says it its own way in its nine languages, "Rain" for Rainy), the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
 - **The cards' own words:** "Feels like", "Indoors", sunrise and sunset, the sun tracker's labels and the forecast's words, from "Rain from 17:00 to 19:00" to the chips and the days, are translated into:
   - English
   - German
@@ -831,13 +842,16 @@ Add `sun_entity: sun.sun`.
 **No forecast on the card**
 The row needs an hourly forecast. With only a daily one, the card shows the line on what turns and a rail that steps through days; with none at all, it shows today alone, and the forecast card says "This weather entity has no forecast". On a manual install, `animated-weather-card-forecast.js` has to sit next to `animated-weather-card.js`. The browser console says so if it can't load.
 
+**The nightstand stays bright at night**
+With `night_sensor`, night starts once the room stays under `night_lux` (5 lx) for a minute. The screen's own glow, a lamp or a street light can keep the sensor above that: check its reading at night in Home Assistant and set `night_lux` a little over it, such as `30`. Without a sensor, night runs from `bed_time` to the alarm or `wake_time`, and `night: "on"` keeps it night.
+
 **No note under the conditions**
 The note needs Home Assistant 2025.8 or later and an AI Task: the default one from Settings → System → AI, or `note_ai_task_entity`. The editor's **Weather note** section says what's missing, and so does the browser console. The card only writes while it's on screen, and after a failure it tries again ten minutes later. On a manual install, `animated-weather-card-note.js` has to sit next to `animated-weather-card.js`.
 
 **Planes don't appear**
 Planes only fly in a few cases:
 
-- Only flights that enter your area after the dashboard loads fly. Flights already overhead stay put, so reloading doesn't replay them.
+- Only flights that enter your area after the dashboard loads fly. Flights already overhead stay put, so reloading doesn't replay them, unless you set `planes_on_load: true`.
 - Planes on the ground wait until they take off.
 - Flights that arrive while the card is paused are skipped.
 - At most three planes cross at once.
@@ -876,9 +890,14 @@ src/
 ├── sun-tracker-editor.ts           # Visual editor for the sun tracker
 ├── forecast-host.ts                # What the main bundle and the forecast bundle hand each other
 ├── forecast-data.ts, forecast-feed.ts, forecast-model.ts # The page's forecast subscriptions, and the days
+├── hour-link.ts                    # One needle across the page: a dragged card's hour, for the others
 ├── animated-weather-card-forecast.ts # Entry point of the forecast bundle
 ├── fc-*.ts                         # The forecast, the slide, the clock, the icons, the forecast card,
 │                                   # the view on tap, the nightstand and the wall
+├── sun-path.ts                     # The sun tracker's path
+├── icons.ts                        # The cards' own icons
+├── actions.ts, action-editor.ts    # Tap, hold and double-tap actions, and their editor
+├── bundles.ts                      # Loads the other bundles from beside the main one
 ├── animated-weather-card-dev.ts    # Entry point of the developer panel bundle
 ├── dev-panel.ts                    # Developer panel (dev_mode)
 ├── animated-weather-card-note.ts   # Entry point of the note writer bundle
@@ -894,6 +913,7 @@ src/
 ├── aircraft.ts                     # Each aircraft family, drawn from its real dimensions
 ├── particle-pool.ts                # Recycled particles for rain, snow and sleet
 ├── gsap-effects.ts                 # Clouds, leaves, swooshes and fog
+├── cloud-band.ts                   # Where clouds ride above the forecast
 ├── flight-tracker.ts               # Flightradar24 arrivals for plane fly-overs
 ├── sky.ts                          # Sky palettes (OKLCH), phases and contrast checks
 ├── localize.ts                     # The cards' own strings, times and durations

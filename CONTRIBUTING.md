@@ -36,6 +36,7 @@ npm install
 | `npm run type-check` | Runs strict TypeScript checks |
 | `npm test` | Runs the Vitest suite once |
 | `npm run test:watch` | Runs the tests on every change |
+| `npm run test:coverage` | Runs the tests once with a coverage report |
 
 ## Try a change in the demo
 
@@ -68,9 +69,9 @@ The card ships as six bundles:
 | `animated-weather-card-planes.js` | Only for cards with a flights sensor (`flights_entity`), or `dev_mode` |
 | `animated-weather-card-dev.js` | Only for cards with `dev_mode: true` |
 
-The forecast bundle reaches the card only through `ForecastHost` and gives back `ForecastExtras`, both in `src/forecast-host.ts`, with plain names on both sides. The page keeps one forecast subscription per weather entity (`src/forecast-data.ts`), which the weather card, the forecast card, the view and the note writer share.
+The forecast bundle reaches the card only through `ForecastHost` and gives back `ForecastExtras`, both in `src/forecast-host.ts`, with plain names on both sides. The page keeps one forecast subscription per weather entity and kind, hourly, daily or twice daily (`src/forecast-data.ts`), which the weather card, the forecast card, the view and the note writer share.
 
-**The fit ladder.** In a frame shorter than the card wants, the forecast gives way before the temperature ever shrinks: first the chips, then the icons, then the row (it folds back to the line on what turns and a rail on the divider), then that line. Only then does the card's own ladder (compact, short, tight, minimal) move, and with a note, the note shortens to its one line first. A level is kept only while the row's first line sits at 0.43 of a narrow card's height or lower, where its text stays readable over the sun's glow. The levels live in `src/fc-weather.ts`; the card asks them in `applySizeState`.
+**The fit ladder.** In a frame shorter than the card wants, the forecast gives way before the temperature ever shrinks: first the chips, then the icons, then the row (it folds back to the line on what turns and a rail on the divider), then that line. Until the last level, the card's own ladder goes no further than `compact`, which leaves the temperature alone; only then do `short`, `tight` and `minimal` shrink it, and with a note, the note shortens to its one line first. A level is kept only while the row's first line sits at 0.43 of a narrow card's height or lower, where its text stays readable over the sun's glow. The levels live in `src/fc-weather.ts`; the card asks them in `applySizeState`.
 
 **The slide.** Dragging the card sideways moves the row under a fixed needle, and the card's sky, weather and readings go to the hour under it. Letting go leaves it there: a slow lift settles on the nearest hour, a flick carries on like a list. It comes home on the Now control, Home or Escape, half a minute without a touch, the card going out of sight, or a new forecast, on one spring of 0.38 s. While it's away, the card's own live updates wait, and the card reads the entity again when it's home. It lives in `src/fc-slide.ts`, and `test/cards/forecast.test.ts` holds its gestures and returns.
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Animated Weather Card · Live demo</title>
-    <meta name="description" content="The Animated Weather Card for Home Assistant, live in your browser. Change the weather and the hour, wire in your own sensors, and watch the sky follow.">
+    <meta name="description" content="The Animated Weather Card for Home Assistant, live in your browser. Change the weather and the hour, drag the forecast through the hours ahead, wire in your own sensors, and watch the sky follow.">
     <meta name="theme-color" content="#16131c">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Animated Weather Card">
@@ -102,7 +102,7 @@
                             <span class="plane-icon" aria-hidden="true"><span class="plane-glyph"></span></span>
                             <span>Fly a plane</span>
                         </button>
-                        <p class="field-note" id="fly-note">Needs the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a>, from HACS.</p>
+                        <p class="field-note" id="fly-note">Needs the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a>, from HACS. Here each plane is tagged with where it's going (<code>flight_label: route</code>).</p>
                     </div>
                 </form>
             </div>
@@ -164,7 +164,7 @@
                 <span class="title-quiet">The forecast and the clock, on the card's own sky.</span>
             </h2>
             <div class="ahead-copy">
-                <p class="section-lede">Turn on the forecast and the card adds today's high and low, when the rain starts and stops, and the hours ahead in a row. Drag it sideways and its sky, its weather and its numbers go to that hour. The forecast card holds the hours and the week, and its strip sits under the compact card.</p>
+                <p class="section-lede">Turn on the forecast and the card adds today's high and low, when the rain starts and stops, and the hours ahead in a row. Drag it sideways and its sky, its weather and its numbers go to that hour, and the other cards on the same weather go with it. The forecast card holds the hours and the week, and its strip sits under the compact card. A tap opens the whole forecast, and the same card can be a bedside clock, red on black at night, or a panel you read across the room.</p>
             </div>
 
             <div class="ahead-stage" id="ahead-stage" role="region" aria-label="Live preview of the forecast">
@@ -335,7 +335,7 @@
         <section class="lab paint" id="paint" aria-labelledby="paint-title">
             <h2 class="section-title lab-title" id="paint-title">
                 <span>Paint your own sky.</span>
-                <span class="title-quiet">A colour per condition, and the sun, rain and snow to match.</span>
+                <span class="title-quiet">A colour per condition, and the temperature, sun, rain and snow to match.</span>
             </h2>
             <div class="lab-stage room" id="paint-stage" data-dashboard="dark" role="region" aria-label="Live preview of your colours">
                 <div class="window">
@@ -344,7 +344,7 @@
                 </div>
             </div>
             <div class="lab-copy">
-                <p class="section-lede">Each sky colour becomes a whole sky for that condition, lighter overhead and deeper at the horizon, with the same shading behind the metrics, at every hour. Start from a palette, or set each colour yourself. Sky palette only.</p>
+                <p class="section-lede">Each sky colour becomes a whole sky for that condition, lighter overhead and deeper at the horizon, with the same shading behind the metrics, at every hour. Start from a palette, or set each colour yourself. The skies are the sky palette's; the text, temperature, sun, rain and snow work on the theme palette too.</p>
             </div>
             <div class="lab-controls">
                 <div class="palettes" id="palettes" role="radiogroup" aria-label="Palette"></div>
@@ -372,7 +372,7 @@
                 <span class="title-quiet">Now, and the next sunrise or sunset.</span>
             </h2>
             <div class="tracker-copy">
-                <p class="section-lede">The sun tracker comes in the same download. It draws the sun's path through your day, counts down to the next sunrise or sunset, and, with Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a>, names the moon's phase.</p>
+                <p class="section-lede">The sun tracker comes in the same download. It draws the sun's path through your day, counts down to the next sunrise or sunset, and, with Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a>, names the moon's phase. South of the equator it runs right to left, as the sun crosses your sky, and when you drag a weather card through the hours, its sun goes there too.</p>
                 <fieldset class="field layout-picker" id="tracker-picker">
                     <legend class="visually-hidden">Sun tracker size</legend>
                     <div class="segmented" style="--count: 3; --index: 0">
@@ -461,7 +461,7 @@
                 <h3>Works with what you have</h3>
                 <dl>
                     <div><dt>Weather</dt><dd>Any weather integration. A new Home Assistant install sets one up.</dd></div>
-                    <div><dt>Forecast</dt><dd>The one your weather integration already has. Hourly gives the row and the slide; a daily one alone gives the days.</dd></div>
+                    <div><dt>Forecast</dt><dd>The one your weather integration already has. Hourly gives the row of hours; a daily one alone gives today's high and low, the line on what turns and the days.</dd></div>
                     <div><dt>The sun</dt><dd><code>sun.sun</code>, built in and on by default.</dd></div>
                     <div><dt>Your sensors</dt><dd>Any sensor entities, from any integration.</dd></div>
                 </dl>

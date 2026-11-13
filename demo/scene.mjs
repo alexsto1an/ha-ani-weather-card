@@ -771,7 +771,7 @@ export function quietOptions(quiet) {
 
 /**
  * The colours you can set under custom_colors: a sky per condition, and
- * the text, the sun, the rain and the snow. `builtIn` is what the card
+ * the text, the temperature, the sun, the rain and the snow. `builtIn` is what the card
  * uses without them (the day sky's middle, see src/sky.ts; a test keeps
  * these in step), and `shows` the weather that shows each one.
  */
@@ -783,6 +783,7 @@ export const PAINTS = [
     { id: 'snowy_bg', group: 'Skies', label: 'Snowy', builtIn: '#4e6673', shows: 'snowy' },
     { id: 'windy_bg', group: 'Skies', label: 'Windy', builtIn: '#056a95', shows: 'windy' },
     { id: 'text_color', group: 'Details', label: 'Text', builtIn: '#f7fafe', shows: null },
+    { id: 'temperature_color', group: 'Details', label: 'Temperature', builtIn: '#f7fafe', shows: null },
     { id: 'sun_color', group: 'Details', label: 'Sun', builtIn: '#ffd67a', shows: 'clear' },
     { id: 'rain_color', group: 'Details', label: 'Rain', builtIn: '#deeaff', shows: 'rainy' },
     { id: 'snow_color', group: 'Details', label: 'Snow', builtIn: '#f7fbff', shows: 'snowy' },

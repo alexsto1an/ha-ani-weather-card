@@ -335,7 +335,7 @@ describe('the demo\'s sample world', () => {
             expect(colorUtils).toContain(row.id.endsWith('_bg') ? `addSky('${row.id}'` : `customColors.${row.id}`);
             if (row.id.endsWith('_bg')) {
                 expect(row.builtIn).toBe(skyColors(row.id.replace('_bg', '') as Parameters<typeof skyColors>[0], 'day').mid);
-            } else if (row.id === 'text_color') {
+            } else if (row.id === 'text_color' || row.id === 'temperature_color') {
                 expect(row.builtIn).toBe(toHex(oklchToSrgb(SKY_TEXT)));
             } else {
                 expect(editor).toContain(`${row.id}: '${row.builtIn}'`);

@@ -113,8 +113,9 @@ entity: weather.forecast_home</code></pre>
 
                     <h3 id="needs">What you need</h3>
                     <ul>
-                        <li><b>A weather entity.</b> Any weather integration works: Met.no (a new Home Assistant sets it up), OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others.</li>
+                        <li><b>A weather entity.</b> Any weather integration works: Met.no (a new Home Assistant sets it up), OpenWeatherMap, AccuWeather, Pirate Weather, the National Weather Service and others. The card's forecast reads the one your integration already provides: its row of hours needs an hourly one.</li>
                         <li><b>For the weather note,</b> Home Assistant 2025.8 or later and an AI integration. <a href="#note">The note's section</a> has the details.</li>
+                        <li><b>Optional:</b> the <a href="#moon">Moon integration</a> for the tracker's moon phase, and the <a href="#planes">Flightradar24 integration</a> for planes.</li>
                     </ul>
 
                     <h3 id="hacs">With HACS</h3>
@@ -183,7 +184,7 @@ sun_entity: sun.sun</code></pre>
                             <tbody>
                                 <tr><td>Default</td><td>12 × 4</td><td>The temperature, the condition and the metrics, with their labels. The location and the line under the condition give way.</td></tr>
                                 <tr><td>With a note</td><td>12 × 5</td><td>All of it, with a smaller temperature and the note on one line. Give it six rows for the whole note.</td></tr>
-                                <tr><td>With the forecast</td><td>12 × 8</td><td>All of it, with the hours ahead under the hero. Five rows without an hourly forecast, and one more with a note.</td></tr>
+                                <tr><td>With the forecast</td><td>12 × 8</td><td>All of it, with the hours ahead at its foot, under the readings. Five rows without an hourly forecast, and one more with a note.</td></tr>
                                 <tr><td>Nightstand</td><td>12 × 6</td><td>The time as the hero, the weather beside it or under it.</td></tr>
                                 <tr><td>Compact</td><td>12 × 2</td><td>One line: the temperature and the condition.</td></tr>
                                 <tr><td>Forecast card</td><td>12 × 7</td><td>The hours and the week. Five with three days or fewer; the strip takes two.</td></tr>
@@ -204,10 +205,10 @@ cards:
 
                 <section class="chapter" id="forecast" aria-labelledby="forecast-title">
                     <h2 id="forecast-title"><a class="anchor" href="#forecast">The forecast</a></h2>
-                    <p>Two switches in the editor's <b>Forecast and clock</b> section. The clock puts the time at the start of the location line. The forecast adds today's high and low beside the condition, a line on what turns (<i>Rain from 17:00 to 19:00</i>, <i>Dry all day</i>), and the next hours in a row under the temperature. Both read the forecast your weather integration already provides; there's nothing else to set up.</p>
+                    <p>Two switches in the editor's <b>Forecast and clock</b> section. The clock puts the time at the start of the location line. The forecast adds today's high and low beside the condition, a line on what turns (<i>Rain from 17:00 to 19:00</i>, <i>Dry all day</i>), and the next hours in a row at the card's foot, under the readings. Both read the forecast your weather integration already provides; there's nothing else to set up.</p>
 
                     <h3 id="forecast-on">Turn it on</h3>
-                    <p>The clock follows your profile's 12- or 24-hour setting and its time zone, and adds no rows. The row shows the temperature first; <code>forecast_metric</code> picks something else.</p>
+                    <p>The clock follows your profile's 12- or 24-hour setting and its time zone, and adds no rows. The row shows the temperature first; <code>forecast_metric</code> picks something else. <code>forecast_graph</code> draws it as a line, the line over a soft fill (<code>area</code>), bars, or the values alone (<code>none</code>), the same for every metric.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-weather-card
@@ -224,6 +225,8 @@ forecast_graph: bars     # line, area, bars or none</code></pre>
                     <ul>
                         <li><b>The card goes there.</b> Drag the card sideways and the row moves under a fixed needle. The sky, its light, the rain or snow, the temperature, the condition and the readings go to the hour under it. Stop on an hour of rain and the rain falls behind the numbers.</li>
                         <li><b>It stays where you leave it.</b> A slow lift settles on the nearest hour; a flick carries on and lands on the hour it was heading for. The next drag continues from there. While it shows another hour, the location line says which, and how far ahead.</li>
+                        <li><b>The needle names the hour.</b> As you take hold, <i>Now</i> lifts into a white capsule over the first column, the hours slide under it, and on the way home it counts them back.</li>
+                        <li><b>The other cards follow.</b> A forecast card on the same weather goes to the hour with it, both ways: drag either one and the other follows. A sun tracker on the same sun moves its sun there.</li>
                         <li><b>It comes home</b> when you tap <b>Now</b>, after half a minute without a touch, at once when the card scrolls away or the page is hidden, and when a new forecast arrives.</li>
                         <li><b>The page still scrolls.</b> A drag up or down scrolls the dashboard. On a trackpad, swipe sideways with two fingers.</li>
                         <li><b>Keys and screen readers.</b> Tab to the hours: the arrows step an hour, Page Up and Page Down three, Home or Escape comes back to now. A screen reader hears the hour, the condition, the temperature and the chance of rain.</li>
@@ -235,10 +238,10 @@ forecast_graph: bars     # line, area, bars or none</code></pre>
                     <p>With an hourly forecast, the card asks the sections view for eight rows. In fewer, the chips give way first, then the icons, then the row, which leaves the line on what turns and a thin rail to drag; only then does the temperature shrink. An integration with only a daily forecast has no row: the card asks for five rows, and the rail steps through days.</p>
 
                     <h3 id="forecast-view">A tap opens the whole forecast</h3>
-                    <p>With the forecast on, a tap grows the card's sky into the screen: the hours, the chips, seven days with their ranges, and every reading your weather entity reports. <b>History and settings</b> opens Home Assistant's own dialog. Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone. To have a tap do something else, set it under <b>Interactions</b>.</p>
+                    <p>With the forecast on, a tap grows the card's sky into the screen: the hours, the chips, seven days with their ranges (eight on a tablet), and every reading your weather entity reports. <b>History and settings</b> opens Home Assistant's own dialog. Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone. To have a tap do something else, set it under <b>Interactions</b>.</p>
 
                     <h3 id="forecast-card">The forecast card</h3>
-                    <p>The hours and the week on a card of their own, on your weather entity's sky: the line on what turns, the row with its chips, and the days with their ranges on one scale for the week. Search for <b>Animated Forecast</b>, or pick it under <b>By entity</b>. Its row works the same way: leave it at an hour and its sky goes there.</p>
+                    <p>The hours and the week on a card of their own, on your weather entity's sky: the line on what turns, the row with its chips, and the days with their ranges on one scale for the week. Search for <b>Animated Forecast</b>, or pick it under <b>By entity</b>. Its row works the same way: leave it at an hour and its sky goes there, and a weather card on the same weather goes with it. Its days show the day the hour falls in, and the chips change what they show: each day's feels-like range, its chance of rain or its amount.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-forecast-card
@@ -260,7 +263,7 @@ cards:
                     </div>
 
                     <h3 id="nightstand">The nightstand</h3>
-                    <p>For a tablet or an old phone by the bed, <code>layout: nightstand</code> makes the time the hero. At night it goes red on black, like a bedside clock's night mode: the time, your alarm, and one line on whether anything is coming before you're up, in a deep red that keeps a dark room dark (<code>night_red: false</code> keeps the sky under a veil in warm colours instead). By day it shows the date, the temperature, the condition and the day's range. Night comes from a light sensor beside it, or else runs from bed time to your alarm.</p>
+                    <p>For a tablet or an old phone by the bed, <code>layout: nightstand</code> makes the time the hero. At night it goes red on black, like a bedside clock's night mode: the time, your alarm, and one line with the temperature and the condition, then what's coming before you're up (<i>9° Rain until 7 AM</i>), in a deep red that keeps a dark room dark (<code>night_red: false</code> keeps the sky under a veil in warm colours instead). The weather still moves behind it, very faintly, in the same red. By day it shows the date, the temperature, the condition, the line on what turns and the day's range. Night comes from a light sensor beside it, dark below <code>night_lux</code> (5 lx unless you set it), or else runs from bed time to your alarm.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-weather-card
@@ -381,7 +384,7 @@ cards:
                     <p>The tracker names the moon's phase among its details. Add Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a> under <b>Settings → Devices &amp; services</b>, and give the tracker its sensor as <code>moon_entity</code>, as above.</p>
 
                     <h3 id="planes">Planes</h3>
-                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Each is tagged with its flight number and aircraft; set <code>flight_label: route</code> to tag it with where it's going instead ("Lisbon → Paris", or the airport codes on a narrow card), or <code>both</code> for the route over the flight. A light aircraft with no route keeps its number. Set <code>plane_speed: 0.5</code> (down to <code>0.25</code>) to slow them down so you can follow one, and <code>planes_on_load: true</code> to also fly the ones already overhead when the dashboard opens. Set <code>show_flight_labels: false</code> to fly them without tags.</p>
+                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Each is tagged with its flight number and aircraft; set <code>flight_label: route</code> to tag it with where it's going instead ("Lisbon → Paris", or the airport codes on a narrow card), or <code>both</code> for the route over the flight. A flight with no route, like most light aircraft, keeps its number. Set <code>plane_speed: 0.5</code> (down to <code>0.25</code>) to slow them down so you can follow one, and <code>planes_on_load: true</code> to also fly the ones already overhead when the dashboard opens. Set <code>show_flight_labels: false</code> to fly them without tags.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-weather-card
@@ -423,11 +426,15 @@ color_palette: theme</code></pre>
                         </div>
                         <div>
                             <dt>No note</dt>
-                            <dd>The editor's <b>Weather note</b> section says what's missing: a Home Assistant older than 2025.8, or no default AI Task. The browser console says it too, once, starting <i>Animated Weather Card: no note</i>. The card only writes while it's on screen, and after a failure it tries again ten minutes later.</dd>
+                            <dd>The editor's <b>Weather note</b> section says what's missing: a Home Assistant older than 2025.8, or no default AI Task. The browser console says it too, once, starting <i>Animated Weather Card: no note</i>. The card only writes while it's on screen, and after a failure it tries again ten minutes later. On a copy of your own, <code>animated-weather-card-note.js</code> has to be in the same folder as <code>animated-weather-card.js</code>.</dd>
                         </div>
                         <div>
                             <dt>The note takes a while</dt>
                             <dd><i>Reading the forecast</i> waits up to ten seconds for your weather integration's forecast, then writes from the current conditions alone. <i>Writing the note</i> waits up to thirty seconds for the AI, then gives up until the next try. A small model with thinking turned down answers in a second or two.</dd>
+                        </div>
+                        <div>
+                            <dt>The nightstand stays bright at night</dt>
+                            <dd>With <code>night_sensor</code>, night starts once the room stays under <code>night_lux</code> (5 lx) for a minute. The screen's own glow, a lamp or a street light can keep the sensor above that: check its reading at night and set <code>night_lux</code> a little over it, such as <code>30</code>.</dd>
                         </div>
                         <div>
                             <dt>The sky shows, but nothing moves</dt>
@@ -443,7 +450,7 @@ color_palette: theme</code></pre>
                         </div>
                         <div>
                             <dt>Planes don't appear</dt>
-                            <dd>Only flights that enter your area after the dashboard loads fly, planes on the ground wait until they take off, flights that arrive while the card is paused are skipped, and at most three cross at once. In <code>dev_mode</code>, the developer panel's <b>Fly a plane</b> button sends one across to check the setup.</dd>
+                            <dd>Only flights that enter your area after the dashboard loads fly, unless you set <code>planes_on_load: true</code>; planes on the ground wait until they take off, flights that arrive while the card is paused are skipped, and at most three cross at once. In <code>dev_mode</code>, the developer panel's <b>Fly a plane</b> button sends one across to check the setup. On a copy of your own, <code>animated-weather-card-planes.js</code> has to be in the same folder as <code>animated-weather-card.js</code>.</dd>
                         </div>
                     </dl>
                     <p>Something else? <a href="https://github.com/alexsto1an/ha-ani-weather-card/issues">Open an issue</a> with what you see and your card's YAML.</p>

@@ -10,7 +10,7 @@ const esbuild = require('esbuild');
 //
 // All are emitted as IIFE so they remain drop-in script tags. The main
 // bundle injects a <script> for the others the first time it needs them;
-// see loadSiblingBundle in src/animated-weather-card.ts.
+// see loadSiblingBundle in src/bundles.ts.
 const watch = process.argv.includes('--watch');
 
 const sharedOptions = {

@@ -14,7 +14,7 @@ The job: know what it's like outside right now in one glance (temperature and co
 
 An animated weather card that makes the dashboard feel alive: the sky behaves like the weather. It exists because Home Assistant's default weather card is a static data tile. Success is a card people keep on their main view because it is the most beautiful thing on it, and the data is still faster to read than the default card.
 
-The same download includes a second card, the sun tracker: the sun's path across the day, with the next sunrise or sunset as its headline. It's designed to pair with the weather card. A compact tracker stacked under the weather card shares its sky and lines up with its text, so the two read as one piece. Both cards are free and open source.
+The same download includes two more cards. The forecast card is the weather card's own engine showing the hours and days ahead, on the same sky. The sun tracker draws the sun's path across the day, with the next sunrise or sunset as its headline. Both are designed to pair with the weather card: a compact tracker stacked under it shares its sky and lines up with its text, so the two read as one piece, and the forecast strip sits under the compact card the same way. All three cards are free and open source.
 
 ## Brand Personality
 
