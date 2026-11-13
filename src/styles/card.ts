@@ -339,6 +339,8 @@ ${iconBoxCss('animated-weather-card')}
         }
 
         .temperature {
+          /* custom_colors.temperature_color, else the text's (the theme palette sets its accent below) */
+          color: var(--awc-hero-color, inherit);
           font-family: var(--awc-font-display);
           font-size: 80px;
           font-weight: 200;

@@ -93,6 +93,8 @@ export function generateCustomColorStyles(config: AnimatedWeatherCardConfig): st
         if (value && isValidColor(value)) customColorStyles += declaration.replace(/\$\{value\}/g, value);
     };
     setIfValid(customColors.text_color, '--weather-text-color: ${value} !important; ');
+    // The temperature, on either palette: on the theme palette it takes the theme's accent colour otherwise
+    setIfValid(customColors.temperature_color, '--awc-hero-color: ${value} !important; ');
     setIfValid(customColors.sun_color, '--weather-sun-primary: ${value} !important; --weather-sun-secondary: ${value} !important; ');
     setIfValid(customColors.rain_color, '--weather-rain-color: ${value} !important; ');
     setIfValid(customColors.snow_color, '--weather-snow-color: ${value} !important; ');

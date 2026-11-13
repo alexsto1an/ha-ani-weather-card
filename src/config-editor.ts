@@ -289,6 +289,15 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <div class="option">
               <ha-select id="flight_label" label="Plane labels show"></ha-select>
             </div>
+            <div class="option">
+              <ha-select id="plane_speed" label="Plane speed"></ha-select>
+            </div>
+            <div class="option">
+              <label class="switch-label">
+                <ha-switch id="planes_on_load" ${this._config.planes_on_load ? 'checked' : ''}></ha-switch>
+                <span>Fly the planes already overhead when the dashboard opens</span>
+              </label>
+            </div>
 
             <div class="group-title">Motion</div>
             <div class="option">
@@ -527,7 +536,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-          <p class="section-note">Each background color becomes a full sky for that condition. Applies to the colorized palette only.</p>
+          <p class="section-note" id="sky-note" style="display: ${colorPalette === 'default' ? 'block' : 'none'}">Each background color becomes a full sky for that condition. Applies to the colorized palette only.</p>
           
           <div class="color-grid" id="color-grid" style="display: ${colorPalette === 'default' ? 'grid' : 'none'}; opacity: ${colorPalette === 'default' ? '1' : '0.5'}">
             <div class="color-option">
@@ -560,6 +569,14 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <input type="color" id="cloudy_bg" value="${escapeHtml(customColors.cloudy_bg || AnimatedWeatherCardEditor.DEFAULT_COLORS.cloudy_bg)}" />
               <button class="color-reset" data-target="cloudy_bg" ${customColors.cloudy_bg ? '' : 'hidden'}>Reset</button>
             </div>
+          </div>
+          <p class="section-note">These apply on either palette.</p>
+          <div class="color-grid" id="ink-grid">
+            <div class="color-option">
+              <label>Temperature</label>
+              <input type="color" id="temperature_color" value="${escapeHtml(customColors.temperature_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.temperature_color)}" />
+              <button class="color-reset" data-target="temperature_color" ${customColors.temperature_color ? '' : 'hidden'}>Reset</button>
+            </div>
             <div class="color-option">
               <label>Text</label>
               <input type="color" id="text_color" value="${escapeHtml(customColors.text_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.text_color)}" />
@@ -581,7 +598,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <button class="color-reset" data-target="snow_color" ${customColors.snow_color ? '' : 'hidden'}>Reset</button>
             </div>
           </div>
-          <button class="reset-colors-btn" id="reset-colors-btn" ${colorPalette === 'default' && Object.keys(customColors).length ? '' : 'hidden'}>Reset all colors</button>
+          <button class="reset-colors-btn" id="reset-colors-btn" ${Object.keys(customColors).length ? '' : 'hidden'}>Reset all colors</button>
           </div>
         </div>
       </div>
@@ -725,6 +742,20 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             this._updateConfig('flight_label', value === 'flight' ? undefined : value);
         });
 
+        // The usual pace, or slower so a plane and its tag can be followed; YAML takes any value from 0.25 to 2
+        const speed = String(this._config?.plane_speed ?? 1);
+        this._bindSelect('plane_speed', [
+            { value: '1', label: 'Usual' },
+            { value: '0.5', label: 'Slower (half speed)' },
+            { value: '0.25', label: 'Slowest (a quarter)' },
+            ...(['1', '0.5', '0.25'].includes(speed) ? [] : [{ value: speed, label: `${speed}×` }]),
+        ], speed, (value) => {
+            this._updateConfig('plane_speed', value === '1' ? undefined : Number(value));
+        });
+        this.querySelector('#planes_on_load')?.addEventListener('change', (e) => {
+            this._updateConfig('planes_on_load', (e.target as HTMLInputElement).checked || undefined);
+        });
+
         this._bindSelect('note_tone', [
             { value: 'snarky', label: 'Snarky' },
             { value: 'calm', label: 'Calm' },
@@ -753,11 +784,14 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         ], this._config?.color_palette || 'default', (value) => {
             this._updateConfig('color_palette', value);
             // Show/hide color customization based on palette selection
+            // The skies are the colorized palette's; the temperature, text, sun, rain and snow apply on either
             const colorGrid = this.querySelector('#color-grid') as HTMLElement;
             if (colorGrid) {
                 colorGrid.style.display = value === 'default' ? 'grid' : 'none';
                 colorGrid.style.opacity = value === 'default' ? '1' : '0.5';
             }
+            const skyNote = this.querySelector('#sky-note') as HTMLElement | null;
+            if (skyNote) skyNote.style.display = value === 'default' ? 'block' : 'none';
             this._syncColorResets();
         });
         this._bindSelect('indoor_style', [
@@ -902,7 +936,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         // Color inputs
         const colorInputs = [
             'sunny_bg', 'rainy_bg', 'snowy_bg', 'stormy_bg', 'windy_bg', 'cloudy_bg',
-            'text_color', 'sun_color', 'rain_color', 'snow_color'
+            'temperature_color', 'text_color', 'sun_color', 'rain_color', 'snow_color'
         ];
 
         colorInputs.forEach(colorKey => {
@@ -1061,6 +1095,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         windy_bg: skyColors('windy', 'day').mid,
         cloudy_bg: skyColors('cloudy', 'day').mid,
         text_color: toHex(oklchToSrgb(SKY_TEXT)),
+        temperature_color: toHex(oklchToSrgb(SKY_TEXT)),
         sun_color: '#ffd67a',
         rain_color: '#deeaff',
         snow_color: '#f7fbff',
@@ -1088,7 +1123,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         });
         const resetAll = this.querySelector<HTMLElement>('#reset-colors-btn');
         if (resetAll) {
-            resetAll.hidden = (this._config?.color_palette || 'default') !== 'default' || Object.keys(custom).length === 0;
+            resetAll.hidden = Object.keys(custom).length === 0;
         }
     }
 

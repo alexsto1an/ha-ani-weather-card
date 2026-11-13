@@ -109,6 +109,14 @@ describe('readFlights', () => {
 });
 
 describe('FlightTracker', () => {
+    it('with planes_on_load, the first look flies the planes already up (airborne, once each); later looks only the new', () => {
+        const t = new FlightTracker();
+        expect(t.update([flight('a'), flight('b', { onGround: true }), flight('a'), flight('c')], true).map(f => f.id)).toEqual(['a', 'c']);
+        expect(t.update([flight('a'), flight('c'), flight('d')], true).map(f => f.id)).toEqual(['d']);
+        // Without it, the first look only seeds
+        expect(new FlightTracker().update([flight('a')]).length).toBe(0);
+    });
+
     it('seeds silently on the first update so a dashboard load does not replay planes', () => {
         const tracker = new FlightTracker();
         expect(tracker.update([flight('a'), flight('b')])).toEqual([]);

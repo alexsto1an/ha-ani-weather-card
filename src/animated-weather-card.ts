@@ -1451,7 +1451,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         const state = this._hass?.states[this.config.flights_entity];
         if (state && state === this.lastFlightsState) return;
         this.lastFlightsState = state;
-        const arrivals = this.flightTracker.update(readFlights(this._hass, this.config.flights_entity));
+        const arrivals = this.flightTracker.update(readFlights(this._hass, this.config.flights_entity), !!this.config.planes_on_load);
         if (arrivals.length) this.flyPlanes(arrivals);
     }
 
@@ -1464,6 +1464,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             night: this.config?.color_palette !== 'theme' && this.isNightForPlanes(),
             showLabels: this.config?.show_flight_labels !== false,
             labelMode: this.config?.flight_label,
+            speed: this.config?.plane_speed,
         });
     }
 

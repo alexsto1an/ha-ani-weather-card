@@ -170,6 +170,15 @@ describe('spilled weather', () => {
     });
 });
 
+describe('the temperature\'s colour', () => {
+    it('is custom_colors.temperature_color on either palette, else the text\'s, or the theme\'s accent on the theme palette', () => {
+        const css = getMainCardStyles();
+        expect(css).toMatch(/\.temperature \{[^}]*color: var\(--awc-hero-color, inherit\);/);
+        expect(css).toMatch(/--awc-hero-color: var\(--primary-color, var\(--primary-text-color\)\);/);
+        expect(css).toMatch(/\.animated-weather-card\.theme-colors \.temperature \{\s*color: var\(--awc-hero-color\);/);
+    });
+});
+
 describe('clouds over the top edge', () => {
     const css = getMainCardStyles();
 

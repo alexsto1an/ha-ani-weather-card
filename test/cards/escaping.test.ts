@@ -152,7 +152,7 @@ describe('colors', () => {
         const card = document.createElement('animated-weather-card') as Card;
         card.setConfig({
             type: 'custom:animated-weather-card', entity: 'weather.home',
-            custom_colors: { text_color: `rgb(1,2,3)${BREAKOUT}`, sun_color: 'rgb(1,2,3);background:url(x)', rain_color: 'rgb(200, 220, 255)' },
+            custom_colors: { text_color: `rgb(1,2,3)${BREAKOUT}`, sun_color: 'rgb(1,2,3);background:url(x)', rain_color: 'rgb(200, 220, 255)', temperature_color: 'white' },
         });
         card.hass = {
             states: { 'weather.home': { entity_id: 'weather.home', state: 'sunny', attributes: { temperature: 20, friendly_name: TAGS } } },
@@ -165,6 +165,8 @@ describe('colors', () => {
         expect(card.querySelector('img')).toBeNull();
         const style = card.querySelector('.animated-weather-card')!.getAttribute('style')!;
         expect(style).toContain('--weather-rain-color: rgb(200, 220, 255)');
+        // The temperature's own colour (issue #20), on either palette: the card's hero colour, which the theme sets otherwise
+        expect(style).toContain('--awc-hero-color: white !important');
         expect(style).not.toContain('onmouseover');
         expect(style).not.toContain('url(');
     });

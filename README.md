@@ -292,7 +292,7 @@ cards:
 
 ### Blend with your theme
 
-The theme palette uses your dashboard's card background and text colours, in light and dark themes.
+The theme palette uses your dashboard's card background and text colours, in light and dark themes. The temperature and the rain take your theme's accent colour; to keep them white, or any colour, set `temperature_color` and `rain_color` under `custom_colors`, or pick them under **Colors** in the editor.
 
 ```yaml
 type: custom:animated-weather-card
@@ -302,7 +302,7 @@ color_palette: theme
 
 ### Planes overhead
 
-This needs the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24). Each plane is tagged with its flight number and aircraft. Set `flight_label: route` to tag it with where it's going instead, "Lisbon → Paris", or `both` for the route with the flight under it. On a narrow card, a long route shows the airport codes, "FRA → GIG", so it's readable before the plane leaves. A flight with no route, like most light aircraft, keeps its number. Set `show_flight_labels: false` to fly the planes without tags.
+This needs the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24). Each plane is tagged with its flight number and aircraft. Set `flight_label: route` to tag it with where it's going instead, "Lisbon → Paris", or `both` for the route with the flight under it. On a narrow card, a long route shows the airport codes, "FRA → GIG", so it's readable before the plane leaves. A flight with no route, like most light aircraft, keeps its number. Set `show_flight_labels: false` to fly the planes without tags. Planes cross at a pace that follows their real speed and height; set `plane_speed: 0.5` for half that pace, or as low as `0.25`, to follow a plane and read its tag. Only planes that arrive while the dashboard is open fly by; set `planes_on_load: true` to also fly the ones already overhead when it opens.
 
 Each flight is drawn from the side as its aircraft, picked from the ICAO type code Flightradar24 reports: a narrow-body airliner (A320, 737, E190), a wide-body (787, 777, A350), a four-engine jet (747, A380), a jet with its engines at the tail (CRJ, MD-80, and business jets at their own length), a turboprop (ATR, Dash 8), a light aircraft (Cessna, Piper) or a helicopter. An unknown type flies as an airliner. Longer aircraft look longer, though less than in life, so a low 747 never covers the temperature. After dark, with the sky palette, a plane is its lights: steady green at the near wingtip of a plane flying right and red flying left, white strobes that flash twice, a red beacon and a white tail light. With `color_palette: theme` it stays a silhouette in your theme's colour.
 
@@ -642,6 +642,8 @@ sunset_hour: 19
 | `show_indoor` | `true` | Show the indoor reading |
 | `indoor_style` | `label` | How the indoor reading starts: `label` (the word "Indoors", translated), `icon` (a house) or `both` |
 | `show_flight_labels` | `true` | Show a tag beside each plane. Tags only appear in open sky, never over the temperature |
+| `plane_speed` | `1` | How fast planes cross, from `0.25` (a quarter of their usual pace) to `2` |
+| `planes_on_load` | `false` | Also fly the planes already overhead when the dashboard opens, not only those that arrive |
 | `flight_label` | `flight` | What a plane's tag says: `flight` (the flight number and aircraft type), `route` ("Lisbon → Paris", or the airport codes on a narrow card) or `both` (the route, with the flight under it). A flight with no route keeps its number |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
 
@@ -719,6 +721,7 @@ Set these under `custom_colors:`. Leave one out to keep the built-in colour.
 | --- | --- | --- |
 | `sunny_bg`, `cloudy_bg`, `rainy_bg`, `stormy_bg`, `snowy_bg`, `windy_bg` | Hex | Replaces that condition's sky with one built from this colour. It applies to that condition only: `rainy_bg` leaves pouring rain alone. Colorized palette only |
 | `text_color` | Hex, `rgb()`, `rgba()` or a colour name | All text on the card |
+| `temperature_color` | Same | The temperature, on either palette. On the theme palette it otherwise takes your theme's accent colour |
 | `sun_color` | Same | The sun |
 | `rain_color` | Same | Raindrops |
 | `snow_color` | Same | Snowflakes |

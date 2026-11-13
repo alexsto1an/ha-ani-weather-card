@@ -23,6 +23,14 @@ export interface FlyoverOptions {
     showLabels: boolean;
     /** What the tag says: "flight · aircraft" (default), the route ("Lisbon → Paris"), or the route over the flight */
     labelMode?: 'flight' | 'route' | 'both';
+    /** How fast planes cross, as a share of their usual pace (plane_speed): 0.5 takes twice as long */
+    speed?: number;
+}
+
+/** plane_speed, kept to 0.25 to 2; anything else flies at the usual pace */
+export function planeSpeed(v: unknown): number {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.min(2, Math.max(0.25, n)) : 1;
 }
 
 /** The route's two ends: cities when both are known, else airport codes, else none (a flight with no route keeps its number) */
@@ -143,7 +151,9 @@ export class PlanesAnimation extends BaseAnimation {
         const layer = this.element.querySelector(this.layerSelector) as HTMLElement | null;
         if (!layer) return false;
 
-        const plan = planFlyover(flight);
+        // Slower or faster crossings: every timing below follows the plan's duration, the fades and the tag's included
+        const base = planFlyover(flight);
+        const plan = { ...base, durationSec: base.durationSec / planeSpeed(options.speed) };
         const family = aircraftFamily(flight.aircraftCode);
         const drawing = aircraftDrawing(family);
         // The drawing is wider than the aircraft where a propeller or rotor reaches past it

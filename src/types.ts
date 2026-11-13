@@ -182,6 +182,8 @@ export interface CustomColorConfig {
     animation_clouds?: string;
     animation_fog?: string;
     animation_stars?: string;
+    /** The temperature's colour, on either palette */
+    temperature_color?: string;
     // Legacy color properties for backward compatibility
     rain_color?: string;
     snow_color?: string;
@@ -225,6 +227,10 @@ export interface AnimatedWeatherCardConfig {
     show_flight_labels?: boolean;
     /** What a plane's tag says: "flight" (number and aircraft, default), "route" ("Lisbon → Paris") or "both" */
     flight_label?: 'flight' | 'route' | 'both';
+    /** How fast planes cross, as a share of their usual pace: 0.25 to 2 (default 1) */
+    plane_speed?: number;
+    /** Fly the planes already overhead when the dashboard opens (default: only those that arrive) */
+    planes_on_load?: boolean;
     show_attributes?: boolean;
     show_attribute_labels?: boolean;
     show_attribute_icons?: boolean;

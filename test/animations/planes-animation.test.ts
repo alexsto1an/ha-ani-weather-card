@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PlanesAnimation, MAX_CONCURRENT_PLANES, PLANE_STAGGER_MS, FlyoverOptions } from '../../src/planes-animation';
+import { PlanesAnimation, MAX_CONCURRENT_PLANES, PLANE_STAGGER_MS, FlyoverOptions, planeSpeed } from '../../src/planes-animation';
 import type { FlightInfo } from '../../src/flight-tracker';
 
 function makeCardElement(): HTMLElement {
@@ -110,6 +110,18 @@ describe('PlanesAnimation', () => {
         planes.flyOver([flight('a', { originCity: 'Frankfurt am Main', originCode: 'FRA', destinationCity: 'Rio de Janeiro', destinationCode: 'GIG' })], { ...DAY, labelMode: 'route' });
         expect(element.querySelector('.plane-label')?.textContent).toBe('FRA → GIG');
         width.mockRestore();
+    });
+
+    it('flies slower or faster by plane_speed, every timing with it, and keeps the speed to 0.25 to 2', () => {
+        const crossing = (n: number) => {
+            const tl = gsap().timeline.mock.results[n].value as { to: ReturnType<typeof vi.fn> };
+            return (tl.to.mock.calls[0][1] as { duration: number }).duration;
+        };
+        planes.flyOver([flight('a')], DAY);
+        planes.flyOver([flight('b')], { ...DAY, speed: 0.5 });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(crossing(1)).toBeCloseTo(crossing(0) * 2, 5);
+        expect([planeSpeed(0.25), planeSpeed(0.1), planeSpeed(5), planeSpeed('0.5'), planeSpeed('fast'), planeSpeed(undefined), planeSpeed(-1)]).toEqual([0.25, 0.25, 2, 0.5, 1, 1, 1]);
     });
 
     it('renders label text literally, never as HTML', () => {

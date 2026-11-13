@@ -471,7 +471,7 @@ animated-weather-card[data-qn-night] .lightning svg path { filter: none !importa
 .fw :is(button, .fc-hourly, .fc-daily) { pointer-events: auto; }
 .fw p { margin: 0; }
 /* Room: the temperature, its cap line on the padding line */
-.fw-temp { position: absolute; left: var(--pad); top: var(--pad); margin: calc(var(--t0) * -0.1005) 0 0 -0.055em; font-family: var(--awc-font-display); font-size: var(--t0); font-weight: 200; line-height: 0.9; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fw-temp { color: var(--awc-hero-color, inherit); position: absolute; left: var(--pad); top: var(--pad); margin: calc(var(--t0) * -0.1005) 0 0 -0.055em; font-family: var(--awc-font-display); font-size: var(--t0); font-weight: 200; line-height: 0.9; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fw-deg { letter-spacing: 0; margin-left: 0.02em; }
 /* The clock, quiet: on the temperature's baseline, with the date (D11: an eleventh of the temperature's ink) */
 .fw-when { position: absolute; left: var(--colB); top: calc(var(--pad) + var(--t0) * 0.705); display: flex; align-items: baseline; column-gap: 12px; white-space: nowrap; transform: translateY(-100%); line-height: 1; }

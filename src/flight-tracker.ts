@@ -109,7 +109,8 @@ export function readFlights(hass: HomeAssistant | undefined, entityId: string | 
 /**
  * Tracks which airborne flights have already been seen and reports new
  * arrivals. The first observation only seeds the set, so loading a
- * dashboard while planes are overhead doesn't fire a burst of fly-overs.
+ * dashboard while planes are overhead doesn't fire a burst of fly-overs,
+ * unless `onLoad` asks for the planes already overhead (planes_on_load).
  *
  * Flights on the ground aren't counted as seen: a plane that takes off
  * from a nearby airport flies over once it's airborne.
@@ -117,8 +118,8 @@ export function readFlights(hass: HomeAssistant | undefined, entityId: string | 
 export class FlightTracker {
     private known: Set<string> | null = null;
 
-    /** Feed the latest flight list; returns flights that newly appeared. */
-    public update(flights: FlightInfo[] | null): FlightInfo[] {
+    /** Feed the latest flight list; returns flights that newly appeared (with `onLoad`, the first time, those already up) */
+    public update(flights: FlightInfo[] | null, onLoad = false): FlightInfo[] {
         if (!flights) return [];
 
         const airborne = flights.filter(f => !f.onGround);
@@ -126,7 +127,7 @@ export class FlightTracker {
 
         if (this.known === null) {
             this.known = ids;
-            return [];
+            return onLoad ? airborne.filter((f, i) => airborne.findIndex(g => g.id === f.id) === i) : [];
         }
 
         const arrivals: FlightInfo[] = [];
