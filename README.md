@@ -334,7 +334,7 @@ forecast_metric: chance  # temp, feels, chance or amount
 - **What turns.** One line under the condition: "Rain from 17:00 to 19:00", "Rain until 19:00", "Dry all day", "Dry tonight". It's shown whole, in a shorter form, or not at all. With a note shown, the note tells what's coming, so this line steps aside and the line under the condition is the usual one, feels like and indoors.
 - **The row.** At the card's foot, under the readings, with the divider between them: now above the line, the hours ahead below it. An hour to a column, about 54 px each, so a phone shows six hours and a wider card more, with an icon every hour and the value on one line. An hour whose icon and light repeat the hour before's is drawn quieter, so a settled day doesn't read as six equal marks.
 - **The chips.** Centred under the row: Temp, Feels like, Rain chance and Rain amount, in full where they fit. The noun follows what falls, so snow gets "Snow chance". A metric your integration doesn't report has no chip, and with fewer than two there are none. Switching moves the white capsule and re-forms the line: temperature and feels like as a line, the chance as a line over a soft fill, the amount as bars. Left and Right move between them, and `forecast_metric` picks the one the row starts on.
-- **The icons.** The Senja weather glyphs: one filled set, with a sun, a moon, clouds, rain, snow, a bolt and wind, each condition in its own drawing. The few it has no drawing for (a storm with rain, sleet, hail, fog and a warning) are put together from its own parts. On the sky palette each stands in the light of its own hour: white by day, rose at dawn, peach at dusk, slate at night, with the sun gold and rain pale blue. Only the colour changes, and each colour is lightened until it holds 3.2:1 against the brightest sky it can sit over. On the theme palette they take Home Assistant's icon colour.
+- **The icons.** One filled set, with a sun, a moon, clouds, rain, snow, a bolt and wind, each condition in its own drawing, and the same set draws the weather card's and the sun tracker's icons. On the sky palette each stands in the light of its own hour: white by day, rose at dawn, peach at dusk, slate at night, with the sun gold and rain pale blue. Only the colour changes, and each colour is lightened until it holds 3.2:1 against the brightest sky it can sit over. On the theme palette they take Home Assistant's icon colour.
 
 **Drag through the hours.**
 
@@ -896,7 +896,6 @@ src/
 ## Credits
 
 - [GSAP](https://gsap.com) moves the weather. It's bundled into the card under its [standard license](https://gsap.com/standard-license).
-- The Senja weather glyphs draw the forecast's icons, the weather card's own (humidity, wind, pressure, sunrise and sunset, and the indoor reading) and the sun tracker's, its moon phases included.
 - [Material Design Icons](https://pictogrammers.com/library/mdi/), through Home Assistant, draw the wind and pressure arrows and the editors' icons.
 - The [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) by AlexandrErohin supplies the planes.
 - The Home Assistant community gave feedback along the way. Thank you.

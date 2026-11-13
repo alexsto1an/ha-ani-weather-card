@@ -229,9 +229,13 @@ dialog.fv-dialog:not([open]) { display: block; visibility: hidden; pointer-event
 dialog.fv-dialog { position: fixed; inset: 0; z-index: 2147483646; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; color: inherit; outline: none; }
 dialog.fv-dialog::backdrop { background: transparent; }
 .fv-scrim { position: absolute; inset: 0; opacity: 0; }
-.fv-sheet { position: absolute; outline: none; contain: layout; overflow: hidden; }
-.fv-sheet > animated-weather-card { display: block; width: 100%; height: 100%; }
+/* The sheet covers the window and its clip shapes it, from the card's rect to the panel's, so the grow can start on a card
+   that lies outside the panel; outside the clip it takes no clicks, so the scrim still closes */
+.fv-sheet { position: absolute; inset: 0; outline: none; contain: layout; overflow: hidden; }
+.fv-sheet > animated-weather-card { position: absolute; display: block; }
 .fv-sheet ha-card { --ha-card-border-radius: 0px; --ha-card-border-width: 0px; transition: none !important; height: 100%; }
+/* While it grows, shrinks or follows a finger, nothing inside clips but the sheet's own shape */
+.fv-sheet[data-moving] ha-card { overflow: visible !important; }
 `;
 
 interface Rect { x: number; y: number; w: number; h: number }
@@ -249,11 +253,23 @@ interface Overlay {
 }
 const overlays = new WeakMap<HTMLElement, Overlay>();
 
+/** The status bar's height where the page runs under it (viewport-fit=cover, as Home Assistant's does), else 0 */
+function safeTop(): number {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none';
+    document.body.append(probe);
+    const h = probe.getBoundingClientRect().height;
+    probe.remove();
+    return h;
+}
+
 /** The sheet's place on screen: a phone's whole screen under the status bar; elsewhere a large panel */
 function target(): { T: Rect; phone: boolean; radius: number[] } {
     const vw = window.innerWidth, vh = window.innerHeight;
     const phone = vw < 600;
-    if (phone) return { T: { x: 0, y: 10, w: vw, h: vh - 10 }, phone, radius: [24, 24, 0, 0] };
+    // Below the status bar, so its close button and grab handle can be reached
+    const top = Math.max(10, safeTop() + 8);
+    if (phone) return { T: { x: 0, y: top, w: vw, h: vh - top }, phone, radius: [24, 24, 0, 0] };
     const w = Math.min(vw - 48, 1120), h = Math.min(vh - 48, 780);
     return { T: { x: (vw - w) / 2, y: (vh - h) / 2, w, h }, phone, radius: [24, 24, 24, 24] };
 }
@@ -273,10 +289,11 @@ export function prepareView(host: ForecastHost, state: Omit<ViewState, 'model'>)
     const dialog = shadow.querySelector('dialog') as HTMLDialogElement;
     const scrim = shadow.querySelector('.fv-scrim') as HTMLElement;
     const sheet = shadow.querySelector('.fv-sheet') as HTMLElement;
-    sheet.style.cssText = `left:${T.x}px;top:${T.y}px;width:${T.w}px;height:${T.h}px;visibility:hidden`;
+    sheet.style.visibility = 'hidden';
     document.body.append(hostEl);
     const card = document.createElement('animated-weather-card') as ViewElement;
     card.surface = 'view';
+    card.style.cssText = `left:${T.x}px;top:${T.y}px;width:${T.w}px;height:${T.h}px`;
     (card as unknown as { awcViewSpec: unknown }).awcViewSpec = { pitch: (small.querySelector('.fc-hourly') as HTMLElement | null) ? parseFloat((small.querySelector('.fc-hourly') as HTMLElement).style.getPropertyValue('--fc-pitch')) : undefined, chipsLevel: state.chipsLevel, metric: state.metric };
     const cfg = host.config();
     card.setConfig!({ ...cfg, tap_action: { action: 'none' }, hold_action: undefined, double_tap_action: undefined, show_forecast: true, show_clock: true, show_attributes: true, compact: false, layout: 'default', show_note: false, note_entity: undefined });
@@ -335,9 +352,16 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     const mid = getComputedStyle(small).getPropertyValue('--awc-sky-mid').trim() || '#33475f';
     const theme = groot.classList.contains('theme-colors');
     o.scrim.style.background = theme ? 'rgba(0, 0, 0, 0.45)' : `${mixHex('#05070c', mid, 0.32)}a6`;
-    o.sheet.style.cssText = `left:${T.x}px;top:${T.y}px;width:${T.w}px;height:${T.h}px`;
+    o.sheet.style.cssText = '';
+    o.sheet.dataset.moving = '';
+    o.card.style.cssText = `left:${T.x}px;top:${T.y}px;width:${T.w}px;height:${T.h}px`;
+    // Closed, the CSS hides it; nothing inline may outlive a close
+    o.dialog.style.visibility = '';
     // A modal dialog in the top layer; without one (an old WebView), a plain open dialog over the page
     if (typeof o.dialog.showModal === 'function') o.dialog.showModal(); else o.dialog.setAttribute('open', '');
+    // The sheet is the window: the clip is measured from its edges
+    const V = { w: o.sheet.clientWidth || window.innerWidth, h: o.sheet.clientHeight || window.innerHeight };
+    const inset = (R: Rect, rad: number[]) => `inset(${R.y.toFixed(2)}px ${(V.w - R.x - R.w).toFixed(2)}px ${(V.h - R.y - R.h).toFixed(2)}px ${R.x.toFixed(2)}px round ${rad.map(r => `${r.toFixed(1)}px`).join(' ')})`;
     const pausable = o.card as unknown as { wasManuallyPaused: boolean; setAnimationsPaused(p: boolean): void };
     if (pausable.wasManuallyPaused) { pausable.wasManuallyPaused = false; pausable.setAnimationsPaused(false); }
     // The card's own clouds and readings ride the grow and hand over: the grown card's clouds wait, then come in on the sky's pace
@@ -375,7 +399,7 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     const apply = (p: number, dy: number, closing: boolean) => {
         const R = { x: lerp(S.x, T.x, p), y: lerp(S.y, T.y + dy, p), w: lerp(S.w, T.w, p), h: lerp(S.h, T.h, p) };
         const rad = radius.map(r => lerp(12, r, p));
-        o.sheet.style.clipPath = `inset(${(R.y - T.y).toFixed(2)}px ${(T.x + T.w - R.x - R.w).toFixed(2)}px ${(T.y + T.h - R.y - R.h).toFixed(2)}px ${(R.x - T.x).toFixed(2)}px round ${rad.map(r => `${r.toFixed(1)}px`).join(' ')})`;
+        o.sheet.style.clipPath = inset(R, rad);
         if (sky) sky.style.transform = p >= 1 && !dy ? '' : `translate3d(${(R.x - T.x).toFixed(2)}px, ${(R.y - T.y).toFixed(2)}px, 0) scale(${(R.w / T.w).toFixed(5)}, ${(R.h / T.h).toFixed(5)})`;
         if (sky) sky.style.transformOrigin = '0 0';
         for (const c of [cloudClone, carry]) if (c && c.isConnected) c.style.transform = `translate3d(${(R.x - T.x - (S.x - T.x)).toFixed(2)}px, ${(R.y - T.y - (S.y - T.y)).toFixed(2)}px, 0)`;
@@ -425,7 +449,8 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
     const finishOpen = () => {
         phase = 'open'; p = 1; dragY = 0;
         apply(1, 0, false);
-        o.sheet.style.clipPath = `inset(0 round ${radius.map(r => `${r}px`).join(' ')})`;
+        o.sheet.style.clipPath = inset(T, radius);
+        delete o.sheet.dataset.moving;
     };
     if (still) {
         apply(1, 0, false); setRest(true, false); finishOpen(); if (gClouds) gClouds.style.opacity = '';
@@ -468,17 +493,19 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
         if (pushed) { pushed = false; try { history.back(); } catch { /* ignore */ } }
         const p0 = p, dy0 = dragY;
         phase = 'closing';
+        o.sheet.dataset.moving = '';
         setRest(false, true);
         const end = async () => {
             small.style.visibility = '';
             await frame(); await frame();
+            // Closed, the CSS hides it (dialog:not([open])); an inline visibility would outlive the next open
             if (typeof o.dialog.close === 'function') o.dialog.close(); else o.dialog.removeAttribute('open');
-            o.dialog.style.visibility = 'hidden';
             for (const q of pairs) { q.el.style.transform = ''; q.el.style.opacity = ''; }
             if (sky) sky.style.transform = '';
             if (track) track.style.translate = '';
             for (const e of rest) e.style.translate = '';
             o.sheet.getAnimations?.().forEach(a => a.cancel());
+            delete o.sheet.dataset.moving;
             cloudClone?.remove(); carry?.remove();
             if (gClouds) gClouds.style.opacity = '';
             v.slide?.home(true);
@@ -508,7 +535,7 @@ async function grow(host: ForecastHost, o: Overlay, state: ViewState): Promise<v
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.claimed) {
             if (dy > 10 && dy > 1.2 * Math.abs(dx) && !v.slide?.active()) {
-                drag.claimed = true; drag.y = e.clientY; phase = 'dragging'; o.card.dataset.dragging = '';
+                drag.claimed = true; drag.y = e.clientY; phase = 'dragging'; o.card.dataset.dragging = ''; o.sheet.dataset.moving = '';
                 try { zone.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
             } else if (Math.abs(dx) > 10 || dy < -10) drag = null;
             return;

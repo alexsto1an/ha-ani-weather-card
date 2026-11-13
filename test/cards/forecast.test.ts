@@ -190,6 +190,31 @@ describe('the forecast on the weather card', () => {
         expect(more).toHaveBeenCalled();
     });
 
+    it('opens the view, closes it and opens it again, every time visible', async () => {
+        const card = mount({ show_forecast: true });
+        await settle();
+        const dialog = () => document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('dialog') as HTMLDialogElement;
+        const until = async (ok: () => boolean) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
+        for (let i = 0; i < 2; i++) {
+            card.openForecast();
+            await until(() => !!document.querySelector('.awc-view-host') && dialog().hasAttribute('open'));
+            expect(dialog().hasAttribute('open')).toBe(true);
+            // Nothing inline from the last close hides it
+            expect(dialog().style.visibility).toBe('');
+            const shadow = document.querySelector('.awc-view-host')!.shadowRoot!;
+            // The sheet is the window; the grown card stands at the panel inside it, so the clip can start on a card outside the panel
+            expect(shadow.querySelector('style')!.textContent).toMatch(/\.fv-sheet \{ position: absolute; inset: 0;/);
+            const grown = shadow.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
+            expect(grown.style.width).toMatch(/px$/);
+            expect(grown.style.top).toMatch(/px$/);
+            (grown.querySelector('.fv-close') as HTMLElement).click();
+            await until(() => !dialog().hasAttribute('open'));
+            expect(dialog().hasAttribute('open')).toBe(false);
+            expect(dialog().style.visibility).toBe('');
+            expect((card.querySelector('.animated-weather-card') as HTMLElement).style.visibility).toBe('');
+        }
+    });
+
     it('the nightstand is no button: a tap does nothing unless tap_action sets one', async () => {
         const card = mount({ layout: 'nightstand' });
         await settle();
