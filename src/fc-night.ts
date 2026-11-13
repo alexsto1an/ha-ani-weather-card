@@ -7,6 +7,8 @@
 // temperature, the condition, the turning line and today's range with its
 // dot. Night comes and goes over 8 s on the sky's curve.
 //
+// At night it's red on black (night_red, on by default), as a bedside
+// clock's night mode; off, the sky stays under a veil in two warm inks.
 // Night is auto by default: an illuminance sensor beside it (night_sensor)
 // says when the room is dark (under night_lux, 5 by default, for a minute,
 // light again over three times it for 10 s); without one, it's night from
@@ -24,6 +26,12 @@ import type { HomeAssistant } from './types';
 export const EMBER = { time: '#8b6a4d', words: '#a17e61' };
 /** Over the theme's card under a 0.96 veil: 3.9:1 and 4.7:1 */
 export const THEME_NIGHT = { time: '#6e6e6e', words: '#7d7d7d' };
+/**
+ * night_red (on unless false): at night, red on black, as a bedside clock's night mode. A deep red, its green and
+ * blue a small share of it as a red LED's are, which keeps a dark room's night vision; on black, 3.5:1 for the
+ * time and 4.8:1 for the words, a little dimmer than the ember (4.3:1 and 5.7:1 there).
+ */
+export const NIGHT_RED = { time: '#c21f17', words: '#eb261c' };
 export const LIGHT = { ms: 8000, ease: 'cubic-bezier(0.37, 0, 0.63, 1)' };
 const ZONE = { day: MINUTE.day, night: { out: 240, outEase: 'cubic-bezier(0.5, 0, 0.75, 0)', in: 480, inEase: 'cubic-bezier(0.33, 1, 0.68, 1)', at: 240 } };
 const SEVERE = new Set(['lightning', 'lightning-rainy', 'hail', 'pouring', 'snowy', 'snowy-rainy', 'exceptional']);
@@ -138,6 +146,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     const info = root.querySelector('.weather-info') as HTMLElement;
     const cfg = () => host.config();
     const theme = () => cfg().color_palette === 'theme';
+    const red = () => cfg().night_red !== false;
     el.dataset.qn = '';
     const veil = document.createElement('div');
     veil.className = 'qn-veil';
@@ -280,6 +289,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
 
     // ── Night: the light changes over 8 s on the sky's curve; the words fade through at its start ──
     const inks = (night: boolean) => {
+        if (night && red()) return NIGHT_RED;
         if (theme()) return night ? THEME_NIGHT : { time: getComputedStyle(root).getPropertyValue('--primary-text-color').trim() || '#e1e1e1', words: getComputedStyle(root).getPropertyValue('--primary-text-color').trim() || '#e1e1e1' };
         if (night) return EMBER;
         const t = getComputedStyle(root).getPropertyValue('--weather-text-color').trim() || '#f7fafe';
@@ -291,6 +301,8 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         subEl.style.color = ink.words; rightEl.style.color = ink.words;
         veil.style.opacity = on ? '1' : '0';
         el.toggleAttribute('data-qn-night', on);
+        // Red at night: the veil is black, whatever the sky (fc-css.ts), and every word takes the red
+        for (const e of [el, veil, ns]) e.toggleAttribute('data-red', red());
     }
     function setNight(on: boolean, instant = false) {
         if (on === state.night) return;
@@ -360,7 +372,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
             ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); clearTimeout(sensorTimer);
             for (const a of state.anims) a.cancel();
             fig.finish(); ns.remove(); veil.remove();
-            delete el.dataset.qn; el.removeAttribute('data-qn-night');
+            delete el.dataset.qn; el.removeAttribute('data-qn-night'); el.removeAttribute('data-red');
         },
         /** For the demo and the tests: night on or off at once */
         night(on: boolean) { cfg().night; setNight(on); },

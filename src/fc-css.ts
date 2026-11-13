@@ -398,6 +398,9 @@ animated-weather-card[data-qn] .weather-info { padding: 0; gap: 0; text-shadow: 
 .animated-weather-card:is([data-phase="dawn"], [data-phase="dusk"]) > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.55), rgba(3, 4, 9, 0.8) 100%); }
 .animated-weather-card[data-phase="day"] > .qn-veil { background: radial-gradient(30% 50% at 86% 12%, rgba(3, 4, 9, 0.65), rgba(3, 4, 9, 0.85) 100%); }
 .animated-weather-card.theme-colors > .qn-veil { background: rgba(3, 4, 9, 0.96); }
+/* Red at night (night_red): black, whatever the sky or the theme, as a bedside clock's night mode; the card's own frame too */
+.animated-weather-card > .qn-veil[data-red] { background: #000 !important; }
+animated-weather-card[data-red][data-qn-night] > ha-card { background: #000; border-color: transparent; }
 /* Clouds and stars keep the top of the sky: none below the time's cap line, so no core and no star sits behind a figure */
 animated-weather-card[data-qn] .clouds-container { -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); mask-image: linear-gradient(180deg, #000 0%, #000 calc(48px + 12%), transparent calc(48px + 32%)); }
 animated-weather-card[data-qn] .stars-field { -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 38%); mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 38%); }
@@ -443,6 +446,7 @@ animated-weather-card[data-qn-night] .lightning svg path { filter: none !importa
 .theme-colors .qn .qn-big { color: var(--awc-hero-color, var(--primary-color)); }
 .theme-colors .qn :is(.qn-quiet, .awc-ampm) { color: var(--secondary-text-color); opacity: 1; }
 .theme-colors .qn[data-night] .qn-quiet { color: inherit; }
+.qn[data-red][data-night] :is(.qn-quiet, .awc-ampm) { color: inherit !important; }
 .theme-colors .qn-fill { background: var(--primary-text-color) !important; }
 .theme-colors .qn-now { background: var(--primary-color); }
 /* Narrow (a phone's column, a portrait phone on a stand): the weather under the time */

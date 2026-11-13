@@ -413,7 +413,7 @@ wake_time: "07:00"
 ```
 
 - **By day:** the date, the temperature, the condition, the line on what turns, and today's range with a dot for now. From an hour before bed time, with an alarm set, the alarm takes the date's place.
-- **At night:** the card turns its real sky down under a veil, and the words keep two warm colours with no transparency: the time, the alarm ("Alarm 6:45") and one line. That line is "19° Dry tonight", or what's wrong before you're up: severe weather, rain at 60% or more, gusts of 60 km/h (37 mph) or more, or frost at the alarm. It's set a step heavier, and screen readers hear it as a status. Nothing changes under the veil but the minute. Night comes and goes over eight seconds.
+- **At night:** the card goes red on black, like a bedside clock's night mode: no sky, and a deep red for the time, the alarm ("Alarm 6:45") and one line, which keeps a dark room's night vision. With `night_red: false` it turns its real sky down under a veil instead, and the words keep two warm colours with no transparency. Dawn, day and dusk are untouched either way. That line is "19° Dry tonight", or what's wrong before you're up: severe weather, rain at 60% or more, gusts of 60 km/h (37 mph) or more, or frost at the alarm. It's set a step heavier, and screen readers hear it as a status. Nothing changes under the veil but the minute. Night comes and goes over eight seconds.
 - **When night falls.** With `night: auto`, the default, a light sensor beside it decides: night under 5 lx held for a minute, day again over 15 lx held for 10 seconds, so a phone screen or a passing car doesn't flip it. Without one, night runs from `bed_time` to the alarm, or to `wake_time` without an alarm. `bed_time` defaults to 8 hours 30 minutes before that. `night: on` and `night: off` fix it.
 - **The alarm.** `alarm_entity` is a timestamp sensor with your next alarm: the Android Companion app's next alarm sensor, or an input_datetime that an iOS Shortcut sets. The card uses it when it's within 18 hours.
 - **Screen care.** The words move by a pixel every 15 minutes, against burn-in.
@@ -660,6 +660,7 @@ sunset_hour: 19
 | `bed_time` | 8 h 30 min before waking | Nightstand: when night begins without a light sensor. By default, 8 hours 30 minutes before the alarm, or before `wake_time` without one |
 | `night` | `auto` | Nightstand: `auto` (from `night_sensor`, else from bed time to the alarm or wake time), `on` or `off` |
 | `night_sensor` | — | Nightstand: an illuminance sensor beside it. Night under `night_lux` held for a minute, day again over three times it held for 10 seconds |
+| `night_red` | `true` | Nightstand: red on black at night, like a bedside clock's night mode. `false` keeps the sky under a veil, in two warm colours |
 | `night_lux` | `5` | Nightstand: how dark the room has to be, in lux, for night. A room where the screen or a street light keeps the sensor above 5 lx at night needs a higher value, such as `30` |
 
 **Interactions**

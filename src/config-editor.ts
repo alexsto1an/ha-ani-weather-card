@@ -358,6 +358,12 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <ha-entity-picker id="night_sensor" label="Light sensor" value="${escapeHtml(this._config.night_sensor || '')}" helper="An illuminance sensor beside it: night when the room is dark" allow-custom-entity></ha-entity-picker>
             </div>
             <div class="option nightstand-only">
+              <label class="switch-label">
+                <ha-switch id="night_red" ${this._config.night_red !== false ? 'checked' : ''}></ha-switch>
+                <span>Red on black at night, as a bedside clock's night mode</span>
+              </label>
+            </div>
+            <div class="option nightstand-only">
               ${textField({ id: 'night_lux', label: 'Dark below (lx)', type: 'number', min: 1, placeholder: '5', value: this._config.night_lux !== undefined ? String(this._config.night_lux) : '', hint: 'Night when the light sensor reads less for a minute; day again at three times it' })}
             </div>
           </div>
@@ -723,6 +729,9 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         });
         this.querySelector('#night_sensor')?.addEventListener('value-changed', (e) => {
             this._updateConfig('night_sensor', (e.target as HTMLInputElement).value || undefined);
+        });
+        this.querySelector('#night_red')?.addEventListener('change', (e) => {
+            this._updateConfig('night_red', (e.target as HTMLInputElement).checked ? undefined : false);
         });
         this.querySelector('#night_lux')?.addEventListener('input', (e) => {
             const v = Number(((e.target as HTMLInputElement).value || '').trim());

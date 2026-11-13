@@ -8,7 +8,7 @@ import {
     sampleSky, sampleSkyAt, oklchToSrgb, composite, contrastRatio, relativeLuminance, skyColors, type SkyPhase,
 } from '../../src/sky';
 import { litTints, GLYPH_CONTRAST } from '../../src/fc-glyphs';
-import { EMBER } from '../../src/fc-night';
+import { EMBER, NIGHT_RED } from '../../src/fc-night';
 import { FORECAST_GLOW } from '../../src/fc-fcard';
 import { createGSAPCloud } from '../../src/gsap-effects';
 import { cloudFloor } from '../../src/cloud-band';
@@ -159,6 +159,22 @@ describe('the nightstand at night', () => {
             if (what === 'time') expect(contrastRatio(parse(EMBER.time).rgb, bg), `time ${condition}/${phase} ${x},${y}`).toBeGreaterThanOrEqual(3);
             else expect(contrastRatio(parse(EMBER.words).rgb, bg), `words ${condition}/${phase} ${x},${y}`).toBeGreaterThanOrEqual(4.5);
         }
+    });
+
+    it('red at night (night_red) holds the same on black, a deep red no brighter than the ember', () => {
+        const black: [number, number, number] = [0, 0, 0];
+        expect(contrastRatio(parse(NIGHT_RED.time).rgb, black)).toBeGreaterThanOrEqual(3.5);
+        expect(contrastRatio(parse(NIGHT_RED.words).rgb, black)).toBeGreaterThanOrEqual(4.5);
+        for (const k of ['time', 'words'] as const) {
+            const [r, g, b] = parse(NIGHT_RED[k]).rgb;
+            // Red's light, not white's: green and blue a small share of it
+            expect(g / r).toBeLessThan(0.2);
+            expect(b / r).toBeLessThan(0.2);
+            expect(relativeLuminance(parse(NIGHT_RED[k]).rgb)).toBeLessThan(relativeLuminance(parse(EMBER[k]).rgb));
+        }
+        // Black whatever the sky or the theme, and every word in the red
+        expect(FORECAST_CSS).toMatch(/\.qn-veil\[data-red\] \{ background: #000 !important; \}/);
+        expect(FORECAST_CSS).toMatch(/\.qn\[data-red\]\[data-night\] :is\(\.qn-quiet, \.awc-ampm\) \{ color: inherit !important; \}/);
     });
 });
 

@@ -272,6 +272,8 @@ export interface AnimatedWeatherCardConfig {
     night_sensor?: string;
     /** The nightstand: night below this many lux on the sensor, held for a minute (5); day again at three times it, held for 10 s */
     night_lux?: number;
+    /** The nightstand: red on black at night, as a bedside clock's night mode (on unless false); off, the sky stays under a veil in warm inks */
+    night_red?: boolean;
     animate?: boolean;
     auto_pause?: boolean;
     dev_mode?: boolean;

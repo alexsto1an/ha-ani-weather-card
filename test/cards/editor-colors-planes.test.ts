@@ -44,6 +44,15 @@ describe('the editor\'s colours and planes', () => {
         field.value = '';
         field.dispatchEvent(new Event('input'));
         expect(config).not.toHaveProperty('night_lux');
+        // Red at night is on unless turned off, and writes only the off
+        const red = editor.querySelector('#night_red') as HTMLInputElement;
+        expect(red.hasAttribute('checked')).toBe(true);
+        red.checked = false;
+        red.dispatchEvent(new Event('change'));
+        expect(config).toMatchObject({ night_red: false });
+        red.checked = true;
+        red.dispatchEvent(new Event('change'));
+        expect(config).not.toHaveProperty('night_red');
     });
 
     it('turns planes_on_load on and off, writing nothing when off (#19)', async () => {

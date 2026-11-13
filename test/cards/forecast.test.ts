@@ -285,6 +285,23 @@ describe('the forecast on the weather card', () => {
         spy.mockRestore();
     });
 
+    it('the nightstand is red on black at night unless night_red is false, when its sky stays under a veil in warm inks', async () => {
+        const red = mount({ layout: 'nightstand', night: 'on' });
+        await settle();
+        expect(red.querySelector('.qn-veil')?.hasAttribute('data-red')).toBe(true);
+        expect((red.querySelector('.qn-time') as HTMLElement).style.color).toBe('rgb(194, 31, 23)');
+        expect((red.querySelector('.qn-right') as HTMLElement).style.color).toBe('rgb(235, 38, 28)');
+        expect(red.hasAttribute('data-red') && red.hasAttribute('data-qn-night')).toBe(true);
+        // By day nothing is red: the sky as it is
+        const day = mount({ layout: 'nightstand', night: 'off' });
+        await settle();
+        expect((day.querySelector('.qn-time') as HTMLElement).style.color).not.toMatch(/^rgb\(194/);
+        const warm = mount({ layout: 'nightstand', night: 'on', night_red: false });
+        await settle();
+        expect(warm.querySelector('.qn-veil')?.hasAttribute('data-red')).toBe(false);
+        expect((warm.querySelector('.qn-time') as HTMLElement).style.color).toBe('rgb(139, 106, 77)');
+    });
+
     it('the nightstand\'s light sensor makes it night below night_lux (5 lx unless set) held for a minute, and day at three times it', async () => {
         vi.useFakeTimers({ now: today(13), toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
         const lux = (v: number) => makeHass(3, { states: { ...makeHass().states, 'sensor.lux': { entity_id: 'sensor.lux', state: String(v), attributes: { unit_of_measurement: 'lx' } } } });
