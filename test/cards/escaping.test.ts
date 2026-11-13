@@ -147,6 +147,19 @@ describe('colors', () => {
         expect(painted.querySelector<HTMLElement>('.fog-layer > div')!.style.background).toContain('rgb(200, 210, 220)');
     });
 
+    it('paint the fog in fog_color on the sky palette, set or not, and in the theme\'s colour on the theme palette', () => {
+        const card = document.createElement('div');
+        const fogOf = (config: Record<string, unknown>) => {
+            const fog = document.createElement('div');
+            createGSAPFogLayer(fog, { windSpeed: 1 }, 0, card, config);
+            return fog.querySelector<HTMLElement>('.fog-layer > div')!.style.background;
+        };
+        // Most cards never write color_palette: it's the sky palette all the same
+        expect(fogOf({ custom_colors: { fog_color: 'rgb(200, 210, 220)' } })).toContain('rgb(200, 210, 220)');
+        expect(fogOf({})).toContain('rgb(224, 224, 224)');
+        expect(fogOf({ color_palette: 'theme', custom_colors: { fog_color: 'rgb(200, 210, 220)' } })).toContain('var(--secondary-text-color)');
+    });
+
     it('keep a hostile color out of the card\'s markup', async () => {
         vi.useFakeTimers();
         const card = document.createElement('animated-weather-card') as Card;

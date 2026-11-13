@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun } from '../../src/fc-core';
 import { turningLine, timeParts, timeText, highLow, week, hours, available, relative, dateText, conditionNoun } from '../../src/fc-data';
 import { FC_WORDS, fill } from '../../src/fc-words';
-import { nextAlarm, alertBefore } from '../../src/fc-night';
+import { nextAlarm, alertBefore, nightMode } from '../../src/fc-night';
 import type { ForecastEntry } from '../../src/forecast-data';
 import type { HomeAssistant } from '../../src/types';
 
@@ -154,6 +154,13 @@ describe('the next alarm', () => {
         expect(nextAlarm(h, 'sensor.next_alarm', new Date(now))?.getTime()).toBe(at.getTime());
         expect(nextAlarm(h, 'sensor.next_alarm', new Date(now - 20 * HOUR))).toBeNull();
         expect(nextAlarm(h, undefined, new Date(now))).toBeNull();
+    });
+});
+
+describe('the nightstand\'s night option', () => {
+    it('on and off as strings or, from a YAML-mode dashboard, as true and false; anything else is auto', () => {
+        expect([nightMode('on'), nightMode(true), nightMode('off'), nightMode(false)]).toEqual(['on', 'on', 'off', 'off']);
+        expect([nightMode(undefined), nightMode('auto'), nightMode('yes'), nightMode(1)]).toEqual(['auto', 'auto', 'auto', 'auto']);
     });
 });
 

@@ -5,7 +5,7 @@ import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { getConfigEditorStyles } from './styles/editor';
 import { skyColors, oklchToSrgb, toHex, SKY_TEXT } from './sky';
 import { escapeHtml, textField } from './utils';
-import { readActions } from './actions';
+import { ActionConfig, readActions } from './actions';
 import { mountActionsEditor, updateActionsEditor } from './action-editor';
 
 /** note_calendar as a list: YAML takes one calendar or several, the editor's picker shows the first */
@@ -388,7 +388,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-            <p class="section-note">What a tap, a hold and a double tap on the card do. A tap opens the weather's details unless you choose something else.</p>
+            <p class="section-note">What a tap, a hold and a double tap on the card do. By default a tap opens the weather's details, the forecast with the forecast on, and nothing on a nightstand.</p>
             <div id="actions-editor"></div>
           </div>
         </div>
@@ -712,6 +712,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         this.querySelector('#show_forecast')?.addEventListener('change', (e) => {
             this._updateConfig('show_forecast', (e.target as HTMLInputElement).checked || undefined);
             this.syncForecastOptions();
+            this.mountActions();
         });
         this._bindSelect('forecast_metric', [
             { value: 'temp', label: 'Temperature' },
@@ -730,12 +731,13 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         ], this._config?.layout || 'default', (value) => {
             this._updateConfig('layout', value === 'default' ? undefined : value);
             this.syncForecastOptions();
+            this.mountActions();
         });
         this._bindSelect('night', [
             { value: 'auto', label: 'From the light sensor, else bed to wake time' },
             { value: 'on', label: 'Always' },
             { value: 'off', label: 'Never' },
-        ], this._config?.night || 'auto', (value) => {
+        ], this._config?.night === true ? 'on' : this._config?.night === false ? 'off' : this._config?.night || 'auto', (value) => {
             this._updateConfig('night', value === 'auto' ? undefined : value);
         });
         this.querySelector('#alarm_entity')?.addEventListener('value-changed', (e) => {
@@ -833,12 +835,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             this._updateConfig('indoor_style', value === 'label' ? undefined : value);
         });
 
-        const actions = this.querySelector('#actions-editor') as HTMLElement | null;
-        if (actions) {
-            mountActionsEditor(actions, this._hass, readActions(this._config, this._config?.entity), patch => {
-                for (const [key, value] of Object.entries(patch)) this._updateConfig(key, value);
-            }, { forecast: 'Forecast' });
-        }
+        this.mountActions();
 
         this.querySelector('#animate')?.addEventListener('change', (e) => {
             this._updateConfig('animate', (e.target as HTMLInputElement).checked);
@@ -1033,6 +1030,34 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         }) as EventListener);
         // Keep the dropdown closing from bubbling up and closing HA's dialog
         select.addEventListener('closed', (e: Event) => e.stopPropagation());
+    }
+
+    /** What a tap does with no tap_action, as the card has it: nothing on a nightstand, the forecast with it on, else the weather's details */
+    private tapDefault(): ActionConfig | undefined {
+        if (this._config?.layout === 'nightstand') return { action: 'none' };
+        return this._config?.show_forecast ? { action: 'forecast' } : undefined;
+    }
+
+    /**
+     * The gestures' controls, showing the tap the card really does. Where
+     * that's the card's own default (the forecast, or nothing on a
+     * nightstand), picking it writes no YAML, and the picker's default (the
+     * weather's details, as Home Assistant labels it) is written out, as the
+     * forecast card's editor does. Mounted again when the default changes.
+     */
+    private mountActions(): void {
+        const container = this.querySelector('#actions-editor') as HTMLElement | null;
+        if (!container) return;
+        const actions = readActions(this._config, this._config?.entity);
+        const def = this.tapDefault();
+        mountActionsEditor(container, this._hass, actions.tap_action || !def ? actions : { ...actions, tap_action: def }, patch => {
+            const next = { ...patch };
+            if (def && 'tap_action' in patch) {
+                next.tap_action = patch.tap_action === undefined ? { action: 'more-info' }
+                    : patch.tap_action.action === def.action ? undefined : patch.tap_action;
+            }
+            for (const [key, value] of Object.entries(next)) this._updateConfig(key, value);
+        }, { forecast: 'Forecast' });
     }
 
     /** The forecast's own options count only with it on; the nightstand's only with that layout */

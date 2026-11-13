@@ -384,6 +384,21 @@ describe('the forecast on the weather card', () => {
         expect(night(tuned)).toBe(false);
     });
 
+    it('the nightstand takes night: on and off as YAML-mode dashboards hand them over, true and false', async () => {
+        vi.useFakeTimers({ now: today(13), toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+        const dark = makeHass(3, { states: { ...makeHass().states, 'sensor.lux': { entity_id: 'sensor.lux', state: '0', attributes: { unit_of_measurement: 'lx' } } } });
+        // At one in the afternoon, true is night all the same
+        const on = mount({ layout: 'nightstand', night: true });
+        await vi.advanceTimersByTimeAsync(100);
+        expect(on.hasAttribute('data-qn-night')).toBe(true);
+        // And false keeps it day in a dark room, where the sensor alone would make it night
+        const off = mount({ layout: 'nightstand', night: false, night_sensor: 'sensor.lux' }, dark);
+        await vi.advanceTimersByTimeAsync(100);
+        off.hass = dark;
+        await vi.advanceTimersByTimeAsync(75_000);
+        expect(off.hasAttribute('data-qn-night')).toBe(false);
+    });
+
     it('a chip or the Now control inside the card is its own tap, never the card\'s', async () => {
         const card = mount({ show_forecast: true });
         await settle();

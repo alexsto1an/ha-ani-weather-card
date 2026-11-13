@@ -465,9 +465,10 @@ export function createGSAPFogLayer(fogContainer: Element, settings: any, layerIn
     const layer = layerConfig[layerIndex] || layerConfig[2];
 
     // Set fog layer styling. A custom fog colour goes into cssText, so it
-    // must be a colour and nothing that could end the declaration.
+    // must be a colour and nothing that could end the declaration. An unset
+    // palette is the sky palette, as everywhere else in the card.
     const customFog = config.custom_colors?.fog_color;
-    const fogColor = config.color_palette === 'default'
+    const fogColor = (config.color_palette || 'default') !== 'theme'
         ? (isValidColor(customFog) ? customFog : '#e0e0e0')
         : 'var(--secondary-text-color)';
 

@@ -141,6 +141,8 @@ const toHex = (c: string) => { const m = c.match(/[\d.]+/g); if (!c.startsWith('
 
 /** Night below this many lux (night_lux): 5 unless set to a positive number */
 export const nightLux = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 5; };
+/** `night`: on, off or auto. A YAML-mode dashboard reads a bare on and off as true and false, so those count too */
+export const nightMode = (v: unknown): 'auto' | 'on' | 'off' => (v === true || v === 'on' ? 'on' : v === false || v === 'off' ? 'off' : 'auto');
 
 /** The wet kind a condition already names, so a line after it can drop its noun (as the weather card's does) */
 const KIND_NOW: Record<string, string> = { rainy: 'rain', pouring: 'rain', 'lightning-rainy': 'storms', lightning: 'storms', snowy: 'snow', 'snowy-rainy': 'sleet', hail: 'sleet' };
@@ -348,7 +350,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     }
     /** Night, by the config, the light sensor, or the hours from bed to the alarm */
     function wantNight(now: Date): boolean {
-        const mode = cfg().night ?? 'auto';
+        const mode = nightMode(cfg().night);
         if (mode === 'on') return true;
         if (mode === 'off') return false;
         const hass = host.hass();

@@ -156,37 +156,28 @@ export interface WeatherEngineSettings {
     cloudBaseSize: number;
     cloudCount: number;
     splashBounce: number;
-    stormIntensity?: number;
-    fogDensity?: number;
-    starCount?: number;
 }
 
 /**
- * Custom color configuration with validation
+ * custom_colors: each _bg colour becomes a whole sky for its condition, on
+ * the sky palette (color-utils.ts); the text, the temperature, the sun, the
+ * rain and the snow apply on either palette; the fog's on the sky palette
  */
 export interface CustomColorConfig {
-    background_sunny?: string;
-    background_cloudy?: string;
-    background_rainy?: string;
-    background_stormy?: string;
-    background_snowy?: string;
-    background_foggy?: string;
-    background_clear_night?: string;
-    text_primary?: string;
-    text_secondary?: string;
-    icon_color?: string;
-    animation_rain?: string;
-    animation_snow?: string;
-    animation_wind?: string;
-    animation_lightning?: string;
-    animation_clouds?: string;
-    animation_fog?: string;
-    animation_stars?: string;
+    sunny_bg?: string;
+    cloudy_bg?: string;
+    rainy_bg?: string;
+    stormy_bg?: string;
+    snowy_bg?: string;
+    windy_bg?: string;
+    text_color?: string;
     /** The temperature's colour, on either palette */
     temperature_color?: string;
-    // Legacy color properties for backward compatibility
+    sun_color?: string;
     rain_color?: string;
     snow_color?: string;
+    /** The fog's colour, on the sky palette (gsap-effects.ts) */
+    fog_color?: string;
     [key: string]: string | undefined;
 }
 
@@ -269,7 +260,7 @@ export interface AnimatedWeatherCardConfig {
     wake_time?: string;
     bed_time?: string;
     /** The nightstand: the dark night (auto: from the light sensor, else from bed to wake time) */
-    night?: 'auto' | 'on' | 'off';
+    night?: 'auto' | 'on' | 'off' | boolean;
     /** The nightstand: an illuminance sensor beside it */
     night_sensor?: string;
     /** The nightstand: night below this many lux on the sensor, held for a minute (5); day again at three times it, held for 10 s */
