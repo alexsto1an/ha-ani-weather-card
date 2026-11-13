@@ -9,7 +9,7 @@
 
 import type { TrackerLink } from './forecast-host';
 import type { HourLink } from './hour-link';
-import { COMPACT_PATH, REGULAR_PATH, VH, pathElevation, xFor, yFor } from './sun-path';
+import { COMPACT_PATH, REGULAR_PATH, VH, hourFrac, pathElevation, xFor, yFor } from './sun-path';
 import { hourOfDay } from './localize';
 
 const SKY = ['top', 'mid', 'bottom', 'glow', 'scrim'];
@@ -23,12 +23,12 @@ export function followTracker(t: TrackerLink, link: HourLink): void {
     const elevation = pathElevation(hour, t.riseH, t.setH);
     const dot = card.querySelector('.st-dot') as HTMLElement | null;
     if (dot) {
-        dot.style.left = `${((hour / 24) * 100).toFixed(2)}%`;
+        dot.style.left = `${(hourFrac(hour, t.rtl) * 100).toFixed(2)}%`;
         dot.style.top = `${((yFor(elevation, t.compact ? COMPACT_PATH : REGULAR_PATH) / VH) * 100).toFixed(2)}%`;
         dot.classList.toggle('below', elevation < 0);
     }
     const line = card.querySelector('.st-now-line');
-    if (line) { const x = xFor(hour).toFixed(1); line.setAttribute('x1', x); line.setAttribute('x2', x); }
+    if (line) { const x = xFor(hour, t.rtl).toFixed(1); line.setAttribute('x1', x); line.setAttribute('x2', x); }
     // The card's sky: on the same weather, or, with no weather of its own, from any card on its sun. Colour only, never weather
     if (link.sky && card.classList.contains('sky') && (!t.weather || t.weather === link.entity)) {
         for (const k of SKY) {

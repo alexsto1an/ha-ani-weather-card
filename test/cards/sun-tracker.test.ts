@@ -282,6 +282,61 @@ describe('sun tracker card', () => {
         sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
     });
 
+    it('runs right to left south of the equator, or the way it\'s told, its path, twilight, now line and sun mirrored', () => {
+        const at = (latitude?: number) => ({ ...sunHass(30), config: latitude === undefined ? {} : { latitude } });
+        const read = (tracker: Tracker) => {
+            const st = card(tracker);
+            const line = st.querySelector('.st-now-line')!;
+            const path = st.querySelector('.st-path-day')!.getAttribute('d')!;
+            return {
+                dot: parseFloat((st.querySelector('.st-dot') as HTMLElement).style.left),
+                line: parseFloat(line.getAttribute('x1')!),
+                // Midnight starts the path: at the left edge, or the right one
+                start: parseFloat(path.slice(1)),
+                rise: parseFloat(st.querySelector('.st-twilight')!.getAttribute('cx')!),
+                fill: st.querySelector('.st-day-fill')!.getAttribute('d')!.slice(-24),
+            };
+        };
+        const north = mount();
+        north.hass = at(52.4);
+        const ltr = read(north);
+        expect(ltr.start).toBe(0);
+        north.remove();
+        for (const [config, latitude] of [[{}, -33.9], [{ direction: 'right_to_left' }, 52.4], [{ direction: 'auto' }, -0.5]] as const) {
+            const tracker = mount(config);
+            tracker.hass = at(latitude);
+            const rtl = read(tracker);
+            expect(rtl.start, JSON.stringify(config)).toBe(1000);
+            expect(rtl.dot).toBeCloseTo(100 - ltr.dot, 1);
+            expect(rtl.line).toBeCloseTo(1000 - ltr.line, 0);
+            expect(rtl.rise).toBeCloseTo(1000 - ltr.rise, 0);
+            // The day's fill closes along the horizon from the path's end back to its start
+            expect(rtl.fill).toMatch(/L0,\d+ L1000,\d+ Z$/);
+            tracker.remove();
+        }
+        // Told left to right, a southern tracker keeps it; without a latitude, left to right
+        for (const [config, latitude] of [[{ direction: 'left_to_right' }, -33.9], [{}, undefined]] as const) {
+            const tracker = mount(config);
+            tracker.hass = at(latitude);
+            expect(read(tracker).start).toBe(0);
+            expect(read(tracker).dot).toBeCloseTo(ltr.dot, 1);
+            tracker.remove();
+        }
+    });
+
+    it('follows a needle the way its path runs', () => {
+        const tracker = mount({ direction: 'right_to_left' });
+        tracker.hass = sunHass(30);
+        const st = card(tracker);
+        const at = Date.parse('2026-10-13T18:12:00Z');
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at, temperature: 14, sky: null });
+        const frac = hourOfDay(new Date(at)) / 24;
+        expect((st.querySelector('.st-dot') as HTMLElement).style.left).toBe(`${((1 - frac) * 100).toFixed(2)}%`);
+        expect(parseFloat(st.querySelector('.st-now-line')!.getAttribute('x1')!)).toBeCloseTo((1 - frac) * 1000, 0);
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        tracker.remove();
+    });
+
 });
 
 describe('the tracker in the profile\'s time zone', () => {

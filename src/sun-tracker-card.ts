@@ -23,7 +23,7 @@ import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget
 import { loadEditorBundle } from './bundles';
 import { IconName, icon } from './icons';
 import { HOUR_EVENT, HourLink } from './hour-link';
-import { COMPACT_PATH, PathGeometry, REGULAR_PATH, VH, VW, pathElevation, xFor, yFor } from './sun-path';
+import { COMPACT_PATH, PathGeometry, REGULAR_PATH, VH, VW, hourFrac, pathElevation, xFor, yFor } from './sun-path';
 
 export { pathElevation };
 import {
@@ -44,6 +44,8 @@ export interface SunTrackerConfig {
     show_details?: boolean;
     title?: string;
     color_palette?: 'default' | 'theme';
+    /** Which way the sun crosses the chart: auto runs right to left south of the equator (Home Assistant's latitude) */
+    direction?: 'auto' | 'left_to_right' | 'right_to_left';
     /** What a tap does (default: the sun entity's more-info dialog) */
     tap_action?: ActionConfig;
     /** What a hold does (default: nothing) */
@@ -116,11 +118,11 @@ export function detailColumns(count: number, width: number): number {
 }
 
 
-function sunPath(riseHour: number, setHour: number, g: PathGeometry): string {
+function sunPath(riseHour: number, setHour: number, g: PathGeometry, rtl: boolean): string {
     const points: string[] = [];
     for (let i = 0; i <= 240; i++) {
         const h = i / 10;
-        points.push(`${xFor(h).toFixed(1)},${yFor(pathElevation(h, riseHour, setHour), g).toFixed(1)}`);
+        points.push(`${xFor(h, rtl).toFixed(1)},${yFor(pathElevation(h, riseHour, setHour), g).toFixed(1)}`);
     }
     return 'M' + points.join(' L');
 }
@@ -535,7 +537,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
     private _clock?: ReturnType<typeof setInterval>;
     private _resizeObserver?: ResizeObserver;
     /** Sunrise and sunset as last drawn, so a followed time can be placed on the path */
-    private _path: { riseH: number; setH: number } | null = null;
+    private _path: { riseH: number; setH: number; rtl: boolean } | null = null;
     /** A weather card's needle this tracker follows, and the way to stop listening */
     private _link: HourLink | null = null;
     private _onHour = (e: Event) => this._follow((e as CustomEvent<HourLink>).detail);
@@ -740,17 +742,20 @@ class AnimatedSunTrackerCard extends HTMLElement {
 
         // Sun path
         const geo = this.config.compact ? COMPACT_PATH : REGULAR_PATH;
-        this._path = { riseH, setH };
-        const path = sunPath(riseH, setH, geo);
-        const dayFill = `${path} L${VW},${geo.horizon} L0,${geo.horizon} Z`;
+        // South of the equator the sun crosses from right to left, unless the card says which way
+        const dir = this.config.direction;
+        const rtl = dir === 'right_to_left' || (dir !== 'left_to_right' && (this._hass?.config?.latitude ?? 0) < 0);
+        this._path = { riseH, setH, rtl };
+        const path = sunPath(riseH, setH, geo, rtl);
+        const dayFill = `${path} L${xFor(24, rtl)},${geo.horizon} L${xFor(0, rtl)},${geo.horizon} Z`;
         const nowElevation = pathElevation(nowHour, riseH, setH);
-        const dotLeft = (nowHour / 24) * 100;
+        const dotLeft = hourFrac(nowHour, rtl) * 100;
         const dotTop = (yFor(nowElevation, geo) / VH) * 100;
         // Twilight as a warm glow on the horizon where the sun crosses it,
         // as wide as the twilight itself (dawn → sunrise, sunset → dusk).
         const twilight = (sunHour: number, twilightHours: number) => {
             const rx = Math.max(70, (Math.abs(twilightHours) / 24) * VW * 2.4);
-            return `<ellipse cx="${xFor(sunHour).toFixed(1)}" cy="${geo.horizon}" rx="${rx.toFixed(1)}" ry="${geo.twilightRy}" fill="url(#twilight)" class="st-twilight"/>`;
+            return `<ellipse cx="${xFor(sunHour, rtl).toFixed(1)}" cy="${geo.horizon}" rx="${rx.toFixed(1)}" ry="${geo.twilightRy}" fill="url(#twilight)" class="st-twilight"/>`;
         };
 
         const compact = !!this.config.compact;
@@ -813,7 +818,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
                             ${twilight(setH, duskH - setH)}
                             <path d="${dayFill}" class="st-day-fill" clip-path="url(#above)"/>
                             <line x1="0" y1="${geo.horizon}" x2="${VW}" y2="${geo.horizon}" class="st-horizon"/>
-                            <line x1="${xFor(nowHour).toFixed(1)}" y1="0" x2="${xFor(nowHour).toFixed(1)}" y2="${VH}" class="st-now-line"/>
+                            <line x1="${xFor(nowHour, rtl).toFixed(1)}" y1="0" x2="${xFor(nowHour, rtl).toFixed(1)}" y2="${VH}" class="st-now-line"/>
                             <path d="${path}" class="st-path-night" clip-path="url(#below)"/>
                             <path d="${path}" class="st-path-day" clip-path="url(#above)"/>
                         </svg>

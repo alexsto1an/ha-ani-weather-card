@@ -92,6 +92,8 @@ export interface TrackerLink {
     riseH: number;
     setH: number;
     compact: boolean;
+    /** The path runs right to left (sun-path.ts: hourFrac) */
+    rtl?: boolean;
 }
 
 export interface ForecastViews {

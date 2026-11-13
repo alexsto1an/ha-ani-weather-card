@@ -29,7 +29,13 @@ export function pathElevation(hour: number, riseHour: number, setHour: number): 
     return -Math.sin(Math.PI * sinceSet / (24 - day));
 }
 
-export const xFor = (hour: number): number => (hour / 24) * VW;
+/**
+ * Where an hour sits across the chart, 0 to 1: left to right, or right to
+ * left, as the sun crosses the sky seen from south of the equator (facing
+ * north, it rises on the right).
+ */
+export const hourFrac = (hour: number, rtl = false): number => rtl ? 1 - hour / 24 : hour / 24;
+export const xFor = (hour: number, rtl = false): number => hourFrac(hour, rtl) * VW;
 export const yFor = (elevation: number, g: PathGeometry): number =>
     elevation >= 0
         ? g.horizon - elevation * (g.horizon - g.peak)

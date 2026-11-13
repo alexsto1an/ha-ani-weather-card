@@ -239,3 +239,90 @@ describe('ModularIntegrationBridge — live wind', () => {
         expect(setWindSpeed).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('Clouds over the sun', () => {
+    type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number };
+    const place = (el: Element, x: number, y: number, w: number, h: number) => {
+        (el as unknown as { getBoundingClientRect: () => Box }).getBoundingClientRect = () => ({ left: x, top: y, right: x + w, bottom: y + h, width: w, height: h });
+    };
+
+    it('grow denser as they cover the sun, and dim its light by how much of it they cover, until they go', async () => {
+        const element = makeCardElement();
+        element.querySelector('.animation-layer')!.innerHTML = '<div class="sun-track"><div class="sun"></div></div>';
+        const track = element.querySelector('.sun-track') as HTMLElement;
+        place(track.querySelector('.sun')!, 400, 40, 40, 40);
+        const bridge = new ModularIntegrationBridge(element, cardConfig, undefined, 12);
+        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn>; timeline: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
+        await bridge.startModularAnimation('clouds', 1);
+        const looks = gsap.timeline.mock.results.map(r => r.value).find(tl => tl.vars.onRepeat);
+        expect(looks).toBeTruthy();
+        const last = (el: Element) => gsap.to.mock.calls.filter(([target]) => target === el).at(-1)?.[1].opacity;
+        const lit = () => last(track);
+        const clouds = Array.from(element.querySelectorAll<HTMLElement>('.cloud-gsap'));
+        const near = clouds.find(c => c.dataset.awcO === '0.66')!;
+        const far = clouds.find(c => c.dataset.awcO === '0.26')!;
+
+        // A near cloud right over it: nearly opaque, lit from behind, and the sun's light dims
+        place(near, 380, 30, 120, 60);
+        looks.vars.onRepeat();
+        expect(Number(last(near))).toBe(0.95);
+        expect(lit()).toBeCloseTo(0.6, 2);
+        // A far one thickens less and dims it less
+        place(near, 0, 0, 0, 0);
+        place(far, 380, 30, 120, 60);
+        looks.vars.onRepeat();
+        expect(Number(last(near))).toBe(0.66);
+        expect(Number(last(far))).toBeCloseTo(0.49, 2);
+        expect(lit()).toBeCloseTo(0.84, 2);
+        // Half over it, the near one is dense, and the sun dims less than with it right over
+        place(far, 0, 0, 0, 0);
+        place(near, 300, 30, 120, 60);
+        looks.vars.onRepeat();
+        expect(Number(last(near))).toBe(0.95);
+        expect(lit()).toBeGreaterThan(0.6);
+        expect(lit()).toBeLessThan(1);
+        // Clear of it, the sun's light and the cloud's own opacity are back
+        place(near, 0, 0, 0, 0);
+        looks.vars.onRepeat();
+        expect(lit()).toBe(1);
+        expect(Number(last(near))).toBe(0.66);
+        place(near, 380, 30, 120, 60);
+        looks.vars.onRepeat();
+        expect(lit()).toBeLessThan(0.7);
+        await bridge.stopModularAnimation('clouds');
+        expect(lit()).toBe(1);
+        expect(looks.kill).toHaveBeenCalled();
+    });
+
+    it('dim the sun only as much as they show: the theme palette\'s faint clouds, a little', async () => {
+        const element = makeCardElement();
+        element.querySelector('.animation-layer')!.innerHTML = '<div class="sun-track"><div class="sun"></div></div>';
+        element.insertAdjacentHTML('beforeend', '<style>.cloud-gsap { opacity: 0.16 !important; }</style>');
+        const track = element.querySelector('.sun-track') as HTMLElement;
+        place(track.querySelector('.sun')!, 400, 40, 40, 40);
+        const bridge = new ModularIntegrationBridge(element, cardConfig, undefined, 12);
+        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn>; timeline: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
+        await bridge.startModularAnimation('clouds', 1);
+        const near = Array.from(element.querySelectorAll<HTMLElement>('.cloud-gsap')).find(c => c.dataset.awcO === '0.66')!;
+        place(near, 380, 30, 120, 60);
+        gsap.timeline.mock.results.map(r => r.value).find(tl => tl.vars.onRepeat).vars.onRepeat();
+        expect(gsap.to.mock.calls.filter(([target]) => target === track).at(-1)?.[1].opacity).toBeCloseTo(0.9, 2);
+    });
+
+    it('measure nothing while the sun isn\'t showing', async () => {
+        const element = makeCardElement();
+        element.querySelector('.animation-layer')!.innerHTML = '<div class="sun-track"><div class="sun" style="opacity: 0"></div></div>';
+        const track = element.querySelector('.sun-track') as HTMLElement;
+        place(track.querySelector('.sun')!, 400, 40, 40, 40);
+        const bridge = new ModularIntegrationBridge(element, cardConfig, undefined, 12);
+        const gsap = (window as unknown as { AnimatedWeatherCardGsap: { to: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn>; timeline: ReturnType<typeof vi.fn> } }).AnimatedWeatherCardGsap;
+        await bridge.startModularAnimation('clouds', 1);
+        const near = Array.from(element.querySelectorAll<HTMLElement>('.cloud-gsap')).find(c => c.dataset.awcO === '0.66')!;
+        place(near, 380, 30, 120, 60);
+        gsap.timeline.mock.results.map(r => r.value).find(tl => tl.vars.onRepeat).vars.onRepeat();
+        expect(gsap.to.mock.calls.some(([target]) => target === track)).toBe(false);
+        expect(gsap.set.mock.calls.some(([target]) => target === track)).toBe(false);
+        // and no cloud thickens
+        expect(gsap.to.mock.calls.some(([target]) => target === near)).toBe(false);
+    });
+});

@@ -287,6 +287,8 @@ export function createGSAPCloud(cloudLayer: Element, settings: any, cloudCount: 
 
             cloud.style.position = 'absolute';
             cloud.style.opacity = layer.opacity.toString();
+            // Its own opacity, which it grows from as it passes the sun (clouds-animation.ts)
+            cloud.dataset.awcO = String(layer.opacity);
             cloud.style.zIndex = (10 + layerIndex).toString();
 
             // Far clouds are dimmer and cooler, near clouds brightest. The

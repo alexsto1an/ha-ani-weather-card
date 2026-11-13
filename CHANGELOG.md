@@ -24,14 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Planes can say where they're going: `flight_label: route` tags each with its route from Flightradar24, "Lisbon → Paris", or the airport codes on a narrow card, and `both` puts the flight under it. A flight with no route keeps its number. The editor has it beside the flight labels ([#11](https://github.com/alexsto1an/ha-ani-weather-card/issues/11)).
 - Planes can fly slower: `plane_speed: 0.5`, or as low as `0.25`, so you can follow one and read its tag, and `planes_on_load: true` also flies the planes already overhead when the dashboard opens. Both are in the editor ([#19](https://github.com/alexsto1an/ha-ani-weather-card/issues/19)).
 - The temperature's own colour: `custom_colors.temperature_color`, on either palette. On the theme palette, where the temperature and the rain take your theme's accent colour, the editor's Colors now offers the temperature, text, sun, rain and snow too; only the skies are the colorized palette's ([#20](https://github.com/alexsto1an/ha-ani-weather-card/issues/20)).
+- The sun tracker runs right to left south of the equator, where the sun crosses the sky from your right to your left as you face it. `direction` takes it from your Home Assistant location by default, or sets `left_to_right` or `right_to_left`, and the editor has it ([#13](https://github.com/alexsto1an/ha-ani-weather-card/issues/13)).
 - The live demo has a forecast section: the weather card with the forecast and the clock, the forecast card, and the compact card over its strip, on 48 hours and 10 days of sample forecast, or your own when you show the demo your weather.
 
 ### Changed
 
 - With `show_forecast` on, a tap on the weather card opens the forecast view instead of the entity's details. `tap_action` still sets it to anything else.
 - The weather card's icons for humidity, wind, pressure, sunrise and sunset, the indoor reading and a card with no data, and all of the sun tracker's, its eight moon phases included, are drawn from the forecast's set, inside the cards, instead of Material Design Icons, so the cards speak one set. The wind and pressure arrows are unchanged.
+- On a partly cloudy day, the sun is behind the clouds: a cloud passing in front of it thickens and brightens, lit from behind, and hides the part of the sun it covers, and the sun's light dims as it's covered. The clouds were always in front, but they're see-through, so the sun's bright disc showing through made them look as if they passed behind it.
 - The times on the cards follow your profile's time zone setting, the server's or the device's: the sun tracker's times and its sun's place on the path, the weather card's sunset or sunrise, and the new clock. They always followed the device's time zone before.
-- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 5.8 KB gzipped, to about 82 KB, 2.3 KB of it the icons.
+- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 6.6 KB gzipped, to about 83 KB, 2.3 KB of it the icons.
 
 ### Fixed
 

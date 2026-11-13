@@ -42,7 +42,7 @@ Turn on `show_forecast` and the card adds today's high and low, a line on what t
 
 ## A sun tracker to match.
 
-The download includes a second card, just for the sun. It shows the sun's path across the day, with the next sunrise or sunset as the headline. Below are first light, last light, solar noon, the length of the day and the moon phase. Its sky follows the sun in the same palette as the weather card.
+The download includes a second card, just for the sun. It shows the sun's path across the day, with the next sunrise or sunset as the headline. Below are first light, last light, solar noon, the length of the day and the moon phase. Its sky follows the sun in the same palette as the weather card. South of the equator, the sun crosses it from right to left, as it crosses your sky.
 
 ![The sun tracker in the late afternoon and after dark, with a full moon](docs/images/tracker.webp)
 
@@ -746,6 +746,7 @@ Its options, with examples, are under [The forecast card](#the-forecast-card).
 | `show_header` | `true` | Show the next sunrise or sunset and the time until it |
 | `show_details` | `true` | Show first and last light, solar noon, daylight and the moon phase |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
+| `direction` | `auto` | Which way the sun crosses the path. `auto` runs it right to left south of the equator, from your Home Assistant location, and left to right north of it. `left_to_right` or `right_to_left` sets it |
 | `tap_action` | `more-info` | What a tap does. By default it opens the sun entity's details. Takes the same actions as the weather card |
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does |
@@ -760,7 +761,7 @@ The card reads the standard Home Assistant conditions. It also understands free-
 | --- | --- | --- |
 | `sunny` | Clear sky and the sun | `weather-sunny-background` |
 | `clear-night` | Stars and the moon | `weather-clear-night-background` |
-| `partlycloudy` | The sun between drifting clouds | `weather-partly-cloudy-background` |
+| `partlycloudy` | The sun between drifting clouds, dimming as one passes in front of it | `weather-partly-cloudy-background` |
 | `cloudy` | Overcast, with drifting clouds | `weather-cloudy-background` |
 | `fog` | Drifting fog | `weather-foggy-background` |
 | `rainy` | Rain that splashes on the lower edge | `weather-rainy-background` |

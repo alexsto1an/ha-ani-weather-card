@@ -116,6 +116,7 @@ export class AnimatedSunTrackerEditor extends HTMLElement {
                 <ha-entity-picker id="moon-picker" allow-custom-entity></ha-entity-picker>
                 <ha-entity-picker id="weather-picker" allow-custom-entity></ha-entity-picker>
                 ${textField({ id: 'title', label: 'Title (optional)', value: c.title })}
+                <ha-select id="direction" label="The sun crosses"></ha-select>
                 <div class="st-switches">
                     ${toggle('compact', 'Compact', 'One line: the next sunrise or sunset beside the sun\'s path', !!c.compact)}
                     ${toggle('show_header', 'Next sunrise or sunset', 'The headline time and countdown', c.show_header !== false)}
@@ -170,6 +171,29 @@ export class AnimatedSunTrackerEditor extends HTMLElement {
         onSwitch('show_header', checked => ({ show_header: checked }));
         onSwitch('show_details', checked => ({ show_details: checked }));
         onSwitch('theme_palette', checked => ({ color_palette: checked ? 'theme' : undefined }));
+        // Which way the sun crosses: by Home Assistant's latitude unless set
+        const direction = this.querySelector('#direction') as HTMLElement & { options: Array<{ value: string; label: string }>; value: string } | null;
+        if (direction) {
+            let current = this._config.direction ?? 'auto';
+            const init = () => {
+                direction.options = [
+                    { value: 'auto', label: 'By your location (right to left south of the equator)' },
+                    { value: 'left_to_right', label: 'Left to right' },
+                    { value: 'right_to_left', label: 'Right to left' },
+                ];
+                direction.value = current;
+            };
+            if (customElements.get('ha-select')) init();
+            else customElements.whenDefined('ha-select').then(init);
+            direction.addEventListener('selected', ((e: CustomEvent) => {
+                const value = e.detail?.value as SunTrackerConfig['direction'] | undefined;
+                if (!value || value === current) return;
+                current = value;
+                this._update({ direction: value === 'auto' ? undefined : value });
+            }) as EventListener);
+            // Its closing would close Home Assistant's edit dialog
+            direction.addEventListener('closed', (e: Event) => e.stopPropagation());
+        }
     }
 
     private _update(patch: Partial<SunTrackerConfig>): void {
