@@ -885,8 +885,18 @@ describe('the setup guide', () => {
         for (const bundle of bundles) expect(install).toContain(bundle);
     });
 
-    it('opens the card in HACS as a dashboard repository', () => {
-        expect(decode(page)).toContain('https://my.home-assistant.io/redirect/hacs_repository/?owner=alexsto1an&repository=ha-ani-weather-card&category=plugin');
+    it('opens the card in the Marketplace as a dashboard repository, and keeps HACS to the install steps for older versions', () => {
+        const link = 'https://my.home-assistant.io/redirect/marketplace_repository/?owner=alexsto1an&repository=ha-ani-weather-card&category=plugin';
+        expect(decode(page)).toContain(link);
+        expect(read('README.md')).toContain(link);
+        expect(read('README.md')).toContain('https://my.home-assistant.io/badges/marketplace_repository.svg');
+        for (const text of [decode(page), read('README.md'), read('demo/index.html')]) expect(text).not.toContain('redirect/hacs_repository');
+        // HACS is the fallback in the install steps, and nowhere else
+        const install = read('README.md').split('## Install')[1].split('## Set up')[0];
+        expect(read('README.md').replace(install, '')).not.toMatch(/HACS/);
+        expect(read('demo/index.html')).not.toMatch(/HACS/);
+        const chapter = decode(page).split('id="install-title"')[1].split('</section>')[0];
+        expect(decode(page).replace(chapter, '').replace(/<a href="#hacs">[^<]*<\/a>|Before Home Assistant 2026\.11[^<]*/g, '')).not.toMatch(/HACS/);
     });
 
     it('is linked from the live demo', () => {

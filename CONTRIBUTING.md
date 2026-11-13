@@ -54,7 +54,7 @@ For a quick look without Home Assistant, run `npm run demo` and serve the `_site
    - performance figures
    - a **Fly a plane** button
 
-If you also have the card installed through HACS, remove one of the two resources. Two copies can't register at once.
+If you also have the card installed from the Marketplace (or HACS), remove one of the two resources. Two copies can't register at once.
 
 ## How the code is organised
 
@@ -114,18 +114,18 @@ src/
 2. Make your change in `src/`.
 3. Add or update tests under `test/`. They run in jsdom with a GSAP stub from `test/setup.ts`. If your code needs a GSAP method the stub doesn't have, add it to the stub.
 4. Run `npm run type-check` and `npm test`.
-5. Run `npm run build` and commit the rebuilt bundles with your change. HACS users on `main` get the committed files directly, so CI rejects a pull request whose bundles don't match a fresh build.
+5. Run `npm run build` and commit the rebuilt bundles with your change. Anyone who installs `main` gets the committed files directly, so CI rejects a pull request whose bundles don't match a fresh build.
 6. Add a line under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) for anything a user would notice.
 7. If you change an option, a default, a range or a behaviour, update the README's options tables and examples to match.
    - **Screenshots:** put them in `docs/images` as WebP.
-   - **Image links:** use relative Markdown image syntax (`![…](docs/images/…)`), which HACS can rewrite. It can't rewrite HTML `<img>` tags.
+   - **Image links:** use relative Markdown image syntax (`![…](docs/images/…)`), which the Marketplace and HACS can rewrite. HACS can't rewrite HTML `<img>` tags.
 
 ## Open a pull request
 
 - **Target:** open it against `main`.
 - **Description:** say what changed and why.
 - **Visual changes:** add a before-and-after screenshot and the card configuration you used.
-- **CI:** it runs the type-check, the build and the tests, and checks that the committed bundles are fresh. A second workflow, **Validate**, runs HACS's own validation of the repository; it has to keep passing for the card to stay listable in HACS's default store.
+- **CI:** it runs the type-check, the build and the tests, and checks that the committed bundles are fresh. A second workflow, **Validate**, runs HACS's own validation of the repository; it has to keep passing for the card to stay in the catalog the Marketplace and HACS share.
 
 ## Guidelines
 
@@ -165,7 +165,7 @@ The workflow then:
 2. Builds the six bundles.
 3. Publishes a GitHub release with the six `.js` files attached.
 
-HACS reads `hacs.json` at the tag and shows the tag as the version. It finds `animated-weather-card.js` (the `filename`) among the release's files, registers it as the dashboard resource, and downloads every attached file into `<config>/www/community/ha-ani-weather-card/`. So a release carries the six bundles and nothing else. Don't set `zip_release`: HACS would then download the file `filename` names and try to unzip it.
+The Marketplace (Home Assistant 2026.11 and later) and HACS (before it) read `hacs.json` at the tag and show the tag as the version. They find `animated-weather-card.js` (the `filename`) among the release's files, register it as the dashboard resource, and download every attached file into `<config>/www/community/ha-ani-weather-card/`. So a release carries the six bundles and nothing else. Don't set `zip_release`: HACS would then download the file `filename` names and try to unzip it.
 
 ## License
 

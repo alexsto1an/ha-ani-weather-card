@@ -65,18 +65,18 @@
             </h2>
             <ol class="steps">
                 <li class="step">
-                    <h3>Find it in HACS</h3>
-                    <p>Search HACS for <b>Animated Weather Card</b>, or open it straight from here.</p>
-                    <p class="step-action"><a class="button-primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=alexsto1an&amp;repository=ha-ani-weather-card&amp;category=plugin">Open in HACS</a></p>
-                    <p class="step-alt">If the search doesn't find it, add it yourself: in HACS, open ⋮ (top right), then <b>Custom repositories</b>. Paste the address below, choose the type <b>Dashboard</b> and search again.</p>
+                    <h3>Find it in the Marketplace</h3>
+                    <p>Go to <b>Settings → Marketplace</b> and search for <b>Animated Weather Card</b>, or open it straight from here.</p>
+                    <p class="step-action"><a class="button-primary" href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=alexsto1an&amp;repository=ha-ani-weather-card&amp;category=plugin">Open in the Marketplace</a></p>
+                    <p class="step-alt">If the search doesn't find it, add it yourself: select <b>Add from link</b> (top right), paste the address below and select <b>Add</b>. Before Home Assistant 2026.11, there's no Marketplace yet: <a href="#hacs">install it with HACS</a>.</p>
                     <div class="code code-line" data-lang="text">
                         <pre><code>https://github.com/alexsto1an/ha-ani-weather-card</code></pre>
                         <button type="button" class="copy" aria-label="Copy the repository address"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button>
                     </div>
                 </li>
                 <li class="step">
-                    <h3>Download it</h3>
-                    <p>Select <b>Download</b>. Then reload your browser, or the Companion app, so the dashboard picks it up.</p>
+                    <h3>Install it</h3>
+                    <p>Select <b>Install</b>, check the version, and select <b>Install</b> again. Then reload your browser, or the Companion app, so the dashboard picks it up.</p>
                 </li>
                 <li class="step">
                     <h3>Add the card</h3>
@@ -118,15 +118,19 @@ entity: weather.forecast_home</code></pre>
                         <li><b>Optional:</b> the <a href="#moon">Moon integration</a> for the tracker's moon phase, and the <a href="#planes">Flightradar24 integration</a> for planes.</li>
                     </ul>
 
-                    <h3 id="hacs">With HACS</h3>
-                    <p>The <a href="#quick-start">quick start</a> covers it. HACS adds the dashboard resource for you when your dashboards are managed in the UI. For a dashboard in YAML mode, add it yourself:</p>
+                    <h3 id="marketplace">From the Marketplace</h3>
+                    <p>The <a href="#quick-start">quick start</a> covers it. The Marketplace adds the dashboard resource for you when your dashboards are managed in the UI. For a dashboard in YAML mode, its install dialog shows the exact line to add, with a <code>?v=</code> for the version. It looks like this:</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Dashboard resources</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>resources:
-  - url: /hacsfiles/ha-ani-weather-card/animated-weather-card.js
+  - url: /local/community/ha-ani-weather-card/animated-weather-card.js
     type: module</code></pre>
                     </div>
-                    <p>When a new version is out, HACS shows an update. Download it and reload your browser.</p>
+                    <p>When a new version is out, it shows up under <b>Settings → Updates</b>. Install it there and reload your browser.</p>
+
+                    <h3 id="hacs">With HACS, before Home Assistant 2026.11</h3>
+                    <p>On older versions, install it with HACS: search HACS for <b>Animated Weather Card</b> and select <b>Download</b>. If the search doesn't find it, open ⋮ (top right), then <b>Custom repositories</b>, paste the address from the quick start and choose the type <b>Dashboard</b>. For a dashboard in YAML mode, the resource is <code>/hacsfiles/ha-ani-weather-card/animated-weather-card.js</code>.</p>
+                    <p class="aside"><b>When you update Home Assistant,</b> the card moves to the Marketplace by itself and keeps getting updates. If your resources are in YAML, a repair asks you to change <code>/hacsfiles/</code> to <code>/local/community/</code>. The old path keeps working until you do.</p>
 
                     <h3 id="manual">By hand</h3>
                     <p>The card is six files that sit in the same folder. Only the first is a dashboard resource; it loads the others when it needs them.</p>
@@ -157,7 +161,7 @@ entity: weather.forecast_home</code></pre>
     type: module</code></pre>
                     </div>
                     <p>To update, overwrite the files and raise the <code>?v=</code> number, so browsers fetch the new version. The other files follow it.</p>
-                    <p class="aside"><b>Load the card from one place only.</b> If you move between HACS (<code>/hacsfiles/</code>) and a copy of your own (<code>/local/</code>), remove the old resource. The second copy can't register, and the first one keeps running.</p>
+                    <p class="aside"><b>Load the card from one place only.</b> If you move between the Marketplace (<code>/local/community/</code>) and a copy of your own (<code>/local/</code>), remove the old resource. The second copy can't register, and the first one keeps running.</p>
                 </section>
 
                 <section class="chapter" id="first-card" aria-labelledby="first-card-title">
@@ -386,7 +390,7 @@ cards:
                     <p>The tracker names the moon's phase among its details. Add Home Assistant's <a href="https://www.home-assistant.io/integrations/moon/">Moon integration</a> under <b>Settings → Devices &amp; services</b>, and give the tracker its sensor as <code>moon_entity</code>, as above.</p>
 
                     <h3 id="planes">Planes</h3>
-                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from HACS), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Each is tagged with its flight number and aircraft; set <code>flight_label: route</code> to tag it with where it's going instead ("Lisbon → Paris", or the airport codes on a narrow card), or <code>both</code> for the route over the flight. A flight with no route, like most light aircraft, keeps its number. Set <code>plane_speed: 0.5</code> (down to <code>0.25</code>) to slow them down so you can follow one, and <code>planes_on_load: true</code> to also fly the ones already overhead when the dashboard opens. Set <code>show_flight_labels: false</code> to fly them without tags.</p>
+                    <p>With the <a href="https://github.com/AlexandrErohin/home-assistant-flightradar24">Flightradar24 integration</a> (from the Marketplace), each flight that enters your area crosses the card once, at its real heading, height and speed, drawn as its aircraft: an airliner, a 747, a turboprop, a business jet, a helicopter. Each is tagged with its flight number and aircraft; set <code>flight_label: route</code> to tag it with where it's going instead ("Lisbon → Paris", or the airport codes on a narrow card), or <code>both</code> for the route over the flight. A flight with no route, like most light aircraft, keeps its number. Set <code>plane_speed: 0.5</code> (down to <code>0.25</code>) to slow them down so you can follow one, and <code>planes_on_load: true</code> to also fly the ones already overhead when the dashboard opens. Set <code>show_flight_labels: false</code> to fly them without tags.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-weather-card
@@ -420,7 +424,7 @@ color_palette: theme</code></pre>
                         </div>
                         <div>
                             <dt>“name has already been used” in the browser console</dt>
-                            <dd>The card is loaded twice, usually from both <code>/hacsfiles/</code> and <code>/local/</code>. Remove one of the resources.</dd>
+                            <dd>The card is loaded twice, usually once from the Marketplace (<code>/local/community/</code>) and once from a copy of your own (<code>/local/</code>). Remove one of the resources.</dd>
                         </div>
                         <div>
                             <dt>No forecast on the card</dt>

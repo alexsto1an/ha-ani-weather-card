@@ -5,7 +5,7 @@
 **Live weather, on your dashboard.**
 
 [![GitHub Release](https://img.shields.io/github/v/release/alexsto1an/ha-ani-weather-card?style=flat-square)](https://github.com/alexsto1an/ha-ani-weather-card/releases)
-[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square)](https://hacs.xyz/)
+[![In the Marketplace](https://img.shields.io/badge/Marketplace-Animated_Weather_Card-41BDF5.svg?style=flat-square)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=alexsto1an&repository=ha-ani-weather-card&category=plugin)
 [![License](https://img.shields.io/github/license/alexsto1an/ha-ani-weather-card?style=flat-square)](https://github.com/alexsto1an/ha-ani-weather-card/blob/main/LICENSE)
 
 ![Three weather cards over Lisbon, each with its note: a sunny afternoon, a thunderstorm and a clear night](docs/images/hero.webp)
@@ -98,7 +98,7 @@ AI helped build this card. Its code, tests and documentation were developed with
 
 ## Install
 
-The [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step, from HACS to the weather note, with troubleshooting.
+The [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step, from the Marketplace to the weather note, with troubleshooting.
 
 ### What you need
 
@@ -109,31 +109,39 @@ The card ships as six files that sit in the same folder:
 
 | File | What it is |
 | --- | --- |
-| `animated-weather-card.js` | The cards. This is the only dashboard resource you add. |
+| `animated-weather-card.js` | The cards. This is the only dashboard resource, and the Marketplace adds it for you. |
 | `animated-weather-card-editor.js` | The visual editors for the cards. It loads the first time you open a card's settings. |
 | `animated-weather-card-note.js` | The note writer. It loads only for cards that write their own note (`show_note`). |
 | `animated-weather-card-planes.js` | The planes. It loads only for cards with a flights sensor (`flights_entity`). |
 | `animated-weather-card-forecast.js` | The forecast, the clock, the forecast card, the nightstand and the view that opens on tap. It loads only for cards that use one of them. |
 | `animated-weather-card-dev.js` | The developer panel. It loads only for cards with `dev_mode: true`, so a manual install can leave it out. |
 
-### HACS
+<!-- ha-marketplace:exclude-start -->
+### Marketplace
 
-1. Open HACS and search for **Animated Weather Card**.
-2. Select it, then select **Download**.
+[![Open your Home Assistant instance and open Animated Weather Card in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=alexsto1an&repository=ha-ani-weather-card&category=plugin)
+
+1. Select the button above, or go to **Settings → Marketplace** and search for **Animated Weather Card**.
+2. Select **Install**, check the version, and select **Install** again.
 3. Refresh your browser.
 
-If the search doesn't find it, add it as a custom repository and search again:
+If the search doesn't find it, select **Add from link** (top right), enter `alexsto1an/ha-ani-weather-card` and select **Add**. Adding from a link needs a GitHub connection, which the Marketplace asks for.
 
-1. Open HACS and select ⋮ (top right) → **Custom repositories**.
-2. Paste `https://github.com/alexsto1an/ha-ani-weather-card` and choose the type **Dashboard**.
-
-HACS adds the dashboard resource for you when your dashboards are managed in the UI. For YAML-mode dashboards, add it yourself:
+The Marketplace adds the dashboard resource for you when your dashboards are managed in the UI. For YAML-mode dashboards, its install dialog shows the exact line to add, with a `?v=` for the version. It looks like this:
 
 ```yaml
 resources:
-  - url: /hacsfiles/ha-ani-weather-card/animated-weather-card.js
+  - url: /local/community/ha-ani-weather-card/animated-weather-card.js
     type: module
 ```
+
+New versions show up under **Settings → Updates**.
+
+### HACS, before Home Assistant 2026.11
+
+On older versions, install it with HACS: search HACS for **Animated Weather Card** and select **Download**. If the search doesn't find it, add `https://github.com/alexsto1an/ha-ani-weather-card` under ⋮ → **Custom repositories**, as a **Dashboard**. For YAML-mode dashboards, the resource is `/hacsfiles/ha-ani-weather-card/animated-weather-card.js`.
+
+When you update Home Assistant to 2026.11 or later, the card moves to the Marketplace by itself and keeps getting updates. If your resources are in YAML, a repair asks you to change `/hacsfiles/` to `/local/community/`; the old path keeps working until you do.
 
 ### Manual
 
@@ -155,7 +163,9 @@ resources:
 
 To update a manual install, overwrite the files and raise the `?v=` number in the resource URL so browsers fetch the new version. The editor, the forecast, the note writer, the planes and the developer panel pick up the same `?v=` automatically.
 
-> **Load the card from one place only.** If you switch between HACS (`/hacsfiles/`) and a manual install (`/local/`), remove the old resource. Otherwise the second copy can't register, and you keep running whichever version loaded first.
+> **Load the card from one place only.** If you switch between the Marketplace (`/local/community/`) and a manual install (`/local/`), remove the old resource. Otherwise the second copy can't register, and you keep running whichever version loaded first.
+
+<!-- ha-marketplace:exclude-end -->
 
 ## Set up
 
@@ -832,7 +842,7 @@ The resource isn't loaded. Check **Settings → Dashboards → Resources**, then
 Your browser is using a cached copy. For a manual install, raise the `?v=` number in the resource URL. In both cases, reload the page.
 
 **"name has already been used" in the browser console**
-The card is loaded twice, usually from both `/hacsfiles/` and `/local/`. Remove one of the resources.
+The card is loaded twice, usually once from the Marketplace (`/local/community/`) and once from a manual install (`/local/`). Remove one of the resources.
 
 **The sky shows, but nothing moves**
 Check these, in order:
