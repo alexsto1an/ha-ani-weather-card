@@ -57,6 +57,13 @@ function mount(config: object, hass = makeHass(), type = 'animated-weather-card'
 }
 afterEach(() => { for (const c of mounted.splice(0)) c.remove(); vi.useRealTimers(); });
 const settle = () => new Promise(r => setTimeout(r, 30));
+// The slide's spring advances at most 50 ms a frame (fc-slide.ts), so on a busy runner a trip home takes many
+// frames of real time: wait for what a test expects, for up to ten seconds, and give each test room for that
+const until = async (done: () => boolean, ms = 10_000) => {
+    const end = Date.now() + ms;
+    while (!done() && Date.now() < end) await new Promise(r => setTimeout(r, 20));
+};
+vi.setConfig({ testTimeout: 30_000 });
 
 describe('the hours\' graph (forecast_graph), the same for every metric', () => {
     const make = (graph?: string) => {
@@ -247,7 +254,6 @@ describe('the forecast on the weather card', () => {
         const card = mount({ show_forecast: true });
         await settle();
         const dialog = () => document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('dialog') as HTMLDialogElement;
-        const until = async (ok: () => boolean) => { for (let i = 0; i < 150 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
         for (let i = 0; i < 2; i++) {
             card.openForecast();
             await until(() => !!document.querySelector('.awc-view-host') && dialog().hasAttribute('open'));
@@ -272,7 +278,6 @@ describe('the forecast on the weather card', () => {
         const card = mount({ show_forecast: true });
         await settle();
         card.openForecast();
-        const until = async (ok: () => boolean) => { for (let i = 0; i < 150 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
         await until(() => !!document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
         const grown = document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
         const list = grown.querySelector('[data-fc-daily]') as HTMLElement;
@@ -281,7 +286,7 @@ describe('the forecast on the weather card', () => {
         expect(list.hasAttribute('data-fc-follow')).toBe(true);
         expect(grown.querySelectorAll('[data-fc-day][data-fc-at]')).toHaveLength(1);
         slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-        // The spring home takes about half a second; a busy machine gets three
+        // The spring home takes about half a second, and many more frames on a busy machine
         await until(() => !list.hasAttribute('data-fc-follow'));
         expect(list.hasAttribute('data-fc-follow')).toBe(false);
         (grown.querySelector('[data-fc-chips] [data-metric="chance"]') as HTMLElement).click();
@@ -899,9 +904,9 @@ describe('the time as the big value (hero: clock), and the date (show_date)', ()
         const hass = makeHass();
         (hass.states['weather.home'].attributes as Record<string, unknown>).temperature = 23;
         card.hass = hass;
-        // The new reading fades through; a busy machine gets three seconds
+        // The new reading fades through
         const lead = () => card.querySelector('.awc-temp-lead .temperature-value')?.textContent;
-        for (let i = 0; i < 150 && lead() !== '23'; i++) await new Promise(r => setTimeout(r, 20));
+        await until(() => lead() === '23');
         expect(lead()).toBe('23');
         expect(clockText(card)).toMatch(/^\d{2}:\d{2}$/);
     });
@@ -917,8 +922,8 @@ describe('the time as the big value (hero: clock), and the date (show_date)', ()
         if (at.toDateString() === new Date().toDateString()) expect(name).toBe('');
         else expect(name).toMatch(/^[A-Z][a-z]{2}$/);
         slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-        // The spring home takes about half a second; a busy machine gets three
-        for (let i = 0; i < 150 && card.querySelector('.animated-weather-card')!.hasAttribute('data-awc-away'); i++) await new Promise(r => setTimeout(r, 20));
+        // The spring home takes about half a second, and many more frames on a busy machine
+        await until(() => !card.querySelector('.animated-weather-card')!.hasAttribute('data-awc-away'));
         const now = new Date();
         expect(clockText(card)).toBe(`${two(now.getHours())}:${two(now.getMinutes())}`);
     });
@@ -1085,16 +1090,13 @@ describe('one needle across the page', () => {
         expect(last.temperature).toBeCloseTo(20.7, 5);
         expect(last.sky && Object.keys(last.sky).sort()).toEqual(['bottom', 'glow', 'mid', 'scrim', 'top']);
         slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-        // The spring home takes about half a second; a busy machine gets three
-        for (let i = 0; i < 150 && heard[heard.length - 1].at !== null; i++) await new Promise(r => setTimeout(r, 20));
+        // The spring home takes about half a second, and many more frames on a busy machine
+        await until(() => heard[heard.length - 1].at === null);
         await settle();
         expect(heard[heard.length - 1].at).toBeNull();
         expect(heard.filter(l => l.at === null)).toHaveLength(1);
     });
 
-    const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
-    // The spring home takes about half a second; a busy machine gets three
-    const until = async (done: () => boolean) => { for (let i = 0; i < 150 && !done(); i++) await wait(20); };
 
     it('the forecast card follows another card\'s needle on its weather, row, sky and days, and comes home with it', async () => {
         const fc = mount({}, makeHass(), 'animated-forecast-card');
