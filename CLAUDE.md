@@ -266,7 +266,7 @@ demo/
 ### The wall
 
 - **When.** The weather card with `show_forecast` at 640 × 540 or larger (`isWall`: a wall tablet's two sections columns at ten rows) gets `attachWall` (`fc-wall.ts`), which replaces the card's text with its own composition (`data-fw`).
-- **What.** The temperature at 192 px; the clock as a quiet 40 px line on the temperature's baseline, with the date; the condition with high, low and feels like; open sky; the turning line at 48 px; and under it six two-hour columns with 40 px figures above one 4 px line that starts at a dot, beside five days of range bars. No chips. The row is the slide's ruler, and the card stays where it's left.
+- **What.** The temperature at 192 px; the clock as a quiet 40 px line on the temperature's baseline, with the date; the condition with high, low and feels like; open sky; the turning line at 48 px; and under it two-hour columns with 40 px figures above one 4 px line that starts at a dot, beside five days of range bars. Six columns where they have room; on a narrower wall `wallCols` shows as many as the widest figure of the next twelve hours needs (`WALL_FIGURE`: 24 px a glyph, 18 px between figures), never fewer than three, so the figures keep their size and never touch. No chips. The row is the slide's ruler, and the card stays where it's left.
 
 ## The sun tracker
 

@@ -383,7 +383,7 @@ With the forecast on, a card of at least 640 × 540 px, such as two sections col
 - the clock as a quiet line on the temperature's baseline, with the date
 - the condition, with the high, the low and feels like
 - open sky, then the line on what turns at 48 px
-- under it, six two-hour columns with 40 px figures above one line, beside five days of ranges, which show the day the hour falls in as you drag
+- under it, two-hour columns with 40 px figures above one line (six on a wall tablet; on a narrower wall, as many as the figures have room for, never fewer than three), beside five days of ranges, which show the day the hour falls in as you drag
 
 There are no chips, and the slide works the same.
 

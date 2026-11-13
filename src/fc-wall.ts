@@ -4,9 +4,11 @@
 // the clock as a quiet line on the temperature's baseline with the date
 // (an eleventh of the temperature's ink, never its twin); the condition
 // with today's high, low and feels-like at the hand's size; open sky; the
-// turning line at 48 px for the doorway; and under it the hours, six
-// two-hour columns with 40 px figures above one whole 4 px line that starts
-// at a dot on the needle, beside five days of range bars. No chips: no hand
+// turning line at 48 px for the doorway; and under it the hours, two-hour
+// columns with 40 px figures above one whole 4 px line that starts at a dot
+// on the needle, beside five days of range bars. Six columns on a wall
+// tablet; on a narrower wall, as many as the figures have room for, never
+// fewer than three, so the figures keep their size and never touch. No chips: no hand
 // reaches. The row is the slide's ruler, and the card stays where it's left.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
@@ -23,6 +25,17 @@ import { dropView, openView } from './fc-view';
 import { cloudFloor } from './cloud-band';
 
 export const isWall = (root: HTMLElement): boolean => root.clientWidth >= 640 && root.clientHeight >= 540;
+
+/** A 40 px figure's glyph (tabular digits and the minus sign run about 0.6 em) and the room kept between two figures */
+export const WALL_FIGURE = { glyph: 24, gap: 18 };
+/**
+ * How many two-hour columns the wall's hours show across a width: six where they have room, and on a narrower wall
+ * as many as the widest figure among the next twelve hours ("−11", "102") has room for, never fewer than three
+ */
+export function wallCols(width: number, temps: Array<number | null>): number {
+    const glyphs = Math.max(2, ...temps.map(t => (t === null ? 0 : String(Math.round(t)).length)));
+    return Math.max(3, Math.min(6, Math.floor(width / (glyphs * WALL_FIGURE.glyph + WALL_FIGURE.gap))));
+}
 
 export function attachWall(host: ForecastHost): ForecastExtras {
     const el = host.element;
@@ -60,9 +73,10 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         const hoursBox = fw.querySelector('.fw-hours') as HTMLElement;
         if (m.hours.length) {
             const w = hoursBox.clientWidth || 429;
+            const cols = wallCols(w, m.hours.slice(0, 12).map(h => h.temp));
             hourly = createHourly({
                 hass, W, lang: m.lang, hours: m.hours, current: host.current(), metric: 'temp', has: m.has, noun: m.noun,
-                pitch: w / 12, plot: 84, valueHeight: 44, valueLift: 4, glyphSize: 30, every: 2, above: true, startDot: true,
+                pitch: w / (cols * 2), plot: 84, valueHeight: 44, valueLift: 4, glyphSize: 30, every: 2, above: true, startDot: true,
                 tints: iconTints(host, m, { y0: 0.72, y1: 0.95, glow: SKY_GLOW_WIDE, reach: 12 }), unit: m.unit, fahrenheit: m.fahrenheit,
                 conditionName: c => conditionNoun(c, hass, x => host.conditionName(x)),
             });

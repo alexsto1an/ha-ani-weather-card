@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import '../../src/animated-weather-card';
 import '../../src/animated-weather-card-forecast';
 import { attachSlide, SLIDE } from '../../src/fc-slide';
+import { wallCols } from '../../src/fc-wall';
 import { createChips, createHourly, hourCols } from '../../src/fc-row';
 import { TimeText } from '../../src/fc-clock';
 import { glyph, glyphKey, GLYPH_KEYS, litTints } from '../../src/fc-glyphs';
@@ -515,6 +516,23 @@ describe('the slide: it stays where it\'s left', () => {
         pointer('pointerup', 302, 160);
         vi.advanceTimersByTime(1000);
         expect(slide.away()).toBe(false);
+    });
+});
+
+describe('the wall', () => {
+    it('shows six two-hour columns where they have room, and on a narrower wall only as many as its figures can hold apart', () => {
+        expect(wallCols(882, [21, 22, 20])).toBe(6);
+        expect(wallCols(562, [-11, -2])).toBe(6);
+        // A 720 px wall: four columns of two-digit figures
+        expect(wallCols(322, [21, 22, 20])).toBe(4);
+        // Three glyphs ("-11", "102") need wider columns
+        expect(wallCols(402, [-2, -11])).toBe(4);
+        expect(wallCols(402, [101, 99])).toBe(4);
+        // Never fewer than three
+        expect(wallCols(252, [21])).toBe(3);
+        expect(wallCols(120, [-15])).toBe(3);
+        // An hour with no figure doesn't count
+        expect(wallCols(322, [null, 5])).toBe(4);
     });
 });
 
