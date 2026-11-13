@@ -33,7 +33,7 @@ describe('the editors\' text fields', () => {
         });
         expect(editor.querySelector('ha-textfield')).toBeNull();
         expect([...editor.querySelectorAll('ha-input')].map(field => field.id))
-            .toEqual(['name', 'wake_time', 'bed_time', 'note_attribute', 'note_max_age', 'sunrise_hour', 'sunset_hour']);
+            .toEqual(['name', 'wake_time', 'bed_time', 'night_lux', 'note_attribute', 'note_max_age', 'sunrise_hour', 'sunset_hour']);
         const attribute = editor.querySelector('#note_attribute')!;
         expect(attribute.getAttribute('value')).toBe('summary');
         expect(attribute.getAttribute('hint')).toBe('Shown where there\'s room for two lines');

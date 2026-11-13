@@ -8,8 +8,9 @@
 // dot. Night comes and goes over 8 s on the sky's curve.
 //
 // Night is auto by default: an illuminance sensor beside it (night_sensor)
-// says when the room is dark (under 5 lx for a minute, light again over
-// 15 lx for 10 s); without one, it's night from bed time to the alarm.
+// says when the room is dark (under night_lux, 5 by default, for a minute,
+// light again over three times it for 10 s); without one, it's night from
+// bed time to the alarm.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Lab, Timeline, clamp, cssOf, esc, isWet, labOf, wetKind, whole } from './fc-core';
@@ -125,6 +126,12 @@ function labKeyframes(a: string, b: string, steps = 12): Keyframe[] {
 }
 const toHex = (c: string) => { const m = c.match(/[\d.]+/g); if (!c.startsWith('rgb') || !m) return c; return '#' + m.slice(0, 3).map(v => Math.round(+v).toString(16).padStart(2, '0')).join(''); };
 
+/** Night below this many lux (night_lux): 5 unless set to a positive number */
+export const nightLux = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 5; };
+
+/** The weather beside the time keeps this much: the high and low with its bar (about 200 px), or the temperature at 76 px */
+const RIGHT_MIN = 212;
+
 export function attachNightstand(host: ForecastHost): ForecastExtras {
     const el = host.element;
     const root = el.querySelector('.animated-weather-card') as HTMLElement;
@@ -148,16 +155,11 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     const rightEl = ns.querySelector('.qn-right') as HTMLElement;
     const state = { night: false, anims: [] as Animation[], drift: -1, dark: null as boolean | null, darkSince: 0, oneFigure: 0 };
 
-    // ── Size: the time is one size all day, min(0.6 of the content height, the content width / 2.62) ──
-    function layout() {
-        const w = root.clientWidth, h = root.clientHeight;
-        if (!w || !h) return;
-        const narrow = w <= 600;
-        const padX = narrow ? 20 : 44, padY = narrow ? 20 : 30;
-        const cw = w - 2 * padX, ch = h - 2 * padY;
-        const size = narrow ? Math.min(0.34 * ch, cw / 2.9) : Math.min(0.6 * ch, cw / 2.62);
+    // ── Size: the time is one size all day: min(0.6 of the content height, the content width / 2.62), and small
+    // enough that the weather beside it keeps RIGHT_MIN, so nothing is cut at the card's edge ──
+    /** The time's widest at a size: as wide as the widest time it can show, so the weather never shifts at the minute */
+    function measure(size: number) {
         ns.style.setProperty('--qn-size', `${size.toFixed(1)}px`);
-        // The column is as wide as the widest time it can show, so the weather line never shifts at the minute
         const h12 = !!timeParts(new Date(), host.hass()).period;
         const probe = document.createElement('span');
         probe.className = 'qn-time';
@@ -171,12 +173,37 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const maxOf = (set: string) => Math.max(...[...set].map(c => adv[c] ?? 0));
         const tail = (adv[':'] ?? 0) + maxOf('012345') + maxOf('0123456789');
         const widest = h12 ? (adv['1'] ?? 0) + maxOf('0123456789') + tail + ap : maxOf('012') + maxOf('0123456789') + tail;
-        state.oneFigure = widest - (maxOf('0123456789') + tail + ap);
-        const col = widest - 0.055 * size;
-        ns.style.setProperty('--qn-period', `${ap.toFixed(1)}px`);
-        const gutter = Math.max(40, 0.36 * size);
+        return { widest, ap, oneFigure: widest - (maxOf('0123456789') + tail + ap) };
+    }
+    function layout() {
+        const w = root.clientWidth, h = root.clientHeight;
+        if (!w || !h) return;
+        const narrow = w <= 600;
+        const padX = narrow ? 20 : 44, padY = narrow ? 20 : 30;
+        const cw = w - 2 * padX, ch = h - 2 * padY;
+        const gutterOf = (size: number) => Math.max(40, 0.36 * size);
+        let size = narrow ? Math.min(0.34 * ch, cw / 2.9) : Math.min(0.6 * ch, cw / 2.62);
+        let m = measure(size);
+        if (!narrow) {
+            // The time's width grows with its size, the period's label (a fixed 22 px) aside: solve for the size that leaves the weather its room
+            const fixed = m.ap ? m.ap - 0.12 * size : 0;
+            const per = (m.widest - fixed) / size - 0.055;
+            const room = (s: number) => cw - (per * s + fixed + gutterOf(s));
+            if (room(size) < RIGHT_MIN) {
+                let fit = (cw - fixed - RIGHT_MIN) / (per + 0.36);
+                if (0.36 * fit < 40) fit = (cw - fixed - RIGHT_MIN - 40) / per;
+                size = Math.max(24, fit);
+                m = measure(size);
+            }
+        }
+        state.oneFigure = m.oneFigure;
+        const col = m.widest - 0.055 * size;
+        ns.style.setProperty('--qn-period', `${m.ap.toFixed(1)}px`);
+        const gutter = gutterOf(size);
         ns.style.setProperty('--qn-right-left', `${(padX + col + gutter).toFixed(1)}px`);
         ns.style.setProperty('--qn-gutter', `${gutter.toFixed(1)}px`);
+        // The lines past the first two step out where they don't fit, measured at this width
+        for (const z of rightEl.querySelectorAll<HTMLElement>(':scope > .qn-zone')) place(z);
     }
 
     function weather() {
@@ -223,7 +250,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     function place(zone: HTMLElement) {
         if (root.clientWidth <= 600) { zone.style.bottom = ''; return; }
         const lines = [...zone.children] as HTMLElement[];
-        for (const l of lines.slice(2)) l.style.display = l.scrollWidth > zone.clientWidth + 0.5 ? 'none' : '';
+        for (const l of lines.slice(2)) { l.style.display = ''; if (l.scrollWidth > zone.clientWidth + 0.5) l.style.display = 'none'; }
     }
     function render(animate = false, zone?: typeof ZONE.day) {
         const now = new Date();
@@ -292,8 +319,9 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
         const wakeAt = alarm ?? nextAt(now, parseHm(cfg().wake_time, 7 * 60));
         const sensor = cfg().night_sensor ? Number(hass?.states[cfg().night_sensor!]?.state) : NaN;
         if (isFinite(sensor)) {
-            // Dark under 5 lx held for 60 s, light over 15 lx held for 10 s: a phone screen or a passing car doesn't flip it
-            const dark = sensor < 5 ? true : sensor > 15 ? false : state.dark;
+            // Dark under night_lux held for 60 s, light over three times it held for 10 s: a phone screen or a passing car doesn't flip it
+            const below = nightLux(cfg().night_lux);
+            const dark = sensor < below ? true : sensor > 3 * below ? false : state.dark;
             if (dark !== state.dark) { state.dark = dark; state.darkSince = Date.now(); }
             const held = Date.now() - state.darkSince;
             if (state.dark === true && held >= 60_000) return true;
@@ -310,7 +338,7 @@ export function attachNightstand(host: ForecastHost): ForecastExtras {
     render(false);
     const ticker = minuteTicker(() => { const n = wantNight(new Date()); if (n !== state.night) setNight(n); render(true); });
     let roRaf = 0;
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { cancelAnimationFrame(roRaf); roRaf = requestAnimationFrame(() => { layout(); for (const z of rightEl.querySelectorAll<HTMLElement>(':scope > .qn-zone')) place(z); }); }) : null;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { cancelAnimationFrame(roRaf); roRaf = requestAnimationFrame(layout); }) : null;
     ro?.observe(root);
     let sensorTimer = 0;
 

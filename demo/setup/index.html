@@ -268,6 +268,7 @@ layout: nightstand
 # Optional
 alarm_entity: sensor.phone_next_alarm      # the Companion app's next alarm
 night_sensor: sensor.bedroom_illuminance   # night when the room is dark
+night_lux: 5                               # how dark, in lux: raise it if night never comes
 wake_time: "07:00"                         # without an alarm</code></pre>
                     </div>
                     <p>The alarm can be any timestamp sensor: the Android Companion app's next alarm sensor, or an input_datetime that an iOS Shortcut sets. It counts when it's within 18 hours.</p>

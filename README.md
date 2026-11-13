@@ -659,7 +659,8 @@ sunset_hour: 19
 | `wake_time` | `"07:00"` | Nightstand: when you get up without an alarm |
 | `bed_time` | 8 h 30 min before waking | Nightstand: when night begins without a light sensor. By default, 8 hours 30 minutes before the alarm, or before `wake_time` without one |
 | `night` | `auto` | Nightstand: `auto` (from `night_sensor`, else from bed time to the alarm or wake time), `on` or `off` |
-| `night_sensor` | — | Nightstand: an illuminance sensor beside it. Night under 5 lx held for a minute, day again over 15 lx held for 10 seconds |
+| `night_sensor` | — | Nightstand: an illuminance sensor beside it. Night under `night_lux` held for a minute, day again over three times it held for 10 seconds |
+| `night_lux` | `5` | Nightstand: how dark the room has to be, in lux, for night. A room where the screen or a street light keeps the sensor above 5 lx at night needs a higher value, such as `30` |
 
 **Interactions**
 

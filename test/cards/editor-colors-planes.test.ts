@@ -34,6 +34,18 @@ describe('the editor\'s colours and planes', () => {
         expect(config).toMatchObject({ custom_colors: { temperature_color: '#ffffff' } });
     });
 
+    it('sets how dark the nightstand\'s room has to be, writing nothing when it\'s cleared', async () => {
+        await open({ layout: 'nightstand', night_sensor: 'sensor.lux' });
+        const field = editor.querySelector('#night_lux') as HTMLInputElement;
+        expect(field.getAttribute('placeholder')).toBe('5');
+        field.value = '30';
+        field.dispatchEvent(new Event('input'));
+        expect(config).toMatchObject({ night_lux: 30 });
+        field.value = '';
+        field.dispatchEvent(new Event('input'));
+        expect(config).not.toHaveProperty('night_lux');
+    });
+
     it('turns planes_on_load on and off, writing nothing when off (#19)', async () => {
         await open({ flights_entity: 'sensor.fr24' });
         const toggle = editor.querySelector('#planes_on_load') as HTMLInputElement;

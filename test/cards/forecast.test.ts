@@ -249,6 +249,69 @@ describe('the forecast on the weather card', () => {
         expect((own.querySelector('.weather-info') as HTMLElement).getAttribute('role')).toBe('button');
     });
 
+    it('the nightstand leaves the weather beside the time its room, so nothing is cut at the card\'s edge', async () => {
+        // jsdom has no fonts: a figure 0.6 of the size, the colon 0.3, AM/PM 30 px; the frame of a sections card 880 × 502
+        const rect = Element.prototype.getBoundingClientRect;
+        const size = (el: Element) => parseFloat((el.closest('.qn') as HTMLElement | null)?.style.getPropertyValue('--qn-size') || '0');
+        const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+            const width = this.localName === 'i' && this.closest('.qn-time') ? (this.textContent === ':' ? 0.3 : 0.6) * size(this)
+                : this.classList.contains('awc-ampm') ? 30 : 0;
+            return width ? { x: 0, y: 0, top: 0, left: 0, bottom: 0, right: width, height: 0, width, toJSON() { return this; } } as DOMRect : rect.call(this);
+        });
+        const box = (w: number, h: number) => {
+            const proto = HTMLElement.prototype;
+            const cw = Object.getOwnPropertyDescriptor(proto, 'clientWidth'), ch = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
+            Object.defineProperty(proto, 'clientWidth', { configurable: true, get() { return this.classList?.contains('animated-weather-card') ? w : 0; } });
+            Object.defineProperty(proto, 'clientHeight', { configurable: true, get() { return this.classList?.contains('animated-weather-card') ? h : 0; } });
+            // jsdom keeps them on Element: put back what was there, or nothing
+            return () => {
+                if (cw) Object.defineProperty(proto, 'clientWidth', cw); else delete (proto as { clientWidth?: number }).clientWidth;
+                if (ch) Object.defineProperty(proto, 'clientHeight', ch); else delete (proto as { clientHeight?: number }).clientHeight;
+            };
+        };
+        for (const [w, h, timeFormat] of [[880, 502, '12'], [880, 502, '24'], [658, 374, '12'], [1278, 758, '24']] as const) {
+            const restore = box(w, h);
+            const card = mount({ layout: 'nightstand', night: 'off' }, makeHass(3, { locale: { language: 'en', time_format: timeFormat } }));
+            await settle();
+            const ns = card.querySelector('.qn') as HTMLElement;
+            const left = parseFloat(ns.style.getPropertyValue('--qn-right-left'));
+            // The weather's column: from its left to the right padding
+            expect(w - 44 - left, `${w} × ${h}, ${timeFormat} h`).toBeGreaterThanOrEqual(211);
+            // The time still as large as the height allows where there's room, never past 0.6 of it
+            expect(parseFloat(ns.style.getPropertyValue('--qn-size'))).toBeLessThanOrEqual(0.6 * (h - 60) + 0.1);
+            card.remove();
+            restore();
+        }
+        spy.mockRestore();
+    });
+
+    it('the nightstand\'s light sensor makes it night below night_lux (5 lx unless set) held for a minute, and day at three times it', async () => {
+        vi.useFakeTimers({ now: today(13), toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+        const lux = (v: number) => makeHass(3, { states: { ...makeHass().states, 'sensor.lux': { entity_id: 'sensor.lux', state: String(v), attributes: { unit_of_measurement: 'lx' } } } });
+        const night = (c: Card) => c.hasAttribute('data-qn-night');
+        // 27 lx: still light by default
+        const plain = mount({ layout: 'nightstand', night_sensor: 'sensor.lux' }, lux(27));
+        await vi.advanceTimersByTimeAsync(100);
+        plain.hass = lux(27);
+        await vi.advanceTimersByTimeAsync(75_000);
+        expect(night(plain)).toBe(false);
+        // Tuned to 30: 27 lx is night once it's held for a minute, not before
+        const tuned = mount({ layout: 'nightstand', night_sensor: 'sensor.lux', night_lux: 30 }, lux(27));
+        await vi.advanceTimersByTimeAsync(100);
+        tuned.hass = lux(27);
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(night(tuned)).toBe(false);
+        await vi.advanceTimersByTimeAsync(45_000);
+        expect(night(tuned)).toBe(true);
+        // A lamp at 60 lx is under three times it: still night; at 95 lx, held for 10 s, day again
+        tuned.hass = lux(60);
+        await vi.advanceTimersByTimeAsync(25_000);
+        expect(night(tuned)).toBe(true);
+        tuned.hass = lux(95);
+        await vi.advanceTimersByTimeAsync(25_000);
+        expect(night(tuned)).toBe(false);
+    });
+
     it('a chip or the Now control inside the card is its own tap, never the card\'s', async () => {
         const card = mount({ show_forecast: true });
         await settle();

@@ -357,6 +357,9 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <div class="option nightstand-only">
               <ha-entity-picker id="night_sensor" label="Light sensor" value="${escapeHtml(this._config.night_sensor || '')}" helper="An illuminance sensor beside it: night when the room is dark" allow-custom-entity></ha-entity-picker>
             </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'night_lux', label: 'Dark below (lx)', type: 'number', min: 1, placeholder: '5', value: this._config.night_lux !== undefined ? String(this._config.night_lux) : '', hint: 'Night when the light sensor reads less for a minute; day again at three times it' })}
+            </div>
           </div>
         </div>
 
@@ -720,6 +723,10 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         });
         this.querySelector('#night_sensor')?.addEventListener('value-changed', (e) => {
             this._updateConfig('night_sensor', (e.target as HTMLInputElement).value || undefined);
+        });
+        this.querySelector('#night_lux')?.addEventListener('input', (e) => {
+            const v = Number(((e.target as HTMLInputElement).value || '').trim());
+            this._updateConfig('night_lux', Number.isFinite(v) && v > 0 ? v : undefined);
         });
         for (const id of ['wake_time', 'bed_time'] as const) {
             this.querySelector(`#${id}`)?.addEventListener('input', (e) => {
