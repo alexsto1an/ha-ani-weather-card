@@ -179,11 +179,22 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         else { key = keyOf(); rebuild(); }
     });
     // Another card's needle on the same weather: an hourly row follows it (the slide does, and its needle takes the days);
-    // without one, the days follow it, unless this card shows a day of its own
+    // without one, the days and the sky follow it, the sky's colour only, never its weather, unless this card shows a day
+    // of its own
+    const SKY_KEYS = ['top', 'mid', 'bottom', 'glow', 'scrim'];
+    let skyLed = false;
+    function followSky(s: Record<string, string> | null) {
+        const sky = el.querySelector('.animated-weather-card .sky') as HTMLElement | null;
+        if (!sky) return;
+        if (s) { for (const k of SKY_KEYS) if (s[k]) sky.style.setProperty(`--awc-sky-${k}`, s[k]); skyLed = true; }
+        // The card it followed came home on its own spring, so its last sky is this card's: they meet without a jump
+        else if (skyLed) { for (const k of SKY_KEYS) sky.style.removeProperty(`--awc-sky-${k}`); skyLed = false; }
+    }
     const unlink = onHour(l => {
-        if (l.source === el || l.entity !== cfg().entity || !daily || (slide && model?.tl?.unit === 'hour')) return;
-        if (l.at === null || slide?.active()) daily.follow(null);
-        else daily.follow({ at: l.at, temperature: l.temperature });
+        if (l.source === el || l.entity !== cfg().entity || (slide && model?.tl?.unit === 'hour')) return;
+        if (l.at === null || slide?.active()) { daily?.follow(null); followSky(null); return; }
+        daily?.follow({ at: l.at, temperature: l.temperature });
+        followSky(cfg().color_palette === 'theme' ? null : l.sky);
     });
     let roRaf = 0, lastWide = wide();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {

@@ -131,8 +131,3 @@ export function glyph(condition: string | undefined, isDay: boolean, size: numbe
     return `<svg class="${cls}" data-g="${key}" viewBox="0 0 25 25" width="${size}" height="${size}" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
-/** The tint a glyph's main mark takes: what a repeat is compared on */
-export function glyphSignature(condition: string | undefined, isDay: boolean, tints: Tints | null): string {
-    const key = glyphKey(condition, isDay);
-    return `${key}|${tints ? (key === 'sunny' ? tints.sun : key === 'clear-night' ? tints.moon : tints[OVERCAST.has(key) ? 'grey' : 'cloud']) : ''}`;
-}

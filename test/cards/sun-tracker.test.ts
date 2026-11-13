@@ -260,12 +260,21 @@ describe('sun tracker card', () => {
         tracker.remove();
     });
 
-    it('takes the needle\'s sky only from its own weather', () => {
-        const tracker = mount();
+    it('takes the needle\'s sky from its own weather, or from any card on its sun when it has none, never another weather\'s', () => {
+        const sky = { top: '#101820', mid: '#203040', bottom: '#304050', glow: '#000000', scrim: '#000000' };
+        // No weather of its own: the dragged card's sky, colour only
+        const plain = mount();
+        plain.hass = sunHass(30);
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky });
+        expect(card(plain).classList.contains('following')).toBe(true);
+        expect(card(plain).style.getPropertyValue('--awc-sky-top')).toBe('#101820');
+        plain.remove();
+        // Another weather's needle moves its sun, not its sky
+        const tracker = mount({ weather_entity: 'weather.elsewhere' });
         tracker.hass = sunHass(30);
         const st = card(tracker);
         const own = st.style.getPropertyValue('--awc-sky-top');
-        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky: { top: '#101820', mid: '#203040', bottom: '#304050', glow: '#000000', scrim: '#000000' } });
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky });
         expect(st.classList.contains('following')).toBe(true);
         expect(st.style.getPropertyValue('--awc-sky-top')).toBe(own);
         tracker.remove();

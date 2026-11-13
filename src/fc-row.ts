@@ -13,7 +13,7 @@ import { CURVE, HOUR, clamp, css, ease, esc, num, reducedMotion, spring, whole }
 import { dayKey } from './localize';
 import { HourRow, METRICS, Metric, Week, dayName } from './fc-data';
 import { FcWords, fill } from './fc-words';
-import { Tints, glyph, glyphSignature } from './fc-glyphs';
+import { Tints, glyph } from './fc-glyphs';
 import type { HomeAssistant } from './types';
 
 export const ROW_MOTION = {
@@ -212,19 +212,13 @@ export function createHourly(o: HourlyOptions): Hourly {
         return `<path d="M${x0.toFixed(2)} ${base + 1}V${(y0 + r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${-r}h${(bw - 2 * r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${r}V${base + 1}Z"/>`;
     }).join('');
 
-    /** The icons: each in its hour's light; one that repeats its neighbour's mark and light is drawn quieter */
+    /** The icons: each in its hour's light, all at full strength */
     function retint() {
         if (!gl) return;
         const slots = [...el.querySelectorAll<HTMLElement>('.fc-g')];
-        let prev = '';
         hrs.forEach((h, i) => {
-            const t = o.tints?.(i) ?? null;
-            const sig = glyphSignature(h.condition, h.isDay, t);
             const g = slots[i];
-            if (!shown(i)) { g.innerHTML = ''; return; }
-            g.innerHTML = glyph(h.condition, h.isDay, o.glyphSize ?? 22, t);
-            g.classList.toggle('fc-rep', i > 0 && every === 1 && sig === prev);
-            prev = sig;
+            g.innerHTML = shown(i) ? glyph(h.condition, h.isDay, o.glyphSize ?? 22, o.tints?.(i) ?? null) : '';
         });
     }
     retint();

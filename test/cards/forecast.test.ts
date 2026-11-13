@@ -596,15 +596,14 @@ describe('the chips', () => {
 });
 
 describe('the hourly row', () => {
-    it('every hour an icon; one that repeats its neighbour\'s mark and light is quieter', () => {
+    it('every hour an icon, each at full strength, a repeat as much as a change', () => {
         const entries = forecast();
         const rows = hours(new Timeline(entries, 'hourly', Date.now()).slots, makeHass() as never);
         const day = litTints(40, false, 0.1);
         const row = createHourly({ W: FC_WORDS.en, lang: 'en', hours: rows, metric: 'temp', has: { temp: true, feels: true, chance: true, amount: true }, noun: 'rain', pitch: 52, tints: () => day, conditionName: c => c });
         const g = [...row.el.querySelectorAll('.fc-g')];
         expect(g.every(e => e.querySelector('svg'))).toBe(true);
-        expect(g[2].classList.contains('fc-rep')).toBe(true);
-        expect(g[1].classList.contains('fc-rep')).toBe(false);
+        expect(g.some(e => e.classList.contains('fc-rep'))).toBe(false);
         expect(row.el.querySelector('.fc-sr li')?.textContent).toMatch(/^Now: /);
     });
 });
@@ -723,6 +722,31 @@ describe('one needle across the page', () => {
         expect(rows.some(r => r.hasAttribute('data-fc-at'))).toBe(false);
         expect(rows[0].querySelector('.fc-dot')).not.toBeNull();
         expect(heard.filter(l => l.source === fc)).toHaveLength(0);
+    });
+
+    it('a forecast card without hours takes the needle\'s sky with its days, colour only, and lets it go with the card it follows', async () => {
+        const fc = mount({ show_hours: false }, makeHass(), 'animated-forecast-card');
+        await settle();
+        const sky = fc.querySelector('.animated-weather-card .sky') as HTMLElement;
+        const other = document.createElement('div');
+        const at = Date.now() + 20 * HOUR;
+        const colours = { top: '#101820', mid: '#203040', bottom: '#304050', glow: 'rgba(0, 0, 0, 0)', scrim: 'rgba(0, 0, 0, 0.2)' };
+        // Another weather's needle is not this card's
+        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at, temperature: 12, sky: colours });
+        expect(sky.style.getPropertyValue('--awc-sky-top')).toBe('');
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 12, sky: colours });
+        expect(sky.style.getPropertyValue('--awc-sky-top')).toBe('#101820');
+        expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(true);
+        // No weather of its own comes with it
+        expect(fc.querySelector('.animated-weather-card')?.classList.contains('awc-pulling')).toBe(false);
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        expect(sky.style.getPropertyValue('--awc-sky-top')).toBe('');
+        expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(false);
+        // On the theme palette there's no sky to take
+        const themed = mount({ show_hours: false, color_palette: 'theme' }, makeHass(), 'animated-forecast-card');
+        await settle();
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 12, sky: colours });
+        expect((themed.querySelector('.animated-weather-card .sky') as HTMLElement).style.getPropertyValue('--awc-sky-top')).toBe('');
     });
 
     it('dragging the forecast card takes the weather card along; its days follow its own needle; a hand on either leads', async () => {

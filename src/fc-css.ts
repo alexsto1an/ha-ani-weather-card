@@ -28,8 +28,6 @@ const PARTS = `
 .fc-col.fc-mid::before { content: ''; position: absolute; left: 0; top: 0; width: 1px; height: var(--fc-mid-h, 100px); background: currentColor; opacity: 0.2; }
 .fc-g { display: block; line-height: 0; }
 .fc-glyph { display: block; overflow: visible; }
-/* An hour whose mark and light repeat its neighbour's is quieter, so a settled day isn't six equal marks */
-.fc-g.fc-rep { opacity: 0.6; }
 .fc-plot { display: block; overflow: visible; margin-top: var(--fc-plot-gap, 4px); }
 .fc-line { fill: none; stroke: currentColor; stroke-width: var(--fc-stroke, 2px); stroke-linecap: round; stroke-linejoin: round; }
 .fc-start { fill: currentColor; }
