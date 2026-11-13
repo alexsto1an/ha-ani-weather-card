@@ -1,4 +1,4 @@
-// The forecast's own words, in the nine languages the card speaks, and the
+// The forecast's own words, in the ten languages the card speaks, and the
 // one grammar every surface uses to say what turns: "Rain from 17:00 to
 // 19:00", "Rain until 19:00", "Dry all day". They're in the forecast bundle
 // with the drawings that use them, so the main bundle, loaded on every

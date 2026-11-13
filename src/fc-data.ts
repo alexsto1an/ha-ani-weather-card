@@ -221,7 +221,7 @@ export function turningLine(tl: Timeline | null, hass?: LocaleSource, { bare = f
 
 /** The condition's noun ("Rain", "Clear"), else Home Assistant's own name for it */
 export function conditionNoun(condition: string, hass: LocaleSource | undefined, fallback: (c: string) => string): string {
-    // Outside the nine languages, Home Assistant's translated name beats an English noun
+    // Outside the card's languages, Home Assistant's translated name beats an English noun
     if (!hasFcWords(hass)) return fallback(condition);
     const W = fcWords(hass) as unknown as Record<string, string>;
     return Object.prototype.hasOwnProperty.call(W, condition) && typeof W[condition] === 'string' ? W[condition] : fallback(condition);

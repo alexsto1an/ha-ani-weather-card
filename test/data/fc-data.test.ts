@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Timeline, sunModel, phaseWeights, classOf, isWet, wetNoun, num, whole } from '../../src/fc-core';
 import { turningLine, timeParts, timeText, highLow, week, hours, available, relative, dateText, conditionNoun } from '../../src/fc-data';
-import { FC_WORDS, fill } from '../../src/fc-words';
+import { FC_WORDS, fill, fcWords } from '../../src/fc-words';
 import { nextAlarm, alertBefore, nightMode, parseHm } from '../../src/fc-night';
 import type { ForecastEntry } from '../../src/forecast-data';
 import type { HomeAssistant } from '../../src/types';
@@ -190,9 +190,16 @@ describe('the forecast\'s words', () => {
             }
         }
     });
-    it('outside the nine languages, the condition is Home Assistant\'s own name', () => {
+    it('outside the card\'s languages, the condition is Home Assistant\'s own name', () => {
         expect(conditionNoun('rainy', hass('de'), () => 'HA')).toBe('Regen');
         expect(conditionNoun('rainy', hass('ja'), () => '雨')).toBe('雨');
+    });
+    it('speaks Norwegian in Bokmål, which Nynorsk and plain no share', () => {
+        for (const language of ['nb', 'nn', 'no', 'nb-NO']) {
+            expect(fcWords(hass(language)), language).toBe(FC_WORDS.nb);
+            expect(conditionNoun('rainy', hass(language), () => 'HA'), language).toBe('Regn');
+        }
+        expect(fill(FC_WORDS.nb.from_to, { k: FC_WORDS.nb.rain, a: '17:00', b: '19:00' })).toBe('Regn fra\u00a017:00 til\u00a019:00');
     });
     it('binds a time to the word before it', () => {
         expect(fill('{k} from {a}', { k: 'Rain', a: '17:00' })).toBe('Rain from 17:00');
