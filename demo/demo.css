@@ -987,15 +987,21 @@ a { color: inherit; }
 .ahead-box { width: 100%; }
 .ahead-box > * { display: block; height: 100%; }
 .ahead-caption,
-.ahead-slot .snippet-slot { position: relative; z-index: 1; }
+.ahead-slot .snippet-slot,
+.ahead-hero { position: relative; z-index: 1; }
+/* The big value, temperature or time, under the first card: its label and its two choices on one line */
+.ahead-hero { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.ahead-hero-label { font-size: 14px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+.ahead-hero .segmented { flex: 0 1 220px; }
 .ahead-caption { justify-self: start; width: auto; max-width: 100%; transform: none; text-wrap: pretty; }
 .ahead-slot .snippet-slot { width: 100%; }
 .ahead-slot:has(.snippet-slot[data-open]) .code-toggle-icon svg { transform: rotate(180deg); }
 .ahead-slot .stage-light { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s, transform 0.52s var(--ease-out-quint); }
 .ahead-slot .stage-light.is-placing { transition: opacity 1.6s var(--ease-in-out-sine) 0.2s; }
 .ahead-caption,
-.ahead-slot .snippet-slot { transition: opacity 0.6s var(--ease-out-quart) 0.35s; }
-.js .ahead-stage:not(.is-shown) :is(.stage-light, .ahead-caption, .snippet-slot) { opacity: 0; }
+.ahead-slot .snippet-slot,
+.ahead-hero { transition: opacity 0.6s var(--ease-out-quart) 0.35s; }
+.js .ahead-stage:not(.is-shown) :is(.stage-light, .ahead-caption, .snippet-slot, .ahead-hero) { opacity: 0; }
 
 /* ── The sun tracker: its sizes, and the day under your finger ──────── */
 .tracker {
@@ -1780,7 +1786,7 @@ a { color: inherit; }
     .glyph, .plane-button, .button-primary, .copy, .chip, .swatch, .slider-thumb { transform: none !important; }
     .lab-stage.is-shown .stage-light,
     .ahead-slot .stage-light { transition: opacity 0.2s ease !important; }
-    .ahead-caption, .ahead-slot .snippet-slot { transition-duration: 0.2s; transition-delay: 0s; }
+    .ahead-caption, .ahead-slot .snippet-slot, .ahead-hero { transition-duration: 0.2s; transition-delay: 0s; }
     .reading-dot, .reading-value { transition-delay: 0ms !important; }
     .weather-live.is-finding .glyph svg { animation: none; opacity: 0.6; }
     .stage.is-ready .stage-light { transition: opacity 0.2s ease !important; }

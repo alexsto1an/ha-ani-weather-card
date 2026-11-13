@@ -171,6 +171,14 @@
                 <figure class="ahead-slot room" id="ahead-hours" data-slot="hours" data-dashboard="dark">
                     <div class="stage-light" aria-hidden="true"></div>
                     <div class="ahead-scenes"></div>
+                    <div class="ahead-hero" id="ahead-hero" role="radiogroup" aria-labelledby="ahead-hero-label">
+                        <span class="ahead-hero-label" id="ahead-hero-label">Big value</span>
+                        <div class="segmented" style="--count: 2; --index: 0">
+                            <span class="segmented-thumb" aria-hidden="true"></span>
+                            <label><input type="radio" name="ahead-hero" value="temperature" checked><span>Temperature</span></label>
+                            <label><input type="radio" name="ahead-hero" value="clock"><span>Time</span></label>
+                        </div>
+                    </div>
                     <figcaption class="frame-caption ahead-caption"><span class="caption-text">Drag it through the hours. It stays where you leave it, and Now brings it home.</span> <button type="button" class="code-toggle" aria-expanded="false" aria-controls="ahead-hours-code"><span class="code-toggle-label">View code</span><span class="code-toggle-icon" aria-hidden="true"></span></button></figcaption>
                     <div class="snippet-slot" id="ahead-hours-code">
                         <div class="code-fold">

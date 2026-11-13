@@ -925,11 +925,15 @@ export const rowsHeight = (rows) => rows * HA.rowHeight + (rows - 1) * HA.gridGa
 export const AHEAD_ROWS = { hours: 8, card: 7, compact: 2, strip: 2 };
 
 /** Each of the forecast section's cards as YAML, with the theme's line when the page follows the theme. */
-export function aheadYaml(slot, { colors = 'sky' } = {}) {
+export function aheadYaml(slot, { colors = 'sky', hero = false } = {}) {
     const theme = colors === 'theme' ? ['color_palette: theme  # follows your Home Assistant theme'] : [];
     const base = ['entity: weather.forecast_home', 'sun_entity: sun.sun'];
+    // The time as the big value needs no small clock; the date then leads the place's line
+    const clock = hero
+        ? ['# The time as the big value, the temperature before the condition', 'hero: clock', '# The date, before the place\'s name', 'show_date: true']
+        : ['# The time and the date, before the place\'s name', 'show_clock: true', 'show_date: true'];
     const card = {
-        hours: ['type: custom:animated-weather-card', ...base, '# The high and low, the rain\'s times, and the hours', 'show_forecast: true', '# The time, before the place\'s name', 'show_clock: true', ...theme],
+        hours: ['type: custom:animated-weather-card', ...base, '# The high and low, the rain\'s times, and the hours', 'show_forecast: true', ...clock, ...theme],
         card: ['type: custom:animated-forecast-card', ...base, ...theme],
     }[slot];
     if (card) return card.join('\n') + '\n';

@@ -622,6 +622,13 @@ describe('the demo\'s sample world', () => {
         expect(hours.split('\n')[0]).toBe('type: custom:animated-weather-card');
         expect(hours).toContain('show_forecast: true');
         expect(hours).toContain('show_clock: true');
+        expect(hours).toContain('show_date: true');
+        expect(hours).not.toContain('hero:');
+        // Big value set to the time: the hero, the date, and no small clock it would leave unused
+        const big = aheadYaml('hours', { hero: true });
+        expect(big).toContain('hero: clock');
+        expect(big).toContain('show_date: true');
+        expect(big).not.toContain('show_clock');
         expect(aheadYaml('card').split('\n')[0]).toBe('type: custom:animated-forecast-card');
         const strip = aheadYaml('strip');
         expect(strip.split('\n').slice(0, 2)).toEqual(['type: vertical-stack', 'cards:']);
@@ -629,8 +636,8 @@ describe('the demo\'s sample world', () => {
         expect(strip).toContain('  - type: custom:animated-forecast-card');
         expect(strip.match(/compact: true/g)).toHaveLength(2);
         for (const slot of ['hours', 'card', 'strip']) {
-            for (const colors of ['sky', 'theme']) {
-                const yaml = aheadYaml(slot, { colors });
+            for (const [colors, hero] of [['sky', false], ['theme', false], ['sky', true], ['theme', true]] as const) {
+                const yaml = aheadYaml(slot, { colors, hero });
                 expect(yaml.includes('color_palette: theme'), `${slot} ${colors}`).toBe(colors === 'theme');
                 for (const [, key] of yaml.matchAll(/^\s*(?:- )?([a-z_]+):/gm)) {
                     if (key === 'type' || key === 'cards') continue;

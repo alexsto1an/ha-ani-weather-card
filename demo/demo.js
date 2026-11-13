@@ -1359,8 +1359,10 @@ const dash = (() => {
 // ── The hours ahead: the forecast and the clock ────────────────────────
 // Three cards at the size a phone's sections view gives them (AHEAD_ROWS),
 // on the hero's weather and clock, each with its YAML: the weather card
-// with the forecast and the clock, the forecast card, and the compact card
-// over the forecast's strip. They're set up afresh when the palette
+// with the forecast, the clock and the date, the forecast card, and the
+// compact card over the forecast's strip. Under the weather card, Big
+// value makes the time its hero (hero: clock): only that card is set up
+// again, and its YAML follows. They're set up afresh when the palette
 // changes or your weather arrives or leaves: the new cards mount hidden,
 // wait until each has drawn its sky and its forecast (the forecast's
 // bundle loads with the first of them), then dissolve over the old ones.
@@ -1377,6 +1379,7 @@ const ahead = (() => {
     });
     const view = { near: false, visible: false, revealed: false, stale: true, job: null };
     const lit = (scene) => scene.el.querySelector('.cards');
+    let hero = false;
 
     /**
      * One slot's cards, set up as its YAML says, each in a box as tall as
@@ -1396,12 +1399,12 @@ const ahead = (() => {
             box.style.height = `${rowsHeight(rows)}px`;
             const card = document.createElement(tag);
             card.setConfig({ type: `custom:${tag}`, entity: ENTITIES.weather, sun_entity: ENTITIES.sun, color_palette: palette, ...options });
-            if (tag === 'animated-forecast-card' || options.show_forecast || options.show_clock) drawn.push(card);
+            if (tag === 'animated-forecast-card' || options.show_forecast || options.show_clock || options.hero) drawn.push(card);
             box.append(card);
             el.firstElementChild.append(box);
             return card;
         };
-        const cards = slot.id === 'hours' ? [make('animated-weather-card', AHEAD_ROWS.hours, { show_forecast: true, show_clock: true })]
+        const cards = slot.id === 'hours' ? [make('animated-weather-card', AHEAD_ROWS.hours, { show_forecast: true, show_clock: true, show_date: true, ...(hero ? { hero: 'clock' } : {}) })]
             : slot.id === 'card' ? [make('animated-forecast-card', AHEAD_ROWS.card)]
                 : [make('animated-weather-card', AHEAD_ROWS.compact, { compact: true }), make('animated-forecast-card', AHEAD_ROWS.strip, { compact: true })];
         return { el, cards, drawn, weather: cards[0] };
@@ -1411,7 +1414,7 @@ const ahead = (() => {
 
     function renderYaml() {
         for (const slot of slots) {
-            slot.text = aheadYaml(slot.id, { colors: state.colors === 'sky' ? 'sky' : 'theme' });
+            slot.text = aheadYaml(slot.id, { colors: state.colors === 'sky' ? 'sky' : 'theme', hero });
             slot.render(slot.text);
         }
     }
@@ -1419,19 +1422,25 @@ const ahead = (() => {
         for (const slot of slots) if (slot.current) lightCard(slot.light, lit(slot.current), slot.el, instant);
     };
 
-    /** Set the cards up again. Far from view it only notes that they're out of date. */
-    function mount() {
+    /**
+     * Set the cards up again, or only the slots named (Big value sets up the
+     * weather card alone). Far from view it only notes that they're out of
+     * date; while a setup is on its way, or before the first, all of them.
+     */
+    function mount(only = null) {
         if (!view.near) {
             view.stale = true;
             return;
         }
         view.stale = false;
+        const all = !only || !!view.job || slots.some(slot => !slot.current);
         if (view.job) {
             view.job.cancelled = true;
             for (const scene of view.job.scenes) scene.el.remove();
         }
         const data = hass();
-        const scenes = slots.map((slot) => {
+        const targets = all ? slots : slots.filter(slot => only.includes(slot.id));
+        const scenes = targets.map((slot) => {
             const scene = build(slot);
             scene.el.style.opacity = '0';
             scene.el.inert = true;
@@ -1444,11 +1453,11 @@ const ahead = (() => {
         // The first setup fetches the forecast's bundle: give it time
         Promise.all(scenes.map(scene => whenReady(scene, () => job.cancelled, 4000, forecastDrawn))).then(() => {
             view.job = null;
-            show(scenes);
+            show(targets, scenes);
         });
     }
-    function show(scenes) {
-        slots.forEach((slot, i) => {
+    function show(targets, scenes) {
+        targets.forEach((slot, i) => {
             const scene = scenes[i];
             const old = slot.current;
             slot.current = scene;
@@ -1516,6 +1525,15 @@ const ahead = (() => {
             storm: () => !!slot.current && state.conditionId === 'lightning-rainy',
         });
     }
+    // Big value: the temperature or the time as the weather card's hero
+    const heroEl = section.querySelector('#ahead-hero');
+    heroEl.addEventListener('change', (event) => {
+        hero = event.target.value === 'clock';
+        heroEl.querySelector('.segmented').style.setProperty('--index', hero ? 1 : 0);
+        renderYaml();
+        mount(['hours']);
+    });
+
     renderYaml();
     return { rooms: slots.map(slot => slot.el), mount, renderYaml };
 })();
