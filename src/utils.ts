@@ -107,6 +107,8 @@ export interface TextFieldOptions {
     type?: 'text' | 'number';
     min?: number;
     max?: number;
+    /** The step a number may take; 'any' for a fraction */
+    step?: number | 'any';
 }
 
 /**
@@ -118,7 +120,7 @@ export interface TextFieldOptions {
  */
 export function textField(options: TextFieldOptions): string {
     const tag = customElements.get('ha-input') || !customElements.get('ha-textfield') ? 'ha-input' : 'ha-textfield';
-    const { id, label, value, placeholder, hint, type, min, max } = options;
+    const { id, label, value, placeholder, hint, type, min, max, step } = options;
     const attributes = [
         `id="${escapeHtml(id)}"`,
         `label="${escapeHtml(label)}"`,
@@ -127,6 +129,7 @@ export function textField(options: TextFieldOptions): string {
         type ? `type="${type}"` : '',
         min !== undefined ? `min="${min}"` : '',
         max !== undefined ? `max="${max}"` : '',
+        step !== undefined ? `step="${step}"` : '',
         !hint ? '' : tag === 'ha-input' ? `hint="${escapeHtml(hint)}"` : `helper="${escapeHtml(hint)}" helperPersistent`,
     ].filter(Boolean);
     return `<${tag} ${attributes.join(' ')}></${tag}>`;
@@ -142,6 +145,9 @@ export function formatLocalizedNumber(
     decimals: number = 0
 ): string {
     if (!isFinite(value)) return '--';
+    // A value that rounds to zero is "0", never "-0": Intl keeps the sign of -0 (what Math.round(-0.5) gives) and of a
+    // small negative it rounds to zero, so -0.5 °C read "-0°" (#22). A negative that rounds away from zero keeps its minus
+    if (Math.abs(value) < 0.5 / 10 ** decimals) value = 0;
     const lang = hass?.locale?.language || hass?.language || (typeof navigator !== 'undefined' ? navigator.language : 'en');
     try {
         return new Intl.NumberFormat(lang, {
@@ -343,17 +349,32 @@ export function killCardGSAPAnimations(container: HTMLElement): void {
     });
 }
 
+/** How a clear sky decides between the sun and the moon and stars (see getWeatherClass). */
+export interface ClearSkyTime {
+    /** The day/night cycle is on: the hours decide, whatever the state says. */
+    clock?: boolean;
+    /** Night in the sky the card shows, when the caller knows it (the sun, or the cycle). */
+    night?: boolean;
+}
+
 /**
  * Map weather condition to CSS class with type validation.
- * Pass `timeZone` (e.g. `hass.config.time_zone`) to evaluate clear/night
- * detection in HA's timezone instead of the browser's local hour.
+ *
+ * A clear sky: Home Assistant's own states already say which it is
+ * (`clear-night` after sunset, `sunny` before), so they decide, at any hour.
+ * Free text that only says "clear" takes `time.night`, or the clock hours
+ * when that isn't known. With the day/night cycle on (`time.clock`), the
+ * hours decide every clear sky, as the cycle follows the clock instead of
+ * the sun. Pass `timeZone` (e.g. `hass.config.time_zone`) to read the hours
+ * in HA's timezone instead of the browser's.
  */
 export function getWeatherClass(
     condition: string,
     isDevMode: boolean,
     sunriseHour?: number,
     sunsetHour?: number,
-    timeZone?: string
+    timeZone?: string,
+    time: ClearSkyTime = {}
 ): WeatherCondition {
     if (typeof condition !== 'string') {
         console.warn('Invalid condition type provided, using sunny as fallback');
@@ -398,10 +419,17 @@ export function getWeatherClass(
     } else if (lowercaseCondition.includes('cloud') || lowercaseCondition.includes('overcast')) {
         return 'cloudy';
     } else if (lowercaseCondition.includes('clear') || lowercaseCondition.includes('sunny')) {
-        // Check if it's nighttime for clear conditions. Use HA's timezone if
-        // provided so the day/night decision agrees with the sun entity, even
-        // when the dashboard is viewed from a different timezone than HA's
-        // location.
+        if (!time.clock) {
+            // The state names the time of day: clear-night once the sun is
+            // down, which can be well before the clock's sunset hour (17:00
+            // in a European winter)
+            if (lowercaseCondition.includes('night')) return 'clear-night';
+            if (lowercaseCondition.includes('sunny')) return 'sunny';
+            if (time.night !== undefined) return time.night ? 'clear-night' : 'sunny';
+        }
+        // The clock's hours: the day/night cycle's, or the defaults when
+        // nothing else says. Use HA's timezone if provided, so the hour is
+        // HA's even when the dashboard is viewed from another timezone.
         const now = new Date();
         let hour: number;
         if (timeZone) {

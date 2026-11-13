@@ -156,6 +156,27 @@ describe('spilled weather', () => {
         expect(rule).toContain('overflow: visible');
         expect(rule).toMatch(/contain: layout;/);
     });
+
+    it('keeps fog, clouds and, in Firefox, leaves out of the page\'s size (issue #16: Firefox counts them despite the containment)', () => {
+        const css = getMainCardStyles();
+        // Fog and clouds never spill sideways: they clip their overflow, not only their paint
+        expect(css).toMatch(/\.animation-container\.fog-container \{[^}]*clip-path: inset\(0 round[^}]*overflow: hidden;\s*overflow: clip;/);
+        expect(css).toMatch(/\.clouds-container \{[^}]*overflow: hidden;\s*overflow: clip;/);
+        // The clouds' overhang lives inside their container's box, so the clip leaves it showing
+        expect(css).toMatch(/\[data-spill\] \.clouds-container \{[^}]*top: calc\(-1 \* var\(--awc-cloud-overhang\)\)/);
+        // Leaves still blow out to the right, except in Firefox, where they'd widen the dashboard
+        expect(css).toMatch(/\[data-spill\] \.wind-container \{\s*clip-path: inset\(0 -500px -200px 0\);/);
+        expect(css).toMatch(/@supports \(-moz-appearance: none\) \{\s*\.animated-weather-card\[data-spill\] \.wind-container \{ overflow: clip; \}/);
+    });
+});
+
+describe('the temperature\'s colour', () => {
+    it('is custom_colors.temperature_color on either palette, else the text\'s, or the theme\'s accent on the theme palette', () => {
+        const css = getMainCardStyles();
+        expect(css).toMatch(/\.temperature \{[^}]*color: var\(--awc-hero-color, inherit\);/);
+        expect(css).toMatch(/--awc-hero-color: var\(--primary-color, var\(--primary-text-color\)\);/);
+        expect(css).toMatch(/\.animated-weather-card\.theme-colors \.temperature \{\s*color: var\(--awc-hero-color\);/);
+    });
 });
 
 describe('clouds over the top edge', () => {
@@ -172,6 +193,14 @@ describe('clouds over the top edge', () => {
         // Clipped flush at the sides and bottom (rounded bottom corners)
         expect(rule).toMatch(/clip-path: inset\(0 round 0 0 /);
         expect(rule).toMatch(/mask-image: linear-gradient\(to bottom, transparent 0, #000 calc\(var\(--awc-cloud-overhang\) \/ 2\)\)/);
+    });
+
+    it('on the theme palette, ride over twins in the card\'s fill, clipped to the card, shown only over an opaque fill', () => {
+        // The twins' layer is the card's box, rounded as the card is, so no twin shows past its edge or corners
+        expect(css).toMatch(/\.clouds-occluders \{[^}]*top: var\(--awc-cloud-overhang\);[^}]*clip-path: inset\(0 round calc\(var\(--ha-card-border-radius, 12px\) - var\(--ha-card-border-width, 1px\)\)\)/);
+        expect(css).toMatch(/\.animated-weather-card:not\(\[data-occlude\]\) \.clouds-occluders \{ display: none; \}/);
+        // They fade out with their clouds when the condition changes
+        expect(css).toMatch(/\.condition-out \.cloud-occluder,/);
     });
 
     it('keep their positions relative to the card', () => {

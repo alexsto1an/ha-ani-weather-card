@@ -27,6 +27,15 @@ export const CLOUD_OVERHANG_PX = 48;
 
 export const getMainCardStyles = () => `
 ${iconBoxCss('animated-weather-card')}
+        /* The card's own icons (icons.ts): inline SVG, sized like ha-icon and in the text's colour */
+        .awc-icon {
+          display: inline-block;
+          flex-shrink: 0;
+          width: var(--mdc-icon-size, 24px);
+          height: var(--mdc-icon-size, 24px);
+          fill: currentColor;
+          vertical-align: middle;
+        }
         /* ── Reduced motion (WCAG 2.3.3): static sky, no weather motion ───── */
         @media (prefers-reduced-motion: reduce) {
           .animated-weather-card *,
@@ -229,6 +238,15 @@ ${iconBoxCss('animated-weather-card')}
           opacity: 0.16 !important;
           filter: none !important;
         }
+        /* Seen at 16%, the sun showed through them, as if in front. Under each
+           cloud rides a twin in the card's own fill (.cloud-occluder, read into
+           --awc-card-bg by the clouds animation), in a layer clipped to the
+           card: unseen against the card, it hides the sun behind the cloud,
+           while the cloud itself, above the card and where clouds overlap,
+           is drawn as it always was. Only over an opaque fill (data-occlude):
+           over a see-through one or an image the twin would show. */
+        .clouds-occluders { position: absolute; left: 0; right: 0; bottom: 0; top: var(--awc-cloud-overhang); clip-path: inset(0 round calc(var(--ha-card-border-radius, 12px) - var(--ha-card-border-width, 1px))); }
+        .animated-weather-card:not([data-occlude]) .clouds-occluders { display: none; }
         .animated-weather-card.theme-colors .secondary,
         .animated-weather-card.theme-colors .attribute-label,
         .animated-weather-card.theme-colors .hero-meta {
@@ -330,6 +348,8 @@ ${iconBoxCss('animated-weather-card')}
         }
 
         .temperature {
+          /* custom_colors.temperature_color, else the text's (the theme palette sets its accent below) */
+          color: var(--awc-hero-color, inherit);
           font-family: var(--awc-font-display);
           font-size: 80px;
           font-weight: 200;
@@ -349,13 +369,21 @@ ${iconBoxCss('animated-weather-card')}
           margin-left: 0.02em;
         }
 
-        .weather-desc {
+        .weather-desc, .awc-temp-lead {
           margin-top: 8px;
           font-size: 17px;
           font-weight: 600;
           line-height: 22px;
           letter-spacing: -0.012em;
         }
+        /* hero: clock: the time in the temperature's place, "21° Partly cloudy" */
+        .awc-hero-clock { font-variant-numeric: proportional-nums; font-feature-settings: "case" 1; letter-spacing: -0.02em; }
+        .awc-hero-clock .awc-ampm { font-family: var(--awc-font); font-size: max(13px, 0.22em); font-weight: 500; letter-spacing: 0.04em; vertical-align: top; margin-left: 0.1em; position: relative; top: 0.16em; }
+        .awc-lead-row { display: flex; align-items: baseline; column-gap: 12px; margin-top: 8px; min-width: 0; white-space: nowrap; }
+        /* One line: the condition never wraps out of sight */
+        .awc-lead-row.awc-desc-row { flex-wrap: nowrap; }
+        .awc-lead-row > * { margin-top: 0 !important; align-self: baseline !important; }
+        .awc-lead-row > .awc-temp-lead { flex-shrink: 0; margin-right: -6px; }
         /* Conditions come in the user's language and casing ("Partly cloudy",
            "Teilweise bewölkt"); only make sure they start with a capital */
         .weather-desc::first-letter { text-transform: uppercase; }
@@ -584,7 +612,7 @@ ${iconBoxCss('animated-weather-card')}
         @container awc (max-width: 319px) {
           .weather-info, .weather-skeleton { --awc-pad: 16px; }
           .temperature { font-size: 64px; font-weight: 250; }
-          .weather-desc { font-size: 16px; line-height: 21px; margin-top: 6px; }
+          .weather-desc, .awc-temp-lead { font-size: 16px; line-height: 21px; margin-top: 6px; }
           .hero-meta, .weather-note { font-size: 14px; }
           .attribute-value { font-size: 16px; }
         }
@@ -597,7 +625,7 @@ ${iconBoxCss('animated-weather-card')}
           .weather-info, .weather-skeleton { --awc-pad: 24px; }
           .location { font-size: 16px; }
           .temperature { font-size: 96px; letter-spacing: -0.05em; }
-          .weather-desc { font-size: 18px; line-height: 24px; }
+          .weather-desc, .awc-temp-lead { font-size: 18px; line-height: 24px; }
           .attribute-value { font-size: 18px; line-height: 24px; }
         }
         /* Wide frames (wall tablets, full-width rows): hero left, metrics right */
@@ -720,19 +748,23 @@ ${iconBoxCss('animated-weather-card')}
           margin: 0 0 0 -0.055em;
         }
         .animated-weather-card[data-variant="compact"] .weather-desc,
-        .animated-weather-card[data-variant="compact"] .compact-meta {
+        .animated-weather-card[data-variant="compact"] .compact-meta,
+        .animated-weather-card[data-variant="compact"] .awc-lead-row {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .animated-weather-card[data-variant="compact"] .weather-desc {
+        .animated-weather-card[data-variant="compact"] .weather-desc,
+        .animated-weather-card[data-variant="compact"] .awc-lead-row {
           grid-area: desc;
           align-self: end;
           margin: 0;
           font-size: 16px;
           line-height: 21px;
         }
+        .animated-weather-card[data-variant="compact"] .awc-temp-lead { font-size: inherit; line-height: inherit; }
+        .animated-weather-card[data-variant="compact"] .awc-lead-row { margin: 0 !important; height: auto; max-width: none; }
         .compact-meta {
           grid-area: meta;
           align-self: start;
@@ -779,8 +811,8 @@ ${iconBoxCss('animated-weather-card')}
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .temperature { font-size: 36px; font-weight: 300; }
         .animated-weather-card[data-variant="compact"][data-height="tight"] .main-weather-info,
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .main-weather-info { grid-template-areas: "temp desc"; }
-        .animated-weather-card[data-variant="compact"][data-height="tight"] .weather-desc,
-        .animated-weather-card[data-variant="compact"][data-height="minimal"] .weather-desc { align-self: center; font-size: 15px; }
+        .animated-weather-card[data-variant="compact"][data-height="tight"] :is(.weather-desc, .awc-lead-row),
+        .animated-weather-card[data-variant="compact"][data-height="minimal"] :is(.weather-desc, .awc-lead-row) { align-self: center; font-size: 15px; }
         .animated-weather-card[data-variant="compact"][data-height="tight"] .compact-meta,
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .compact-meta { display: none; }
 
@@ -807,6 +839,7 @@ ${iconBoxCss('animated-weather-card')}
            inline opacity GSAP keeps writing to clouds and stars. */
         .animated-weather-card.condition-out .animation-container,
         .animated-weather-card.condition-out .cloud-gsap,
+        .animated-weather-card.condition-out .cloud-occluder,
         .animated-weather-card.condition-out .star-gsap,
         .animated-weather-card.condition-out .moon-gsap,
         .animated-weather-card.condition-out .snow-accumulation,
@@ -814,9 +847,12 @@ ${iconBoxCss('animated-weather-card')}
           opacity: 0 !important;
           transition: opacity 0.4s cubic-bezier(0.5, 0, 0.75, 0) !important;
         }
-        /* Fog always stays in the frame, corners included */
+        /* Fog always stays in the frame, corners included; overflow keeps it
+           out of the page's size in Firefox (#16) */
         .animation-container.fog-container {
           clip-path: inset(0 round var(--ha-card-border-radius, 12px));
+          overflow: hidden;
+          overflow: clip;
         }
         /* Spill: precipitation escapes the sides and bottom, never the top;
            wind carries leaves out to the right */
@@ -829,6 +865,10 @@ ${iconBoxCss('animated-weather-card')}
         .animated-weather-card[data-spill] .wind-container {
           clip-path: inset(0 -500px -200px 0);
         }
+        /* Firefox would count spilled leaves in the page's size (#16) */
+        @supports (-moz-appearance: none) {
+          .animated-weather-card[data-spill] .wind-container { overflow: clip; }
+        }
 
         /* Clouds drift in front of the sun, stars and planes, in their own
            layer. In the frame by default; with spill they can rise past the
@@ -838,6 +878,8 @@ ${iconBoxCss('animated-weather-card')}
           --awc-cloud-overhang: 0px;
           z-index: 25;
           clip-path: inset(0 round var(--ha-card-border-radius, 12px));
+          overflow: hidden;
+          overflow: clip;
         }
         .clouds-layer {
           position: absolute;
@@ -1143,5 +1185,8 @@ ${iconBoxCss('animated-weather-card')}
           text-shadow: 0 1px 4px var(--weather-text-shadow);
           font-variant-numeric: tabular-nums;
         }
+        /* With both, the flight sits under the route, quieter */
+        .plane-label > span { display: block; }
+        .plane-flight { font-weight: 500; opacity: 0.72; }
 
 `;

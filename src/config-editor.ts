@@ -5,13 +5,21 @@ import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { getConfigEditorStyles } from './styles/editor';
 import { skyColors, oklchToSrgb, toHex, SKY_TEXT } from './sky';
 import { escapeHtml, textField } from './utils';
-import { readActions } from './actions';
+import { ActionConfig, readActions } from './actions';
 import { mountActionsEditor, updateActionsEditor } from './action-editor';
 
 /** note_calendar as a list: YAML takes one calendar or several, the editor's picker shows the first */
 function noteCalendarList(value: unknown): string[] {
     return (Array.isArray(value) ? value : typeof value === 'string' ? [value] : []).map(String).filter(Boolean);
 }
+
+/** forecast_graph: the hours' graph, the same for every metric */
+export const GRAPH_OPTIONS = [
+    { value: 'line', label: 'A line' },
+    { value: 'area', label: 'A line with a soft fill' },
+    { value: 'bars', label: 'Bars' },
+    { value: 'none', label: 'No graph: the values alone' },
+];
 
 export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCardEditor {
     private _config?: AnimatedWeatherCardConfig;
@@ -286,6 +294,18 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
                 <span>Flight labels on planes</span>
               </label>
             </div>
+            <div class="option">
+              <ha-select id="flight_label" label="Plane labels show"></ha-select>
+            </div>
+            <div class="option">
+              <ha-select id="plane_speed" label="Plane speed"></ha-select>
+            </div>
+            <div class="option">
+              <label class="switch-label">
+                <ha-switch id="planes_on_load" ${this._config.planes_on_load ? 'checked' : ''}></ha-switch>
+                <span>Fly the planes already overhead when the dashboard opens</span>
+              </label>
+            </div>
 
             <div class="group-title">Motion</div>
             <div class="option">
@@ -303,6 +323,72 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           </div>
         </div>
 
+        <!-- Forecast and clock ───────────────────────────────────────────── -->
+        <div class="section">
+          <div class="section-header" role="button" tabindex="0" data-section="forecast">
+            <ha-icon icon="mdi:clock-time-four-outline"></ha-icon>
+            <h3>Forecast and clock</h3>
+            <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
+          </div>
+          <div class="section-content">
+            <div class="option card-only">
+              <ha-select id="hero" label="The big value"></ha-select>
+            </div>
+            <div class="option card-only small-clock">
+              <label class="switch-label">
+                <ha-switch id="show_clock" ${this._config.show_clock ? 'checked' : ''}></ha-switch>
+                <span>The time, leading the location line</span>
+              </label>
+            </div>
+            <div class="option card-only">
+              <label class="switch-label">
+                <ha-switch id="show_date" ${this._config.show_date ? 'checked' : ''}></ha-switch>
+                <span>The date, after the time</span>
+              </label>
+            </div>
+            <div class="option">
+              <label class="switch-label">
+                <ha-switch id="show_forecast" ${this._config.show_forecast ? 'checked' : ''}></ha-switch>
+                <span>The forecast: what turns, the hours ahead, and the slide through them</span>
+              </label>
+            </div>
+            <p class="section-note">Drag the card sideways and its sky, weather and readings go to the hour you stop at. It stays there until you tap Now, or until nobody has touched it for half a minute. Asks for eight rows in a sections view (five without an hourly forecast); a shorter frame gives up the chips, then the icons, then the row, before the temperature ever shrinks. A tap opens the whole forecast unless you choose something else under Interactions.</p>
+            <div class="option forecast-only">
+              <ha-select id="forecast_metric" label="The hours first show"></ha-select>
+            </div>
+            <div class="option forecast-only">
+              <ha-select id="forecast_graph" label="The hours' graph"></ha-select>
+            </div>
+            <div class="option">
+              <ha-select id="layout" label="Layout"></ha-select>
+            </div>
+            <div class="option nightstand-only">
+              <ha-entity-picker id="alarm_entity" label="Next alarm" value="${escapeHtml(this._config.alarm_entity || '')}" helper="A timestamp sensor, like the Companion app's next alarm, or an input_datetime" allow-custom-entity></ha-entity-picker>
+            </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'wake_time', label: 'Wake time', placeholder: '07:00', value: this._config.wake_time, hint: 'When you get up without an alarm' })}
+            </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'bed_time', label: 'Bed time', placeholder: '22:30', value: this._config.bed_time, hint: 'When night begins without a light sensor: by default, 8 h 30 min before the alarm or wake time' })}
+            </div>
+            <div class="option nightstand-only">
+              <ha-select id="night" label="Night"></ha-select>
+            </div>
+            <div class="option nightstand-only">
+              <ha-entity-picker id="night_sensor" label="Light sensor" value="${escapeHtml(this._config.night_sensor || '')}" helper="An illuminance sensor beside it: night when the room is dark" allow-custom-entity></ha-entity-picker>
+            </div>
+            <div class="option nightstand-only">
+              <label class="switch-label">
+                <ha-switch id="night_red" ${this._config.night_red !== false ? 'checked' : ''}></ha-switch>
+                <span>Red on black at night, as a bedside clock's night mode</span>
+              </label>
+            </div>
+            <div class="option nightstand-only">
+              ${textField({ id: 'night_lux', label: 'Dark below (lx)', type: 'number', min: 0.1, step: 'any', placeholder: '5', value: this._config.night_lux !== undefined ? String(this._config.night_lux) : '', hint: 'Night when the light sensor reads less for a minute; day again at three times it' })}
+            </div>
+          </div>
+        </div>
+
         <!-- Interactions ───────────────────────────────────────────────── -->
         <div class="section">
           <div class="section-header" role="button" tabindex="0" data-section="interactions">
@@ -311,7 +397,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-            <p class="section-note">What a tap, a hold and a double tap on the card do. A tap opens the weather's details unless you choose something else.</p>
+            <p class="section-note">What a tap, a hold and a double tap on the card do. By default a tap opens the weather's details, the forecast with the forecast on, and nothing on a nightstand.</p>
             <div id="actions-editor"></div>
           </div>
         </div>
@@ -479,7 +565,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-          <p class="section-note">Each background color becomes a full sky for that condition. Applies to the colorized palette only.</p>
+          <p class="section-note" id="sky-note" style="display: ${colorPalette === 'default' ? 'block' : 'none'}">Each sky color becomes the whole sky for that condition, and Fog colors the fog. These apply to the colorized palette only.</p>
           
           <div class="color-grid" id="color-grid" style="display: ${colorPalette === 'default' ? 'grid' : 'none'}; opacity: ${colorPalette === 'default' ? '1' : '0.5'}">
             <div class="color-option">
@@ -513,6 +599,19 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <button class="color-reset" data-target="cloudy_bg" ${customColors.cloudy_bg ? '' : 'hidden'}>Reset</button>
             </div>
             <div class="color-option">
+              <label>Fog</label>
+              <input type="color" id="fog_color" value="${escapeHtml(customColors.fog_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.fog_color)}" />
+              <button class="color-reset" data-target="fog_color" ${customColors.fog_color ? '' : 'hidden'}>Reset</button>
+            </div>
+          </div>
+          <p class="section-note">These apply on either palette.</p>
+          <div class="color-grid" id="ink-grid">
+            <div class="color-option">
+              <label>Temperature</label>
+              <input type="color" id="temperature_color" value="${escapeHtml(customColors.temperature_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.temperature_color)}" />
+              <button class="color-reset" data-target="temperature_color" ${customColors.temperature_color ? '' : 'hidden'}>Reset</button>
+            </div>
+            <div class="color-option">
               <label>Text</label>
               <input type="color" id="text_color" value="${escapeHtml(customColors.text_color || AnimatedWeatherCardEditor.DEFAULT_COLORS.text_color)}" />
               <button class="color-reset" data-target="text_color" ${customColors.text_color ? '' : 'hidden'}>Reset</button>
@@ -533,7 +632,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
               <button class="color-reset" data-target="snow_color" ${customColors.snow_color ? '' : 'hidden'}>Reset</button>
             </div>
           </div>
-          <button class="reset-colors-btn" id="reset-colors-btn" ${colorPalette === 'default' && Object.keys(customColors).length ? '' : 'hidden'}>Reset all colors</button>
+          <button class="reset-colors-btn" id="reset-colors-btn" ${Object.keys(customColors).length ? '' : 'hidden'}>Reset all colors</button>
           </div>
         </div>
       </div>
@@ -621,9 +720,96 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             if (value >= 0) this._updateConfig('note_max_age', value);
         });
 
+        this._bindSelect('hero', [
+            { value: 'temperature', label: 'The temperature' },
+            { value: 'clock', label: 'The time, with the temperature beside the condition' },
+        ], this._config?.hero === 'clock' ? 'clock' : 'temperature', (value) => {
+            this._updateConfig('hero', value === 'clock' ? value : undefined);
+            this.syncForecastOptions();
+        });
+        this.querySelector('#show_clock')?.addEventListener('change', (e) => {
+            this._updateConfig('show_clock', (e.target as HTMLInputElement).checked || undefined);
+        });
+        this.querySelector('#show_date')?.addEventListener('change', (e) => {
+            this._updateConfig('show_date', (e.target as HTMLInputElement).checked || undefined);
+        });
+        this.querySelector('#show_forecast')?.addEventListener('change', (e) => {
+            this._updateConfig('show_forecast', (e.target as HTMLInputElement).checked || undefined);
+            this.syncForecastOptions();
+            this.mountActions();
+        });
+        this._bindSelect('forecast_metric', [
+            { value: 'temp', label: 'Temperature' },
+            { value: 'feels', label: 'Feels like' },
+            { value: 'chance', label: 'Chance of rain' },
+            { value: 'amount', label: 'Rain amount' },
+        ], this._config?.forecast_metric || 'temp', (value) => {
+            this._updateConfig('forecast_metric', value === 'temp' ? undefined : value);
+        });
+        this._bindSelect('forecast_graph', GRAPH_OPTIONS, this._config?.forecast_graph || 'line', (value) => {
+            this._updateConfig('forecast_graph', value === 'line' ? undefined : value);
+        });
+        this._bindSelect('layout', [
+            { value: 'default', label: 'The weather card' },
+            { value: 'nightstand', label: 'Nightstand: the time as the hero' },
+        ], this._config?.layout || 'default', (value) => {
+            this._updateConfig('layout', value === 'default' ? undefined : value);
+            this.syncForecastOptions();
+            this.mountActions();
+        });
+        this._bindSelect('night', [
+            { value: 'auto', label: 'From the light sensor, else bed to wake time' },
+            { value: 'on', label: 'Always' },
+            { value: 'off', label: 'Never' },
+        ], this._config?.night === true ? 'on' : this._config?.night === false ? 'off' : this._config?.night || 'auto', (value) => {
+            this._updateConfig('night', value === 'auto' ? undefined : value);
+        });
+        this.querySelector('#alarm_entity')?.addEventListener('value-changed', (e) => {
+            this._updateConfig('alarm_entity', (e.target as HTMLInputElement).value || undefined);
+        });
+        this.querySelector('#night_sensor')?.addEventListener('value-changed', (e) => {
+            this._updateConfig('night_sensor', (e.target as HTMLInputElement).value || undefined);
+        });
+        this.querySelector('#night_red')?.addEventListener('change', (e) => {
+            this._updateConfig('night_red', (e.target as HTMLInputElement).checked ? undefined : false);
+        });
+        this.querySelector('#night_lux')?.addEventListener('input', (e) => {
+            const v = Number(((e.target as HTMLInputElement).value || '').trim());
+            this._updateConfig('night_lux', Number.isFinite(v) && v > 0 ? v : undefined);
+        });
+        for (const id of ['wake_time', 'bed_time'] as const) {
+            this.querySelector(`#${id}`)?.addEventListener('input', (e) => {
+                const v = ((e.target as HTMLInputElement).value || '').trim();
+                this._updateConfig(id, /^\d{1,2}:\d{2}$/.test(v) ? v : undefined);
+            });
+        }
+        this.syncForecastOptions();
+
         this.querySelector('#show_note')?.addEventListener('change', (e) => {
             this._updateConfig('show_note', (e.target as HTMLInputElement).checked || undefined);
             this.syncNoteOptions();
+        });
+
+        this._bindSelect('flight_label', [
+            { value: 'flight', label: 'Flight number and aircraft' },
+            { value: 'route', label: 'Route (Lisbon → Paris)' },
+            { value: 'both', label: 'Route and flight number' },
+        ], this._config?.flight_label || 'flight', (value) => {
+            this._updateConfig('flight_label', value === 'flight' ? undefined : value);
+        });
+
+        // The usual pace, or slower so a plane and its tag can be followed; YAML takes any value from 0.25 to 2
+        const speed = String(this._config?.plane_speed ?? 1);
+        this._bindSelect('plane_speed', [
+            { value: '1', label: 'Usual' },
+            { value: '0.5', label: 'Slower (half speed)' },
+            { value: '0.25', label: 'Slowest (a quarter)' },
+            ...(['1', '0.5', '0.25'].includes(speed) ? [] : [{ value: speed, label: `${speed}×` }]),
+        ], speed, (value) => {
+            this._updateConfig('plane_speed', value === '1' ? undefined : Number(value));
+        });
+        this.querySelector('#planes_on_load')?.addEventListener('change', (e) => {
+            this._updateConfig('planes_on_load', (e.target as HTMLInputElement).checked || undefined);
         });
 
         this._bindSelect('note_tone', [
@@ -654,11 +840,14 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         ], this._config?.color_palette || 'default', (value) => {
             this._updateConfig('color_palette', value);
             // Show/hide color customization based on palette selection
+            // The skies are the colorized palette's; the temperature, text, sun, rain and snow apply on either
             const colorGrid = this.querySelector('#color-grid') as HTMLElement;
             if (colorGrid) {
                 colorGrid.style.display = value === 'default' ? 'grid' : 'none';
                 colorGrid.style.opacity = value === 'default' ? '1' : '0.5';
             }
+            const skyNote = this.querySelector('#sky-note') as HTMLElement | null;
+            if (skyNote) skyNote.style.display = value === 'default' ? 'block' : 'none';
             this._syncColorResets();
         });
         this._bindSelect('indoor_style', [
@@ -670,12 +859,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             this._updateConfig('indoor_style', value === 'label' ? undefined : value);
         });
 
-        const actions = this.querySelector('#actions-editor') as HTMLElement | null;
-        if (actions) {
-            mountActionsEditor(actions, this._hass, readActions(this._config, this._config?.entity), patch => {
-                for (const [key, value] of Object.entries(patch)) this._updateConfig(key, value);
-            });
-        }
+        this.mountActions();
 
         this.querySelector('#animate')?.addEventListener('change', (e) => {
             this._updateConfig('animate', (e.target as HTMLInputElement).checked);
@@ -802,8 +986,8 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
 
         // Color inputs
         const colorInputs = [
-            'sunny_bg', 'rainy_bg', 'snowy_bg', 'stormy_bg', 'windy_bg', 'cloudy_bg',
-            'text_color', 'sun_color', 'rain_color', 'snow_color'
+            'sunny_bg', 'rainy_bg', 'snowy_bg', 'stormy_bg', 'windy_bg', 'cloudy_bg', 'fog_color',
+            'temperature_color', 'text_color', 'sun_color', 'rain_color', 'snow_color'
         ];
 
         colorInputs.forEach(colorKey => {
@@ -870,6 +1054,46 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         }) as EventListener);
         // Keep the dropdown closing from bubbling up and closing HA's dialog
         select.addEventListener('closed', (e: Event) => e.stopPropagation());
+    }
+
+    /** What a tap does with no tap_action, as the card has it: nothing on a nightstand, the forecast with it on, else the weather's details */
+    private tapDefault(): ActionConfig | undefined {
+        if (this._config?.layout === 'nightstand') return { action: 'none' };
+        return this._config?.show_forecast ? { action: 'forecast' } : undefined;
+    }
+
+    /**
+     * The gestures' controls, showing the tap the card really does. Where
+     * that's the card's own default (the forecast, or nothing on a
+     * nightstand), picking it writes no YAML, and the picker's default (the
+     * weather's details, as Home Assistant labels it) is written out, as the
+     * forecast card's editor does. Mounted again when the default changes.
+     */
+    private mountActions(): void {
+        const container = this.querySelector('#actions-editor') as HTMLElement | null;
+        if (!container) return;
+        const actions = readActions(this._config, this._config?.entity);
+        const def = this.tapDefault();
+        mountActionsEditor(container, this._hass, actions.tap_action || !def ? actions : { ...actions, tap_action: def }, patch => {
+            const next = { ...patch };
+            if (def && 'tap_action' in patch) {
+                next.tap_action = patch.tap_action === undefined ? { action: 'more-info' }
+                    : patch.tap_action.action === def.action ? undefined : patch.tap_action;
+            }
+            for (const [key, value] of Object.entries(next)) this._updateConfig(key, value);
+        }, { forecast: 'Forecast' });
+    }
+
+    /**
+     * The forecast's own options count only with it on; the nightstand's only with that layout, where the time is
+     * always the hero and the date its own; the small clock only while the time isn't the big value
+     */
+    private syncForecastOptions(): void {
+        const dim = (sel: string, on: boolean) => this.querySelectorAll<HTMLElement>(sel).forEach(o => { o.style.cssText = on ? '' : 'opacity: 0.5; pointer-events: none;'; });
+        dim('.forecast-only', !!this._config?.show_forecast);
+        dim('.small-clock', this._config?.hero !== 'clock');
+        this.querySelectorAll<HTMLElement>('.nightstand-only').forEach(o => { o.hidden = this._config?.layout !== 'nightstand'; });
+        this.querySelectorAll<HTMLElement>('.card-only').forEach(o => { o.hidden = this._config?.layout === 'nightstand'; });
     }
 
     /** The AI's controls count only with the switch on and no note entity; the status says what's missing. */
@@ -954,7 +1178,10 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         stormy_bg: skyColors('stormy', 'day').mid,
         windy_bg: skyColors('windy', 'day').mid,
         cloudy_bg: skyColors('cloudy', 'day').mid,
+        // The sky palette's fog (gsap-effects.ts)
+        fog_color: '#e0e0e0',
         text_color: toHex(oklchToSrgb(SKY_TEXT)),
+        temperature_color: toHex(oklchToSrgb(SKY_TEXT)),
         sun_color: '#ffd67a',
         rain_color: '#deeaff',
         snow_color: '#f7fbff',
@@ -982,7 +1209,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         });
         const resetAll = this.querySelector<HTMLElement>('#reset-colors-btn');
         if (resetAll) {
-            resetAll.hidden = (this._config?.color_palette || 'default') !== 'default' || Object.keys(custom).length === 0;
+            resetAll.hidden = Object.keys(custom).length === 0;
         }
     }
 

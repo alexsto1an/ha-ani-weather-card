@@ -19,9 +19,29 @@ import { FORWARD_PITCH_DEG, aircraftDrawing, aircraftFamily, aircraftLength, pla
 export interface FlyoverOptions {
     /** A night sky: a faint silhouette, and the aircraft's lights. */
     night: boolean;
-    /** Show "flight · aircraft" under the plane. */
+    /** Show a tag beside the plane. */
     showLabels: boolean;
+    /** What the tag says: "flight · aircraft" (default), the route ("Lisbon → Paris"), or the route over the flight */
+    labelMode?: 'flight' | 'route' | 'both';
+    /** How fast planes cross, as a share of their usual pace (plane_speed): 0.5 takes twice as long */
+    speed?: number;
 }
+
+/** plane_speed, kept to 0.25 to 2; anything else flies at the usual pace */
+export function planeSpeed(v: unknown): number {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.min(2, Math.max(0.25, n)) : 1;
+}
+
+/** The route's two ends: cities when both are known, else airport codes, else none (a flight with no route keeps its number) */
+export function routeOf(f: FlightInfo, short = false): string {
+    const city = f.originCity && f.destinationCity ? `${f.originCity} → ${f.destinationCity}` : '';
+    const code = f.originCode && f.destinationCode ? `${f.originCode} → ${f.destinationCode}` : '';
+    return short ? code || city : city || code;
+}
+
+/** A city route wider than this share of the card flies as airport codes, so it reaches open sky before the plane leaves */
+export const ROUTE_MAX_SHARE = 0.42;
 
 /** Most planes on the card at once; arrivals beyond this are skipped. */
 export const MAX_CONCURRENT_PLANES = 3;
@@ -131,7 +151,9 @@ export class PlanesAnimation extends BaseAnimation {
         const layer = this.element.querySelector(this.layerSelector) as HTMLElement | null;
         if (!layer) return false;
 
-        const plan = planFlyover(flight);
+        // Slower or faster crossings: every timing below follows the plan's duration, the fades and the tag's included
+        const base = planFlyover(flight);
+        const plan = { ...base, durationSec: base.durationSec / planeSpeed(options.speed) };
         const family = aircraftFamily(flight.aircraftCode);
         const drawing = aircraftDrawing(family);
         // The drawing is wider than the aircraft where a propeller or rotor reaches past it
@@ -157,11 +179,26 @@ export class PlanesAnimation extends BaseAnimation {
         plane.appendChild(body);
 
         const labelText = [flight.label, flight.aircraftCode].filter(Boolean).join(' · ');
+        const mode = options.labelMode ?? 'flight';
+        const route = mode === 'flight' ? '' : routeOf(flight);
         let label: HTMLElement | null = null;
-        if (options.showLabels && labelText) {
+        let routeEl: HTMLElement | null = null;
+        if (options.showLabels && (labelText || route)) {
             label = document.createElement('div');
             label.className = 'plane-label';
-            label.textContent = labelText;
+            if (route) {
+                // The route leads; with both, the flight sits under it, quieter. Text only, never markup.
+                routeEl = document.createElement('span');
+                routeEl.className = 'plane-route';
+                routeEl.textContent = route;
+                label.appendChild(routeEl);
+                if (mode === 'both' && labelText) {
+                    const sub = document.createElement('span');
+                    sub.className = 'plane-flight';
+                    sub.textContent = labelText;
+                    label.appendChild(sub);
+                }
+            } else label.textContent = labelText;
             // Level with the fuselage, which sits below the middle of a drawing with a fin
             label.style.top = `${drawing.midTop.toFixed(1)}%`;
             plane.appendChild(label);
@@ -184,6 +221,11 @@ export class PlanesAnimation extends BaseAnimation {
 
         layer.appendChild(plane);
         this.addParticle(plane);
+        // A long city route on a narrow card flies as airport codes ("LIS → CDG"), which reach open sky sooner
+        if (routeEl && routeEl.offsetWidth > layerWidth * ROUTE_MAX_SHARE) {
+            const short = routeOf(flight, true);
+            if (short) routeEl.textContent = short;
+        }
 
         const fade = Math.min(FADE_SEC, plan.durationSec / 4);
         const tl = window.AnimatedWeatherCardGsap.timeline({

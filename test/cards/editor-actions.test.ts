@@ -28,10 +28,10 @@ describe('the weather editor\'s interactions, before Home Assistant\'s form is t
     const pick = (select: Select, value: string) =>
         select.dispatchEvent(new CustomEvent('selected', { detail: { value } }));
 
-    it('offers each gesture the plain actions, the default first', async () => {
+    it('offers each gesture the plain actions, the default first, and the card\'s own forecast', async () => {
         const select = await open();
         for (const key of ['tap_action', 'hold_action', 'double_tap_action']) {
-            expect(select(key).options.map(o => o.value)).toEqual(['default', 'more-info', 'navigate', 'url', 'none']);
+            expect(select(key).options.map(o => o.value)).toEqual(['default', 'more-info', 'navigate', 'url', 'none', 'forecast']);
             expect(select(key).value).toBe('default');
         }
         expect(editor.querySelector('[data-section="interactions"]')).not.toBeNull();
@@ -48,6 +48,36 @@ describe('the weather editor\'s interactions, before Home Assistant\'s form is t
 
         // Back to the default leaves nothing behind
         pick(select('tap_action'), 'default');
+        expect(config).not.toHaveProperty('tap_action');
+    });
+
+    it('shows the tap the card really does: the forecast with it on, nothing on a nightstand, and writes no YAML for it', async () => {
+        let select = await open({ show_forecast: true });
+        expect(select('tap_action').value).toBe('forecast');
+        pick(select('tap_action'), 'navigate');
+        expect(config?.tap_action).toEqual({ action: 'navigate' });
+        pick(select('tap_action'), 'forecast');
+        expect(config).not.toHaveProperty('tap_action');
+        // The picker's own default is the weather's details: with the forecast on, that has to be written out
+        pick(select('tap_action'), 'default');
+        expect(config?.tap_action).toEqual({ action: 'more-info' });
+        editor.remove();
+
+        select = await open({ layout: 'nightstand' });
+        expect(select('tap_action').value).toBe('none');
+        pick(select('tap_action'), 'more-info');
+        expect(config?.tap_action).toEqual({ action: 'more-info' });
+        pick(select('tap_action'), 'none');
+        expect(config).not.toHaveProperty('tap_action');
+    });
+
+    it('follows the forecast switch: turned on, the tap\'s default becomes the forecast', async () => {
+        const select = await open();
+        expect(select('tap_action').value).toBe('default');
+        const toggle = editor.querySelector('#show_forecast') as HTMLInputElement;
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change'));
+        expect(select('tap_action').value).toBe('forecast');
         expect(config).not.toHaveProperty('tap_action');
     });
 

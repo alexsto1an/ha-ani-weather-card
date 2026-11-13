@@ -412,6 +412,10 @@ describe('writing the note', () => {
         expect([...ha.listeners.values()].reduce((n, set) => n + set.size, 0)).toBe(2);
         writer.stop();
         await settle();
+        // The note's storage at once; the forecast is the page's, shared by
+        // every card, and closes once nothing else wants it for a few seconds
+        expect([...ha.listeners.values()].reduce((n, set) => n + set.size, 0)).toBe(1);
+        await vi.advanceTimersByTimeAsync(5_000);
         expect([...ha.listeners.values()].reduce((n, set) => n + set.size, 0)).toBe(0);
     });
 

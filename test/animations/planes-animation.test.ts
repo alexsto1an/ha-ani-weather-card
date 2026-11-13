@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PlanesAnimation, MAX_CONCURRENT_PLANES, PLANE_STAGGER_MS, FlyoverOptions } from '../../src/planes-animation';
+import { PlanesAnimation, MAX_CONCURRENT_PLANES, PLANE_STAGGER_MS, FlyoverOptions, planeSpeed } from '../../src/planes-animation';
 import type { FlightInfo } from '../../src/flight-tracker';
 
 function makeCardElement(): HTMLElement {
@@ -21,6 +21,7 @@ function flight(id: string, overrides: Partial<FlightInfo> = {}): FlightInfo {
         id,
         label: 'BA117',
         aircraftCode: 'B77W',
+        originCity: 'London', originCode: 'LHR', destinationCity: 'New York', destinationCode: 'JFK',
         altitudeFt: 30000,
         groundSpeedKt: 450,
         heading: 90,
@@ -84,10 +85,53 @@ describe('PlanesAnimation', () => {
         expect(element.querySelector('.plane-label')).toBeNull();
     });
 
+    it('tags a plane with its route, with its flight under it, or keeps the number when it has no route', () => {
+        const ROUTE: FlyoverOptions = { ...DAY, labelMode: 'route' };
+        planes.flyOver([flight('a')], ROUTE);
+        expect(element.querySelector('.plane-label')?.textContent).toBe('London → New York');
+        planes.flyOver([flight('b')], { ...DAY, labelMode: 'both' });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        const both = element.querySelectorAll('.plane-label')[1];
+        expect([...both.children].map(c => [c.className, c.textContent])).toEqual([['plane-route', 'London → New York'], ['plane-flight', 'BA117 · B77W']]);
+        // Codes when the cities aren't known; the number when there's no route at all, as for a light aircraft
+        planes.flyOver([flight('c', { originCity: '', destinationCity: '' })], ROUTE);
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(element.querySelectorAll('.plane-label')[2].textContent).toBe('LHR → JFK');
+        completeTimeline(0); completeTimeline(1); completeTimeline(2);
+        planes.flyOver([flight('d', { label: 'N123AB', aircraftCode: 'C172', originCity: '', originCode: '', destinationCity: 'Lisbon', destinationCode: 'LIS' })], ROUTE);
+        expect(element.querySelector('.plane-label')?.textContent).toBe('N123AB · C172');
+    });
+
+    it('flies a long city route as airport codes, so it reaches open sky before the plane leaves', () => {
+        // jsdom lays nothing out: a 400 px card, and a route that would take more than its share
+        const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+            return this.classList.contains('plane-route') ? 220 : 400;
+        });
+        planes.flyOver([flight('a', { originCity: 'Frankfurt am Main', originCode: 'FRA', destinationCity: 'Rio de Janeiro', destinationCode: 'GIG' })], { ...DAY, labelMode: 'route' });
+        expect(element.querySelector('.plane-label')?.textContent).toBe('FRA → GIG');
+        width.mockRestore();
+    });
+
+    it('flies slower or faster by plane_speed, every timing with it, and keeps the speed to 0.25 to 2', () => {
+        const crossing = (n: number) => {
+            const tl = gsap().timeline.mock.results[n].value as { to: ReturnType<typeof vi.fn> };
+            return (tl.to.mock.calls[0][1] as { duration: number }).duration;
+        };
+        planes.flyOver([flight('a')], DAY);
+        planes.flyOver([flight('b')], { ...DAY, speed: 0.5 });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(crossing(1)).toBeCloseTo(crossing(0) * 2, 5);
+        expect([planeSpeed(0.25), planeSpeed(0.1), planeSpeed(5), planeSpeed('0.5'), planeSpeed('fast'), planeSpeed(undefined), planeSpeed(-1)]).toEqual([0.25, 0.25, 2, 0.5, 1, 1, 1]);
+    });
+
     it('renders label text literally, never as HTML', () => {
         planes.flyOver([flight('a', { label: '<img src=x onerror=alert(1)>', aircraftCode: '' })], DAY);
         expect(element.querySelector('.plane-label img')).toBeNull();
         expect(element.querySelector('.plane-label')?.textContent).toBe('<img src=x onerror=alert(1)>');
+        planes.flyOver([flight('b', { originCity: '<b>x</b>', destinationCity: '<script>' })], { ...DAY, labelMode: 'both' });
+        vi.advanceTimersByTime(PLANE_STAGGER_MS);
+        expect(element.querySelector('.plane-label b, .plane-label script')).toBeNull();
+        expect(element.querySelectorAll('.plane-label')[1].querySelector('.plane-route')?.textContent).toBe('<b>x</b> → <script>');
     });
 
     it('hides an eastbound label until the plane clears the hero text, and fades a westbound one before it', () => {

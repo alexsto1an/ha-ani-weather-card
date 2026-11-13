@@ -10,6 +10,7 @@
 
 import { AnimatedWeatherCardEditor } from './config-editor';
 import { AnimatedSunTrackerEditor } from './sun-tracker-editor';
+import { AnimatedForecastCardEditor } from './forecast-card-editor';
 
 if (!customElements.get('animated-weather-card-editor')) {
     customElements.define('animated-weather-card-editor', AnimatedWeatherCardEditor);
@@ -17,4 +18,8 @@ if (!customElements.get('animated-weather-card-editor')) {
 // The sun tracker's editor comes in the same bundle
 if (!customElements.get('animated-sun-tracker-editor')) {
     customElements.define('animated-sun-tracker-editor', AnimatedSunTrackerEditor);
+}
+// And the forecast card's
+if (!customElements.get('animated-forecast-card-editor')) {
+    customElements.define('animated-forecast-card-editor', AnimatedForecastCardEditor);
 }

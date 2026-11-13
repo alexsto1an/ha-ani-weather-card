@@ -50,7 +50,7 @@ describe('localized weather card', () => {
         await mount(hass(true));
         card.hass = hass(false);
         expect(sunMetric().querySelector('.attribute-label > span')!.textContent).toBe('Sunrise');
-        expect(sunMetric().querySelector('.attribute-icon')!.getAttribute('icon')).toBe('mdi:weather-sunset-up');
+        expect(sunMetric().querySelector('.attribute-icon')!.getAttribute('data-icon')).toBe('sunrise');
         expect(sunMetric().querySelector('.attribute-text')!.textContent).toMatch(/^6:41\s?AM$/);
     });
 
@@ -67,13 +67,13 @@ describe('localized weather card', () => {
     it('introduces the indoor reading with the word by default', async () => {
         await mount(hass(true));
         expect(indoor().querySelector('.indoor-label')!.textContent).toBe('Indoors');
-        expect(indoor().querySelector('ha-icon')).toBeNull();
+        expect(indoor().querySelector('.indoor-icon')).toBeNull();
         expect(indoor().textContent).toMatch(/^Indoors22°C?/);
     });
 
     it('can use an icon instead, keeping the word for screen readers', async () => {
         await mount(hass(true), { indoor_style: 'icon' });
-        expect(indoor().querySelector('ha-icon')!.getAttribute('icon')).toBe('mdi:home-thermometer-outline');
+        expect(indoor().querySelector('.indoor-icon')!.getAttribute('data-icon')).toBe('indoor');
         expect(indoor().querySelector('.indoor-label')).toBeNull();
         expect(indoor().querySelector('.awc-visually-hidden')!.textContent!.trim()).toBe('Indoors');
     });
@@ -81,7 +81,7 @@ describe('localized weather card', () => {
     it('can use both, icon first', async () => {
         await mount(hass(true, 'de', 'language'), { indoor_style: 'both' });
         const [first, second] = Array.from(indoor().children);
-        expect(first.tagName).toBe('HA-ICON');
+        expect(first.getAttribute('class')).toBe('indoor-icon awc-icon');
         expect(second.className).toBe('indoor-label');
         expect(second.textContent).toBe('Innen');
     });

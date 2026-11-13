@@ -16,6 +16,16 @@ export interface ActionsConfig {
 
 export type Gesture = 'tap' | 'hold' | 'double_tap';
 
+/**
+ * Actions the card runs itself instead of handing to Home Assistant, by
+ * name: `forecast` opens the forecast pop-up. Any other action still goes
+ * to Home Assistant.
+ */
+export type LocalActions = Partial<Record<string, (gesture: Gesture) => void>>;
+
+/** The card's own actions, for the editors */
+export const CARD_ACTIONS = ['forecast'] as const;
+
 export const GESTURES: readonly Gesture[] = ['tap', 'hold', 'double_tap'];
 
 /** Home Assistant's own timings: how long a press lasts to be a hold, and how soon a second tap makes a double tap */
@@ -58,8 +68,14 @@ export function tapDoesSomething(config: ActionsConfig): boolean {
  * An unset hold or double tap does nothing; Home Assistant would open
  * more-info for it.
  */
-export function fireAction(host: HTMLElement, config: ActionsConfig, gesture: Gesture): void {
+export function fireAction(host: HTMLElement, config: ActionsConfig, gesture: Gesture, local: LocalActions = {}): void {
     const action = config[`${gesture}_action`];
+    // Only the table's own entries: an action named "constructor" isn't one of them
+    const own = action && Object.prototype.hasOwnProperty.call(local, action.action) ? local[action.action] : undefined;
+    if (own) {
+        own(gesture);
+        return;
+    }
     if (gesture === 'tap' && !action) {
         if (config.entity) {
             host.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -76,13 +92,13 @@ export function fireAction(host: HTMLElement, config: ActionsConfig, gesture: Ge
 
 /**
  * Make an element the card's touch target. A tap, a hold and a double tap
- * fire their actions from the host, and Enter or Space taps from the
- * keyboard. A tap waits to see if a second follows only when a double tap is
+ * fire their actions from the host (or run the card's own, `local`), and
+ * Enter or Space taps from the keyboard. A tap waits to see if a second follows only when a double tap is
  * set, and a hold is watched for only when one is set, so a plain tap is
  * never slowed down. The config is read at each gesture, so a new one applies
  * without binding again; binding the same element twice does nothing.
  */
-export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: () => ActionsConfig): void {
+export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: () => ActionsConfig, local: LocalActions = {}): void {
     if (target.dataset.actionsBound) return;
     target.dataset.actionsBound = '1';
 
@@ -101,21 +117,23 @@ export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: (
     };
     const tap = () => {
         if (!hasAction(getConfig().double_tap_action)) {
-            fireAction(host, getConfig(), 'tap');
+            fireAction(host, getConfig(), 'tap', local);
         } else if (tapTimer) {
             clearTimeout(tapTimer);
             tapTimer = undefined;
-            fireAction(host, getConfig(), 'double_tap');
+            fireAction(host, getConfig(), 'double_tap', local);
         } else {
             tapTimer = setTimeout(() => {
                 tapTimer = undefined;
-                fireAction(host, getConfig(), 'tap');
+                fireAction(host, getConfig(), 'tap', local);
             }, DOUBLE_TAP_MS);
         }
     };
 
+    // A control inside the target (a chip, the Now button, the slider) is its own tap
+    const own = (e: Event) => e.target !== target && !!(e.target as Element | null)?.closest?.('button, a, input, [role="slider"], [role="radio"]');
     target.addEventListener('pointerdown', (e: PointerEvent) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || own(e)) return;
         start = { x: e.clientX, y: e.clientY };
         held = false;
         stopHold();
@@ -123,7 +141,7 @@ export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: (
             holdTimer = setTimeout(() => {
                 holdTimer = undefined;
                 held = true;
-                fireAction(host, getConfig(), 'hold');
+                fireAction(host, getConfig(), 'hold', local);
             }, HOLD_MS);
         }
     });
@@ -138,9 +156,9 @@ export function bindActions(target: HTMLElement, host: HTMLElement, getConfig: (
     target.addEventListener('pointercancel', cancel);
     target.addEventListener('pointerleave', cancel);
     target.addEventListener('keydown', (e: KeyboardEvent) => {
-        if ((e.key !== 'Enter' && e.key !== ' ') || !tapDoesSomething(getConfig())) return;
+        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== target || !tapDoesSomething(getConfig())) return;
         e.preventDefault();
-        fireAction(host, getConfig(), 'tap');
+        fireAction(host, getConfig(), 'tap', local);
     });
     // A long press would open the browser's menu, or select the text under it
     target.addEventListener('contextmenu', (e: Event) => {
