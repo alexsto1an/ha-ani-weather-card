@@ -6,6 +6,7 @@ import { HomeAssistant } from './types';
 import { readActions } from './actions';
 import { mountActionsEditor, updateActionsEditor } from './action-editor';
 import type { AnimatedWeatherCardConfig as ForecastCardConfig } from './types';
+import { GRAPH_OPTIONS } from './config-editor';
 
 const EDITOR_STYLES = `
     .fc-editor {
@@ -135,6 +136,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
                 <ha-entity-picker id="weather-picker" allow-custom-entity></ha-entity-picker>
                 <ha-entity-picker id="sun-picker" allow-custom-entity></ha-entity-picker>
                 <ha-select id="forecast_metric" label="The hours first show"></ha-select>
+                <ha-select id="forecast_graph" label="The hours' graph"></ha-select>
                 <ha-select id="forecast_days" label="Days"></ha-select>
                 <div class="fc-switches">
                     ${toggle('show_hours', 'The hours', 'The hourly row and its chips: drag it, and the sky goes there', c.show_hours !== false)}
@@ -162,6 +164,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
             select.addEventListener('closed', (e: Event) => e.stopPropagation());
         };
         bindSelect('forecast_metric', METRICS, c.forecast_metric ?? 'temp', v => ({ forecast_metric: v === 'temp' ? undefined : v as ForecastCardConfig['forecast_metric'] }));
+        bindSelect('forecast_graph', GRAPH_OPTIONS, c.forecast_graph ?? 'line', v => ({ forecast_graph: v === 'line' ? undefined : v as ForecastCardConfig['forecast_graph'] }));
         bindSelect('forecast_days', DAYS, String(c.forecast_days ?? 7), v => ({ forecast_days: v === '7' ? undefined : Number(v) }));
         const onSwitch = (id: string, apply: (checked: boolean) => Partial<ForecastCardConfig>) => {
             this.querySelector(`#${id}`)?.addEventListener('change', (e: Event) => {

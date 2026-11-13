@@ -56,6 +56,56 @@ function mount(config: object, hass = makeHass(), type = 'animated-weather-card'
 afterEach(() => { for (const c of mounted.splice(0)) c.remove(); vi.useRealTimers(); });
 const settle = () => new Promise(r => setTimeout(r, 30));
 
+describe('the hours\' graph (forecast_graph), the same for every metric', () => {
+    const make = (graph?: string) => {
+        const row = createHourly({ W: FC_WORDS.en, lang: 'en', hours: hours(new Timeline(forecast(), 'hourly', Date.now()).slots, makeHass() as never), metric: 'temp', has: { temp: true, feels: true, chance: true, amount: true }, noun: 'rain', pitch: 50, plot: 44, valueHeight: 20, graph: graph as never, conditionName: c => c });
+        document.body.append(row.el);
+        mounted.push(row.el);
+        return row;
+    };
+    const op = (row: ReturnType<typeof make>, sel: string) => Number((row.el.querySelector(sel) as SVGElement).style.opacity);
+    it('a line for every metric by default: the rain\'s chance and amount too, no fill, no bars', () => {
+        for (const g of [undefined, 'line', 'nonsense']) {
+            const row = make(g);
+            for (const m of ['temp', 'chance', 'amount'] as const) {
+                row.setMetric(m, { animate: false });
+                expect([op(row, '.fc-line'), op(row, '.fc-area'), op(row, '.fc-bars')], `${g} ${m}`).toEqual([1, 0, 0]);
+            }
+        }
+    });
+    it('the line with a soft fill under it, fading to the bottom', () => {
+        const row = make('area');
+        row.setMetric('amount', { animate: false });
+        expect([op(row, '.fc-line'), op(row, '.fc-area')]).toEqual([1, 1]);
+        expect(row.el.querySelector('.fc-area')?.getAttribute('fill')).toMatch(/^url\(#fcm\d+a\)$/);
+    });
+    it('bars for every metric, from one floor, the values over them; an hour of no rain has none', () => {
+        const row = make('bars');
+        const bars = () => (row.el.querySelector('.fc-bars path')?.getAttribute('d') ?? '').match(/M/g)?.length ?? 0;
+        expect([op(row, '.fc-line'), op(row, '.fc-bars'), op(row, '.fc-base')]).toEqual([0, 1, 1]);
+        expect(bars()).toBe(30);
+        expect(row.el.dataset.values).toBe('above');
+        row.setMetric('chance', { animate: false });
+        // The sample's chance is 10% but every twelfth hour (70%): every hour has a bar
+        expect(bars()).toBe(30);
+        row.setMetric('amount', { animate: false });
+        // Only the wet hours have an amount
+        expect(bars()).toBe(3);
+    });
+    it('no graph: the values alone, on one line at the row\'s middle', () => {
+        // jsdom lays out no text: a value is 20 px wide
+        const ow = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')!;
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get() { return this.classList?.contains('fc-val') ? 20 : 0; } });
+        const row = make('none');
+        row.setMetric('chance', { animate: false });
+        row.setMetric('temp', { animate: false });
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', ow);
+        expect([op(row, '.fc-line'), op(row, '.fc-area'), op(row, '.fc-bars'), op(row, '.fc-base')]).toEqual([0, 0, 0, 0]);
+        const tops = [...row.el.querySelectorAll<HTMLElement>('.fc-val')].map(v => v.style.transform.match(/,\s*([\d.-]+)px/)?.[1]).filter(Boolean);
+        expect(new Set(tops)).toEqual(new Set(['12.00']));
+    });
+});
+
 describe('the forecast on the weather card', () => {
     it('draws the clock, today\'s high and low, the turning line, the hourly row, its chips and the slider', async () => {
         const card = mount({ show_forecast: true, show_clock: true });

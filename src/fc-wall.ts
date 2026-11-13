@@ -23,7 +23,7 @@ import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
 import { TurningLine, conditionNoun, dateText, dayName, relative, timeHtml, timeParts, week } from './fc-data';
 import { fcWords, fill } from './fc-words';
-import { Daily, Hourly, createDaily, createHourly } from './fc-row';
+import { Daily, Hourly, createDaily, createHourly, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { TimeText, minuteTicker } from './fc-clock';
@@ -223,6 +223,7 @@ export function attachWall(host: ForecastHost): ForecastExtras {
                 hass, W, lang: m.lang, hours: m.hours, current: host.current(), metric: 'temp', has: m.has, noun: m.noun,
                 pitch: L.col / 2, plot: L.plot, valueHeight: L.valueH, valueLift: L.lift, glyphSize: L.glyph, every: 2,
                 above: true, flat: true, startDot: true, dotR: Math.round(L.stroke * 1.7 * 2) / 2,
+                graph: graphOf(host.config().forecast_graph),
                 tints: iconTints(host, m, { y0: L.iconY[0], y1: L.iconY[1], glow: SKY_GLOW_WIDE, reach: 12 }), unit: m.unit, fahrenheit: m.fahrenheit,
                 conditionName: c => conditionNoun(c, hass, x => host.conditionName(x)),
             });

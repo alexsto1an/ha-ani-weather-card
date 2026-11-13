@@ -325,6 +325,7 @@ show_clock: true
 show_forecast: true
 # Optional
 forecast_metric: chance  # temp, feels, chance or amount
+forecast_graph: bars     # line, area, bars or none
 ```
 
 **What it shows.**
@@ -333,7 +334,7 @@ forecast_metric: chance  # temp, feels, chance or amount
 - **The condition** reads as a word you'd say, "Rain" or "Clear", never "Rainy" or "Clear, night". Beside it, today's high and low: "H 22°  L 12°".
 - **What turns.** One line under the condition: "Rain from 17:00 to 19:00", "Rain until 19:00", "Dry all day", "Dry tonight". It's shown whole, in a shorter form, or not at all. With a note shown, the note tells what's coming, so this line steps aside and the line under the condition is the usual one, feels like and indoors.
 - **The row.** At the card's foot, under the readings, with the divider between them: now above the line, the hours ahead below it. An hour to a column, about 54 px each, so a phone shows six hours and a wider card more, with an icon every hour and the value on one line.
-- **The chips.** Centred under the row: Temp, Feels like, Rain chance and Rain amount, in full where they fit. The noun follows what falls, so snow gets "Snow chance". A metric your integration doesn't report has no chip, and with fewer than two there are none. Switching moves the white capsule and re-forms the line: temperature and feels like as a line, the chance as a line over a soft fill, the amount as bars. Left and Right move between them, and `forecast_metric` picks the one the row starts on.
+- **The chips.** Centred under the row: Temp, Feels like, Rain chance and Rain amount, in full where they fit. The noun follows what falls, so snow gets "Snow chance". A metric your integration doesn't report has no chip, and with fewer than two there are none. Switching moves the white capsule and re-forms the graph, the same kind for every metric: a line (`forecast_graph: line`, the default), the line over a soft fill (`area`), bars (`bars`), or the values alone (`none`). Left and Right move between them, and `forecast_metric` picks the one the row starts on.
 - **The icons.** One filled set, with a sun, a moon, clouds, rain, snow, a bolt and wind, each condition in its own drawing, and the same set draws the weather card's and the sun tracker's icons. On the sky palette each stands in the light of its own hour: white by day, rose at dawn, peach at dusk, slate at night, with the sun gold and rain pale blue. Only the colour changes, and each colour is lightened until it holds 3.2:1 against the brightest sky it can sit over. On the theme palette they take Home Assistant's icon colour.
 
 **Drag through the hours.**
@@ -453,6 +454,7 @@ cards:
 | `forecast_days` | `7` | How many days the list shows, 0 to 10. `0` leaves the days out |
 | `show_hours` | `true` | Show the hourly row and its chips |
 | `forecast_metric` | `temp` | What the row shows first: `temp`, `feels`, `chance` or `amount` |
+| `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone) |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
 | `tap_action` | `forecast` | What a tap does. By default it opens the view that opens on tap. Takes the same actions as the weather card |
 | `hold_action` | `none` | What a press of half a second or more does |
@@ -654,6 +656,7 @@ sunset_hour: 19
 | `show_clock` | `false` | The time at the start of the location line: "13:10  Home". It changes only on the minute and follows your profile's 12- or 24-hour setting and time zone. It goes with the location line in a short frame, and on the compact strip it leads the quiet line. It adds no rows |
 | `show_forecast` | `false` | Today's high and low beside the condition, the line on what turns under it, the hourly row with its chips, and the slide through the hours. A tap opens the forecast view. Eight rows in the sections view, or five without an hourly forecast |
 | `forecast_metric` | `temp` | What the row shows first: `temp`, `feels` (feels like), `chance` (the chance of rain) or `amount` (the rain amount) |
+| `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone). The forecast card, the view on tap and the wall follow it |
 | `layout` | `default` | `nightstand` makes the card a bedside clock, with the time as the hero. Six rows in the sections view |
 | `alarm_entity` | — | Nightstand: a timestamp sensor with your next alarm, such as the Android Companion app's next alarm sensor, or an input_datetime an iOS Shortcut sets. It's used when it's within 18 hours |
 | `wake_time` | `"07:00"` | Nightstand: when you get up without an alarm |

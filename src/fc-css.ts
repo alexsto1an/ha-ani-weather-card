@@ -31,7 +31,7 @@ const PARTS = `
 .fc-plot { display: block; overflow: visible; margin-top: var(--fc-plot-gap, 4px); }
 .fc-line { fill: none; stroke: currentColor; stroke-width: var(--fc-stroke, 2px); stroke-linecap: round; stroke-linejoin: round; }
 .fc-start { fill: currentColor; }
-.fc-area { fill: currentColor; fill-opacity: 0.16; stroke: none; }
+.fc-area { stroke: none; }
 .fc-bars { fill: currentColor; }
 .fc-base { fill: none; stroke: currentColor; stroke-width: 1px; stroke-opacity: 0.28; }
 .fc-vals { position: absolute; left: 0; top: calc(var(--fc-cols-h, 42px) + var(--fc-plot-gap, 4px)); height: var(--fc-plot); width: 100%; pointer-events: none; }

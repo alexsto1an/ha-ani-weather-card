@@ -17,7 +17,7 @@ import { SKY_GLOW, SKY_GLOW_WIDE, sampleSkyAt, relativeLuminance, type SkyCondit
 import { HOUR, Slot, Timeline, classOf, clamp, esc, num, ownControl, sunModel, wetNoun, phaseWeights } from './fc-core';
 import { HourRow, METRICS, Metric, TurningLine, available, conditionNoun, highLow, hours, relative, timeHtml, timeParts, timeText, turningLine, dayName } from './fc-data';
 import { FcWords, fcWords, fill } from './fc-words';
-import { Chips, Hourly, Noun, createChips, createHourly, hourCols } from './fc-row';
+import { Chips, Hourly, Noun, createChips, createHourly, hourCols, graphOf } from './fc-row';
 import { Tints, litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { TimeText, minuteTicker } from './fc-clock';
@@ -237,6 +237,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             hourly = createHourly({
                 hass: host.hass(), W, lang: m.lang, hours: m.hours, current: current(), metric, has: m.has, noun: m.noun,
                 pitch: w / cols, plot: 44, glyphSize: 22, tints: i => tintsFor?.(i) ?? null, unit: m.unit, fahrenheit: m.fahrenheit,
+                graph: graphOf(host.config().forecast_graph),
                 conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)),
             });
             sec.append(hourly.el);

@@ -20,7 +20,7 @@ import { CURVE, HOUR, Slot, css, ease, esc, mixHex, num, reducedMotion, whole } 
 import { conditionNoun, timeParts, timeText, week } from './fc-data';
 import { TimeText, minuteTicker } from './fc-clock';
 import { FcWords, fcWords, fill } from './fc-words';
-import { Chips, Daily, Hourly, createChips, createDaily, createHourly } from './fc-row';
+import { Chips, Daily, Hourly, createChips, createDaily, createHourly, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { Model, buildModel, feelsNow, iconTints, valueText } from './fc-weather';
@@ -117,6 +117,7 @@ export function attachView(host: ForecastHost): ForecastExtras {
         hourly = createHourly({
             hass: host.hass(), W, lang: model.lang, hours: model.hours, current: host.current(), metric, has: model.has, noun: model.noun,
             pitch, plot: 44, glyphSize: 22, unit: model.unit, fahrenheit: model.fahrenheit,
+            graph: graphOf(host.config().forecast_graph),
             tints: iconTints(host, model, { y0: 0.3, y1: 0.45, glow: tablet() ? SKY_GLOW_WIDE : SKY_GLOW, reach: 8 }),
             conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)),
         });

@@ -13,6 +13,14 @@ function noteCalendarList(value: unknown): string[] {
     return (Array.isArray(value) ? value : typeof value === 'string' ? [value] : []).map(String).filter(Boolean);
 }
 
+/** forecast_graph: the hours' graph, the same for every metric */
+export const GRAPH_OPTIONS = [
+    { value: 'line', label: 'A line' },
+    { value: 'area', label: 'A line with a soft fill' },
+    { value: 'bars', label: 'Bars' },
+    { value: 'none', label: 'No graph: the values alone' },
+];
+
 export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCardEditor {
     private _config?: AnimatedWeatherCardConfig;
     private _hass?: HomeAssistant;
@@ -338,6 +346,9 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <p class="section-note">Drag the card sideways and its sky, weather and readings go to the hour you stop at. It stays there until you tap Now, or until nobody has touched it for half a minute. Asks for eight rows in a sections view (five without an hourly forecast); a shorter frame gives up the chips, then the icons, then the row, before the temperature ever shrinks. A tap opens the whole forecast unless you choose something else under Interactions.</p>
             <div class="option forecast-only">
               <ha-select id="forecast_metric" label="The hours first show"></ha-select>
+            </div>
+            <div class="option forecast-only">
+              <ha-select id="forecast_graph" label="The hours' graph"></ha-select>
             </div>
             <div class="option">
               <ha-select id="layout" label="Layout"></ha-select>
@@ -709,6 +720,9 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             { value: 'amount', label: 'Rain amount' },
         ], this._config?.forecast_metric || 'temp', (value) => {
             this._updateConfig('forecast_metric', value === 'temp' ? undefined : value);
+        });
+        this._bindSelect('forecast_graph', GRAPH_OPTIONS, this._config?.forecast_graph || 'line', (value) => {
+            this._updateConfig('forecast_graph', value === 'line' ? undefined : value);
         });
         this._bindSelect('layout', [
             { value: 'default', label: 'The weather card' },

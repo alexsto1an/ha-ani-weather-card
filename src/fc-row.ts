@@ -88,8 +88,17 @@ export interface HourlyOptions {
     dotR?: number;
     /** With above: every value on one line at the plot's top, the line free below them (the wall), not each over its point */
     flat?: boolean;
+    /**
+     * The graph, the same for every metric (forecast_graph): a line (the default), the line with a soft fill under it,
+     * bars, or none, the values alone on one line
+     */
+    graph?: Graph;
     conditionName(c: string): string;
 }
+export type Graph = 'line' | 'area' | 'bars' | 'none';
+export const GRAPHS: readonly Graph[] = ['line', 'area', 'bars', 'none'];
+/** forecast_graph as the rows take it: one of the four, else the line */
+export const graphOf = (v: unknown): Graph => (GRAPHS as readonly unknown[]).includes(v) ? v as Graph : 'line';
 export interface Hourly {
     el: HTMLElement;
     pitch: number;
@@ -143,11 +152,15 @@ export function createHourly(o: HourlyOptions): Hourly {
     // A flat day never draws a cliff: 8 °C (14.4 °F) is the least the travel shows
     const tSpan = Math.max(o.fahrenheit ? 14.4 : 8, tMax - tMin);
     const tMid = (tMin + tMax) / 2;
-    // On the line: half a figure above and below its travel; above it (the wall): the figure stands over the line's highest point
-    const tTop = o.above ? vh + (o.valueLift ?? 1) : vh / 2;
-    const tBottom = o.above ? H - 4 : H - vh / 2;
-    const travel = tBottom - tTop;
+    const graph = graphOf(o.graph);
+    const bars = graph === 'bars', bare = graph === 'none';
+    // On the line: half a figure above and below its travel; above it (the wall), or over a bar: the figure stands over
+    // the highest point. A bar never shrinks below a sixth of its travel, so the coldest hour is still a bar
+    const up = o.above || bars;
     const base = H - 2.5;
+    const tTop = up ? vh + (o.valueLift ?? 1) : vh / 2;
+    const tBottom = bars ? base - Math.max(4, (base - (vh + (o.valueLift ?? 1))) / 6) : o.above ? H - 4 : H - vh / 2;
+    const travel = tBottom - tTop;
     const lift = H - 3 - vh;
     const aMax = Math.max(o.unit === 'in' ? 0.08 : 2, ...hrs.map(h => h.amount ?? 0));
     const yOf: Record<Metric, (h: HourRow) => number> = {
@@ -174,7 +187,7 @@ export function createHourly(o: HourlyOptions): Hourly {
     const every = Math.max(1, o.every ?? 1);
     const shown = (i: number) => i % every === 0;
     for (const m of METRICS) { const f = textOf[m]; textOf[m] = (h, i) => (shown(i) ? f(h, i) : ''); }
-    const onLine = (m: Metric) => !o.above && (m === 'temp' || m === 'feels');
+    const onLine = (m: Metric) => graph !== 'bars' && graph !== 'none' && !o.above && (m === 'temp' || m === 'feels');
     const spoken: Record<Metric, (h: HourRow) => string> = {
         temp: h => fill(W.degrees, { v: whole(h.temp ?? 0) }),
         feels: h => fill(W.degrees, { v: whole(h.feels ?? h.temp ?? 0) }),
@@ -192,9 +205,9 @@ export function createHourly(o: HourlyOptions): Hourly {
     el.innerHTML = `<div class="fc-clip"><div class="fc-strip" style="width:${xw.toFixed(1)}px">
         <div class="fc-cols" aria-hidden="true">${cols}</div>
         <svg class="fc-plot" width="${xw.toFixed(1)}" height="${H}" viewBox="0 0 ${xw.toFixed(1)} ${H}" aria-hidden="true" focusable="false">
-          <defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="-6" width="${xw.toFixed(1)}" height="${H + 12}"><rect x="0" y="-6" width="${xw.toFixed(1)}" height="${H + 12}" fill="#fff"/><g class="fc-gaps" fill="#000"></g></mask></defs>
+          <defs><linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.3"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="-6" width="${xw.toFixed(1)}" height="${H + 12}"><rect x="0" y="-6" width="${xw.toFixed(1)}" height="${H + 12}" fill="#fff"/><g class="fc-gaps" fill="#000"></g></mask></defs>
           <path class="fc-base" d="M${(pitch / 2).toFixed(1)} ${base + 1}H${(xw - pitch / 2).toFixed(1)}"/>
-          <path class="fc-area"/>
+          <path class="fc-area" fill="url(#${id}a)"/>
           <g class="fc-bars"></g>
           <path class="fc-line" mask="url(#${id})"/>${o.startDot ? `<circle class="fc-start" r="${o.dotR ?? 5}"/>` : ''}
         </svg>
@@ -210,13 +223,23 @@ export function createHourly(o: HourlyOptions): Hourly {
     const xs = hrs.map((_, i) => (i + 0.5) * pitch);
     gapsG.innerHTML = hrs.map(() => '<rect rx="2"/>').join('');
     const gaps = [...gapsG.children] as SVGRectElement[];
-    barsG.innerHTML = hrs.map((h, i) => {
-        const a = h.amount ?? 0;
-        if (a <= 0) return '';
-        const bh = Math.max(2, (a / aMax) * lift), bw = Math.min(12, pitch * 0.24), r = Math.min(3, bh);
-        const x0 = xs[i] - bw / 2, y0 = base + 1 - bh;
-        return `<path d="M${x0.toFixed(2)} ${base + 1}V${(y0 + r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${-r}h${(bw - 2 * r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${r}V${base + 1}Z"/>`;
-    }).join('');
+    // Bars: one for every hour that shows a value, its top on the hour's point, so it travels on the same spring as the
+    // line; a chance or an amount of nothing has none
+    barsG.innerHTML = '<path/>';
+    const barsPath = barsG.firstElementChild as SVGPathElement;
+    const bw = Math.max(4, Math.min(12, pitch * every * 0.18));
+    function barsD(): string {
+        let d = '';
+        for (let i = 0; i < n; i++) {
+            if (!shown(i)) continue;
+            const h = hrs[i];
+            if (metric === 'temp' ? h.temp === null : metric === 'feels' ? (h.feels ?? h.temp) === null : metric === 'chance' ? !(h.chance ?? 0) : !(h.amount ?? 0)) continue;
+            const bh = Math.max(2, base + 1 - st.y[i]), r = Math.min(bw / 2, bh);
+            const x0 = xs[i] - bw / 2, y0 = base + 1 - bh;
+            d += `M${x0.toFixed(2)} ${base + 1}V${(y0 + r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${-r}h${(bw - 2 * r).toFixed(2)}a${r} ${r} 0 0 1 ${r} ${r}V${base + 1}Z`;
+        }
+        return d;
+    }
 
     /** The icons: each in its hour's light, all at full strength */
     function retint() {
@@ -240,11 +263,12 @@ export function createHourly(o: HourlyOptions): Hourly {
         vOp: 1, vPhase: 'idle' as 'idle' | 'out' | 'in', vT: 0, vFrom: 1,
         keep: new Set<number>(),
         gap: onLine(metric) ? 1 : 0,
-        lineOp: metric === 'amount' ? 0 : 1, areaOp: metric === 'chance' ? 1 : 0, barsOp: metric === 'amount' ? 1 : 0, barsS: metric === 'amount' ? 1 : 0,
-        baseOp: metric === 'amount' ? 1 : 0,
+        // The marks are the graph's, the same for every metric
+        lineOp: graph === 'line' || graph === 'area' ? 1 : 0, areaOp: graph === 'area' ? 1 : 0, barsOp: bars ? 1 : 0, barsS: 1,
+        baseOp: bars ? 1 : 0,
         widths: hrs.map(() => 0),
     };
-    let raf = 0, last = 0, morphT0 = 0;
+    let raf = 0, last = 0;
 
     function writeValues(m: Metric) {
         vals.forEach((s, i) => { const t = textOf[m](hrs[i], i); if (s.dataset.t !== t) { s.innerHTML = t; s.dataset.t = t; } });
@@ -274,7 +298,7 @@ export function createHourly(o: HourlyOptions): Hourly {
         area.style.opacity = st.areaOp.toFixed(3);
         baseEl.style.opacity = st.baseOp.toFixed(3);
         barsG.style.opacity = st.barsOp.toFixed(3);
-        barsG.setAttribute('transform', `translate(0 ${base + 1}) scale(1 ${Math.max(0.001, st.barsS).toFixed(4)}) translate(0 ${-(base + 1)})`);
+        if (bars) barsPath.setAttribute('d', barsD());
         const line_ = el.dataset.values === 'line';
         for (let i = 0; i < n; i++) {
             const w = st.widths[i];
@@ -282,7 +306,8 @@ export function createHourly(o: HourlyOptions): Hourly {
             const op = keep ? 1 : st.vOp;
             const s = vals[i];
             if (!w) { if (s.style.opacity !== '0') s.style.opacity = '0'; gaps[i].setAttribute('width', '0'); continue; }
-            const top = line_ ? st.y[i] - vh / 2 : o.flat ? 0 : st.y[i] - vh - (o.valueLift ?? 1);
+            // No graph: the values on one line, at the plot's middle (the wall's at its top)
+            const top = line_ ? st.y[i] - vh / 2 : o.flat ? 0 : bare ? (H - vh) / 2 : st.y[i] - vh - (o.valueLift ?? 1);
             s.style.transform = `translate3d(${(xs[i] - w / 2).toFixed(2)}px, ${top.toFixed(2)}px, 0)`;
             s.style.opacity = op.toFixed(3);
             // The line's gaps travel with their values, and open and close with their light
@@ -315,16 +340,7 @@ export function createHourly(o: HourlyOptions): Hourly {
             if (t >= ROW_MOTION.valueIn) { st.vOp = 1; st.vPhase = 'idle'; } else moving = true;
         }
         st.gap = st.vOp;
-        // The marks: the line, the soft body under a chance, the bars of an amount
-        const lineTo = metric === 'amount' ? 0 : 1, areaTo = metric === 'chance' ? 1 : 0, barsTo = metric === 'amount' ? 1 : 0, baseTo = metric === 'amount' ? 1 : 0;
-        st.lineOp = step(st.lineOp, lineTo, lineTo ? 180 : ROW_MOTION.lineOut, dt);
-        st.areaOp = step(st.areaOp, areaTo, areaTo ? 240 : ROW_MOTION.lineOut, dt);
-        st.barsOp = step(st.barsOp, barsTo, barsTo ? 60 : ROW_MOTION.lineOut, dt);
-        st.baseOp = step(st.baseOp, baseTo, 200, dt);
-        const bt = clamp((ts - morphT0) / ROW_MOTION.barsGrow);
-        st.barsS = barsTo ? Math.max(st.barsS, ease.in(bt)) : st.barsS;
-        if (!barsTo && st.barsOp === 0) st.barsS = 0;
-        if (st.lineOp !== lineTo || st.areaOp !== areaTo || st.barsOp !== barsTo || st.baseOp !== baseTo || (barsTo && bt < 1)) moving = true;
+        // The marks are the graph's: they don't change with the metric, the points they're drawn through travel
         draw();
         if (moving) raf = requestAnimationFrame(tick); else { raf = 0; last = 0; }
     }
@@ -343,7 +359,6 @@ export function createHourly(o: HourlyOptions): Hourly {
             st.y = [...st.to]; st.v.fill(0); st.keep.clear();
             writeValues(m);
             st.vOp = 1; st.vPhase = 'idle'; st.gap = onLine(m) ? 1 : 0;
-            st.lineOp = m === 'amount' ? 0 : 1; st.areaOp = m === 'chance' ? 1 : 0; st.barsOp = m === 'amount' ? 1 : 0; st.barsS = st.barsOp; st.baseOp = m === 'amount' ? 1 : 0;
             draw();
             if (animate && typeof el.animate === 'function') el.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 160, easing: 'linear' });
             return;
@@ -352,8 +367,6 @@ export function createHourly(o: HourlyOptions): Hourly {
         st.keep.clear();
         if (onLine(prev) && onLine(m) && st.vPhase === 'idle') for (let i = 0; i < n; i++) if (textOf[prev](hrs[i], i) === textOf[m](hrs[i], i)) st.keep.add(i);
         const now = performance.now();
-        morphT0 = now;
-        if (m === 'amount') st.barsS = Math.min(st.barsS, 0.001);
         if (st.vPhase !== 'out') { st.vFrom = st.vOp; st.vPhase = 'out'; st.vT = now; }
         kick();
     }

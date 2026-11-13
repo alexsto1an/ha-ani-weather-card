@@ -22,7 +22,7 @@ import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
 import { conditionNoun, dayName, timeHtml, week } from './fc-data';
 import { fcWords } from './fc-words';
-import { Chips, Daily, Hourly, createChips, createDaily, createHourly, hourCols } from './fc-row';
+import { Chips, Daily, Hourly, createChips, createDaily, createHourly, hourCols, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { minuteTicker } from './fc-clock';
@@ -101,6 +101,7 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             hourly = createHourly({
                 hass: host.hass(), W, lang: m.lang, hours: m.hours, current: host.current(), metric, has: m.has, noun: m.noun,
                 pitch, plot: strip ? 42 : wide() ? 60 : 44, glyphSize: 22, tints, unit: m.unit, fahrenheit: m.fahrenheit,
+                graph: graphOf(host.config().forecast_graph),
                 conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)),
             });
             if (strip) hourly.el.style.marginLeft = `${13 - pitch / 2}px`;
