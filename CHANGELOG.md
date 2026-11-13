@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With `show_forecast` on, a tap on the weather card opens the forecast view instead of the entity's details. `tap_action` still sets it to anything else.
 - The weather card's icons for humidity, wind, pressure, sunrise and sunset, the indoor reading and a card with no data, and all of the sun tracker's, its eight moon phases included, are drawn from the forecast's set, inside the cards, instead of Material Design Icons, so the cards speak one set. The wind and pressure arrows are unchanged.
 - The times on the cards follow your profile's time zone setting, the server's or the device's: the sun tracker's times and its sun's place on the path, the weather card's sunset or sunrise, and the new clock. They always followed the device's time zone before.
-- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 5.4 KB gzipped, to about 82 KB, 2.3 KB of it the icons.
+- The card ships as six files. The forecast, the clock, the forecast card, the nightstand and the view on tap are drawn by `animated-weather-card-forecast.js`, which loads only for cards that use one of them; a manual install copies it beside the others. `animated-weather-card.js` grows by about 5.7 KB gzipped, to about 82 KB, 2.3 KB of it the icons.
 
 ### Fixed
 
