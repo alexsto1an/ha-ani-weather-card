@@ -242,6 +242,10 @@ export interface AnimatedWeatherCardConfig {
     show_sun?: boolean;
     /** The time, leading the location line */
     show_clock?: boolean;
+    /** Today's date on the location line, after the time ("13:10  Fri 13 Nov  Home") */
+    show_date?: boolean;
+    /** The big value: the temperature (default), or the time, with the temperature leading the condition's line */
+    hero?: 'temperature' | 'clock';
     /** The forecast on the card: today's high and low, the turning line, the hourly row and its chips, and the slide through the hours */
     show_forecast?: boolean;
     /** The metric the row shows first: temp, feels, chance or amount */

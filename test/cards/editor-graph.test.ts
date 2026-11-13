@@ -30,3 +30,43 @@ describe('the hours\' graph in both editors (forecast_graph)', () => {
         });
     }
 });
+
+describe('the big value and the date in the weather card\'s editor (hero, show_date)', () => {
+    let editor: Editor;
+    afterEach(() => editor?.remove());
+
+    it('picks the temperature or the time, writing only the time; the small clock dims while the time is the hero', async () => {
+        editor = document.createElement('animated-weather-card-editor') as Editor;
+        editor.setConfig({ type: 'custom:animated-weather-card', entity: 'weather.home' });
+        document.body.appendChild(editor);
+        await flush();
+        const select = editor.querySelector('#hero') as Select;
+        expect(select.options.map(o => o.value)).toEqual(['temperature', 'clock']);
+        expect(select.value).toBe('temperature');
+        let config: Record<string, unknown> | undefined;
+        editor.addEventListener('config-changed', (e) => { config = (e as CustomEvent).detail.config; });
+        const small = (editor.querySelector('#show_clock') as HTMLElement).closest('.option') as HTMLElement;
+        expect(small.style.opacity).toBe('');
+        select.dispatchEvent(new CustomEvent('selected', { detail: { value: 'clock' } }));
+        expect(config).toMatchObject({ hero: 'clock' });
+        expect(small.style.opacity).toBe('0.5');
+        select.dispatchEvent(new CustomEvent('selected', { detail: { value: 'temperature' } }));
+        expect(config).not.toHaveProperty('hero');
+
+        const date = editor.querySelector('#show_date') as HTMLInputElement;
+        date.checked = true;
+        date.dispatchEvent(new Event('change'));
+        expect(config).toMatchObject({ show_date: true });
+        date.checked = false;
+        date.dispatchEvent(new Event('change'));
+        expect(config).not.toHaveProperty('show_date');
+    });
+
+    it('hides them on a nightstand, where the time is always the hero and the date its own', async () => {
+        editor = document.createElement('animated-weather-card-editor') as Editor;
+        editor.setConfig({ type: 'custom:animated-weather-card', entity: 'weather.home', layout: 'nightstand' });
+        document.body.appendChild(editor);
+        await flush();
+        for (const id of ['#hero', '#show_clock', '#show_date']) expect((editor.querySelector(id)!.closest('.option') as HTMLElement).hidden, id).toBe(true);
+    });
+});

@@ -15,14 +15,15 @@
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { SKY_GLOW, SKY_GLOW_WIDE, sampleSkyAt, relativeLuminance, type SkyCondition, type SkyPhase } from './sky';
 import { HOUR, Slot, Timeline, classOf, clamp, esc, num, ownControl, sunModel, wetNoun, phaseWeights } from './fc-core';
-import { HourRow, METRICS, Metric, TurningLine, available, conditionNoun, highLow, hours, relative, timeHtml, timeParts, timeText, turningLine, dayName } from './fc-data';
+import { HourRow, METRICS, Metric, TurningLine, available, conditionNoun, dateText, highLow, hours, relative, timeHtml, timeParts, timeText, turningLine, dayName } from './fc-data';
 import { FcWords, fcWords, fill } from './fc-words';
 import { Chips, Hourly, Noun, createChips, createHourly, hourCols, graphOf } from './fc-row';
 import { Tints, litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
-import { TimeText, minuteTicker } from './fc-clock';
+import { TimeText, fitHeroTime, layoutLeft, minuteTicker } from './fc-clock';
 import { dropView, openView, prepareView } from './fc-view';
 import { cloudFloor } from './cloud-band';
+import { shortDate } from './localize';
 
 /** The share of a narrow card's height above which the row's first line can't sit (the light law) */
 const ROW_TOP_MIN = 0.43;
@@ -126,6 +127,68 @@ export function valueText(m: Model, host: ForecastHost, slot: Slot | null): stri
         + `${typeof slot.temperature === 'number' ? `, ${host.temperature(slot.temperature)}°` : ''}${typeof chance === 'number' && chance >= 20 ? `, ${fill(W.chance_of, { v: String(Math.round(chance)) })}` : ''}`;
 }
 
+/**
+ * The time and the date, wherever the card has them: the clock on the location line, the compact strip's quiet
+ * line or the hero (hero: clock), and the date on the same line (show_date). The date changes at midnight.
+ */
+export function cardClock(host: ForecastHost, root: HTMLElement) {
+    const clockEl = root.querySelector('.main-weather-info .awc-clock') as HTMLElement | null;
+    const dateEl = root.querySelector('.main-weather-info .awc-date') as HTMLElement | null;
+    const big = !!clockEl?.closest('.awc-hero-clock');
+    const clock = clockEl ? new TimeText(clockEl) : null;
+    let day = '';
+    /** The time at a moment (now, or the hour under the needle on a hero clock) */
+    const show = (at: Date, animate: boolean) => {
+        if (!clock || !clockEl) return;
+        const p = timeParts(at, host.hass());
+        clock.set({ text: `${p.hour}:${p.minute}`, period: p.period }, { animate });
+        clockEl.setAttribute('aria-label', timeText(at, host.hass()));
+    };
+    /** The date in the form that fits: with the month, else without; the place steps out whole before the date does */
+    const fitDate = () => {
+        const loc = dateEl?.parentElement;
+        if (!dateEl || !loc?.classList.contains('location') || !loc.getClientRects().length) return;
+        const place = loc.querySelector('.awc-place') as HTMLElement | null;
+        const right = layoutLeft(loc) + loc.clientWidth + 1;
+        const fits = (e: HTMLElement | null) => !e || e.hidden || layoutLeft(e) + e.offsetWidth <= right;
+        const forms = [shortDate(new Date(), host.hass(), true), shortDate(new Date(), host.hass())];
+        if (place) place.hidden = false;
+        for (const withPlace of [true, false]) {
+            if (place) place.hidden = !withPlace;
+            for (const f of forms) {
+                if (dateEl.textContent !== f) dateEl.textContent = f;
+                if (fits(dateEl) && fits(place)) return;
+            }
+        }
+    };
+    /** A hero clock stops where the condition's line does, short of the sun's light (the wide card's has no limit) */
+    const fitBig = () => {
+        const box = clockEl?.closest('.awc-hero-clock') as HTMLElement | null;
+        if (!clockEl || !box) return;
+        const row = root.querySelector('.awc-lead-row') as HTMLElement | null;
+        const mw = row ? parseFloat(getComputedStyle(row).maxWidth) : NaN;
+        const limit = row && isFinite(mw) ? layoutLeft(row) + mw : Infinity;
+        fitHeroTime(clockEl, limit, dayPeriods(host), size => (size === null ? box.style.removeProperty('font-size') : box.style.setProperty('font-size', `${size}px`, 'important')));
+    };
+    const date = () => {
+        if (!dateEl) return;
+        const d = new Date().toDateString();
+        if (d === day && dateEl.textContent) return;
+        day = d;
+        dateEl.textContent = shortDate(new Date(), host.hass(), true);
+        dateEl.setAttribute('aria-label', dateText(new Date(), host.hass(), { weekday: 'long', day: 'numeric', month: 'long' }));
+        fitDate();
+    };
+    return { el: clockEl, big, show, date, fit: () => { fitDate(); fitBig(); }, finish: () => clock?.finish() };
+}
+
+/** The day periods a 12-hour clock shows ("AM", "PM"); none on a 24-hour one */
+export function dayPeriods(host: ForecastHost): string[] {
+    const t = Date.UTC(2020, 0, 1);
+    const a = timeParts(new Date(t), host.hass()).period, b = timeParts(new Date(t + 12 * HOUR), host.hass()).period;
+    return a ? [a, b] : [];
+}
+
 /** The hour as the away line says it: "17:00", "Thu 2:00 AM", "Thursday" */
 function whenHtml(m: Model, host: ForecastHost, slot: Slot): string {
     const hass = host.hass();
@@ -146,19 +209,18 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
     const theme = () => cfg().color_palette === 'theme';
     let W = fcWords(host.hass());
 
-    // ── The clock: the location line leads with the time ──
+    // ── The clock: the location line leads with the time, or the time is the hero; the date follows it ──
     const loc = hero.querySelector('.location') as HTMLElement | null;
-    const clockEl = (loc?.querySelector('.awc-clock') ?? root.querySelector('.compact-meta .awc-clock')) as HTMLElement | null;
-    const clock = clockEl ? new TimeText(clockEl) : null;
+    const clock = cardClock(host, root);
     let readAt = 0;
     function tickClock(animate: boolean) {
-        if (!clock || !clockEl) return;
-        const p = timeParts(new Date(), host.hass());
+        clock.date();
+        // A hero clock shows the hour under the needle while the card is away; it comes back to now with the card
+        if (clock.big && root.dataset.awcAway) return;
         // A reading after the card was away just appears: nobody saw that minute change
         const seen = Date.now() - readAt < 70_000;
         readAt = Date.now();
-        clock.set({ text: `${p.hour}:${p.minute}`, period: p.period }, { animate: animate && seen && !host.still() });
-        clockEl.setAttribute('aria-label', timeText(new Date(), host.hass()));
+        clock.show(new Date(), animate && seen && !host.still());
     }
     tickClock(false);
 
@@ -206,10 +268,13 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         if (!m.tl) return;
         // The condition's line: the condition, and today's high and low (or the turning line, or the hour's chance)
         if (!compact && desc) {
-            descRow = document.createElement('div');
-            descRow.className = 'awc-desc-row';
-            desc.before(descRow);
-            descRow.append(desc);
+            // With the time as the hero, the temperature already leads the condition in its row
+            descRow = desc.parentElement?.classList.contains('awc-lead-row') ? desc.parentElement : document.createElement('div');
+            if (!descRow.parentElement) {
+                descRow.className = 'awc-desc-row';
+                desc.before(descRow);
+                descRow.append(desc);
+            }
             companion = document.createElement('span');
             companion.className = 'awc-companion';
             descRow.append(companion);
@@ -260,7 +325,8 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         sec?.remove(); sec = null;
         away?.remove(); away = null;
         lineEl?.remove(); lineEl = null;
-        if (descRow && desc) { descRow.before(desc); descRow.remove(); }
+        if (descRow && desc && !descRow.classList.contains('awc-lead-row')) { descRow.before(desc); descRow.remove(); }
+        companion?.remove();
         descRow = null; companion = null;
         tintsFor = null;
         model = null;
@@ -339,6 +405,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         if (!slot) {
             restore();
             delete root.dataset.awcAway;
+            if (clock.big) clock.show(new Date(), false);
             away?.remove();
             writeLine(0);
             writeCompanionAway();
@@ -350,9 +417,12 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         // The away line: in the location line's place, else at the start of the condition's line
         const locShown = !!loc && getComputedStyle(loc).display !== 'none';
         root.dataset.awcAway = locShown ? 'location' : 'desc';
+        // A hero clock goes to the hour; the away line then names only its day, when it's another
+        const bigHour = clock.big && m.tl?.unit === 'hour';
+        if (bigHour) clock.show(slot.at, false);
         if (away) {
             const at = away.querySelector('.awc-at') as HTMLElement, rel = away.querySelector('.awc-rel') as HTMLElement;
-            at.innerHTML = whenHtml(m, host, slot);
+            at.innerHTML = !bigHour ? whenHtml(m, host, slot) : slot.at.toDateString() === new Date().toDateString() ? '' : esc(dayName(slot.at, host.hass()));
             rel.textContent = relative(slot.at.getTime() - Date.now(), host.hass(), m.tl?.unit === 'hour' ? 'hour' : 'day');
             if (locShown && loc && away.parentElement !== loc) loc.append(away);
             // How far ahead is said only if it fits whole inside the line's tint limit
@@ -470,6 +540,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
         }
     }
     function fitted() {
+        clock.fit();
         fitCompanion();
         fitLine();
         floor();
@@ -556,7 +627,7 @@ export function attachWeather(host: ForecastHost): ForecastExtras {
             dropView(el);
             clearTimeout(prepTimer);
             ticker.stop();
-            clock?.finish();
+            clock.finish();
             teardownForecast();
             cloudFloor(root, null);
         },

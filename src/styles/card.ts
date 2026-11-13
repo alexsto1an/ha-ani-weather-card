@@ -369,13 +369,21 @@ ${iconBoxCss('animated-weather-card')}
           margin-left: 0.02em;
         }
 
-        .weather-desc {
+        .weather-desc, .awc-temp-lead {
           margin-top: 8px;
           font-size: 17px;
           font-weight: 600;
           line-height: 22px;
           letter-spacing: -0.012em;
         }
+        /* hero: clock: the time in the temperature's place, "21° Partly cloudy" */
+        .awc-hero-clock { font-variant-numeric: proportional-nums; font-feature-settings: "case" 1; letter-spacing: -0.02em; }
+        .awc-hero-clock .awc-ampm { font-family: var(--awc-font); font-size: max(13px, 0.22em); font-weight: 500; letter-spacing: 0.04em; vertical-align: top; margin-left: 0.1em; position: relative; top: 0.16em; }
+        .awc-lead-row { display: flex; align-items: baseline; column-gap: 12px; margin-top: 8px; min-width: 0; white-space: nowrap; }
+        /* One line: the condition never wraps out of sight */
+        .awc-lead-row.awc-desc-row { flex-wrap: nowrap; }
+        .awc-lead-row > * { margin-top: 0 !important; align-self: baseline !important; }
+        .awc-lead-row > .awc-temp-lead { flex-shrink: 0; margin-right: -6px; }
         /* Conditions come in the user's language and casing ("Partly cloudy",
            "Teilweise bewölkt"); only make sure they start with a capital */
         .weather-desc::first-letter { text-transform: uppercase; }
@@ -604,7 +612,7 @@ ${iconBoxCss('animated-weather-card')}
         @container awc (max-width: 319px) {
           .weather-info, .weather-skeleton { --awc-pad: 16px; }
           .temperature { font-size: 64px; font-weight: 250; }
-          .weather-desc { font-size: 16px; line-height: 21px; margin-top: 6px; }
+          .weather-desc, .awc-temp-lead { font-size: 16px; line-height: 21px; margin-top: 6px; }
           .hero-meta, .weather-note { font-size: 14px; }
           .attribute-value { font-size: 16px; }
         }
@@ -617,7 +625,7 @@ ${iconBoxCss('animated-weather-card')}
           .weather-info, .weather-skeleton { --awc-pad: 24px; }
           .location { font-size: 16px; }
           .temperature { font-size: 96px; letter-spacing: -0.05em; }
-          .weather-desc { font-size: 18px; line-height: 24px; }
+          .weather-desc, .awc-temp-lead { font-size: 18px; line-height: 24px; }
           .attribute-value { font-size: 18px; line-height: 24px; }
         }
         /* Wide frames (wall tablets, full-width rows): hero left, metrics right */
@@ -740,19 +748,23 @@ ${iconBoxCss('animated-weather-card')}
           margin: 0 0 0 -0.055em;
         }
         .animated-weather-card[data-variant="compact"] .weather-desc,
-        .animated-weather-card[data-variant="compact"] .compact-meta {
+        .animated-weather-card[data-variant="compact"] .compact-meta,
+        .animated-weather-card[data-variant="compact"] .awc-lead-row {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .animated-weather-card[data-variant="compact"] .weather-desc {
+        .animated-weather-card[data-variant="compact"] .weather-desc,
+        .animated-weather-card[data-variant="compact"] .awc-lead-row {
           grid-area: desc;
           align-self: end;
           margin: 0;
           font-size: 16px;
           line-height: 21px;
         }
+        .animated-weather-card[data-variant="compact"] .awc-temp-lead { font-size: inherit; line-height: inherit; }
+        .animated-weather-card[data-variant="compact"] .awc-lead-row { margin: 0 !important; height: auto; max-width: none; }
         .compact-meta {
           grid-area: meta;
           align-self: start;
@@ -799,8 +811,8 @@ ${iconBoxCss('animated-weather-card')}
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .temperature { font-size: 36px; font-weight: 300; }
         .animated-weather-card[data-variant="compact"][data-height="tight"] .main-weather-info,
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .main-weather-info { grid-template-areas: "temp desc"; }
-        .animated-weather-card[data-variant="compact"][data-height="tight"] .weather-desc,
-        .animated-weather-card[data-variant="compact"][data-height="minimal"] .weather-desc { align-self: center; font-size: 15px; }
+        .animated-weather-card[data-variant="compact"][data-height="tight"] :is(.weather-desc, .awc-lead-row),
+        .animated-weather-card[data-variant="compact"][data-height="minimal"] :is(.weather-desc, .awc-lead-row) { align-self: center; font-size: 15px; }
         .animated-weather-card[data-variant="compact"][data-height="tight"] .compact-meta,
         .animated-weather-card[data-variant="compact"][data-height="minimal"] .compact-meta { display: none; }
 

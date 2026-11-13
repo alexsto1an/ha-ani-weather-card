@@ -318,7 +318,7 @@ flights_entity: sensor.flightradar24_current_in_area
 
 ### The forecast and the clock
 
-The clock puts the time at the start of the location line: "13:10  Home". The forecast adds today's high and low beside the condition, a line on what turns under it, and the hours ahead in a row at the card's foot, under the readings. Both read the forecast your weather integration already provides.
+The clock puts the time at the start of the location line: "13:10  Home", with the date after it if you like. Or make the time the big value in the temperature's place. The forecast adds today's high and low beside the condition, a line on what turns under it, and the hours ahead in a row at the card's foot, under the readings. Both read the forecast your weather integration already provides.
 
 ```yaml
 type: custom:animated-weather-card
@@ -327,6 +327,8 @@ sun_entity: sun.sun
 show_clock: true
 show_forecast: true
 # Optional
+show_date: true          # the date after the time
+hero: clock              # the time as the big value
 forecast_metric: chance  # temp, feels, chance or amount
 forecast_graph: bars     # line, area, bars or none
 ```
@@ -334,6 +336,8 @@ forecast_graph: bars     # line, area, bars or none
 **What it shows.**
 
 - **The clock.** It changes only on the minute, and only the figures that change fade. It follows your profile's 12- or 24-hour setting and its time zone, the server's or the device's, and adds no rows. In a short frame it goes with the location line; on the compact strip it leads the quiet line.
+- **The date.** `show_date` puts it after the time, "13:10  Fri 13 Nov  Home", in your language's own order. Where the line runs out of room the date drops its month, then the place steps out; neither is ever cut short.
+- **The time as the big value.** `hero: clock` swaps them: the time stands in the temperature's place and size, and the temperature leads the condition's line, "21° Partly cloudy", as on the nightstand. The date, if it's on, leads the location line. While you drag through the hours, the big time shows the hour you're looking at. It keeps short of the sun's light, one size all day, and on the wall the date takes the clock's place.
 - **The condition** reads as a word you'd say, "Rain" or "Clear", never "Rainy" or "Clear, night". Beside it, today's high and low: "H 22°  L 12°".
 - **What turns.** One line under the condition: "Rain from 17:00 to 19:00", "Rain until 19:00", "Dry all day", "Dry tonight". It's shown whole, in a shorter form, or not at all. With a note shown, the note tells what's coming, so this line steps aside and the line under the condition is the usual one, feels like and indoors.
 - **The row.** At the card's foot, under the readings, with the divider between them: now above the line, the hours ahead below it. An hour to a column, about 54 px each, so a phone shows six hours and a wider card more, with an icon every hour and the value on one line.
@@ -665,6 +669,8 @@ sunset_hour: 19
 | Option | Default | Description |
 | --- | --- | --- |
 | `show_clock` | `false` | The time at the start of the location line: "13:10  Home". It changes only on the minute and follows your profile's 12- or 24-hour setting and time zone. It goes with the location line in a short frame, and on the compact strip it leads the quiet line. It adds no rows |
+| `show_date` | `false` | Today's date after the time, or at the start of the location line without it: "13:10  Fri 13 Nov  Home". It drops its month, then the place steps out, where the line runs out of room; it goes with the location line in a short frame, and on the compact strip it joins the quiet line. The wall and the nightstand always show it |
+| `hero` | `temperature` | The big value: `temperature`, or `clock` for the time in the temperature's place and size, with the temperature leading the condition's line ("21° Partly cloudy"). Dragged through the hours, it shows the hour under the needle. `temperature_color` colours whichever is the big value. The nightstand always has the time |
 | `show_forecast` | `false` | Today's high and low beside the condition, the line on what turns under it, the hourly row with its chips, and the slide through the hours. A tap opens the forecast view. Eight rows in the sections view, or five without an hourly forecast |
 | `forecast_metric` | `temp` | What the row shows first: `temp`, `feels` (feels like), `chance` (the chance of rain) or `amount` (the rain amount) |
 | `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone). The view on tap and the wall follow it; the forecast card has its own |
@@ -737,7 +743,7 @@ Set these under `custom_colors:`. Leave one out to keep the built-in colour.
 | --- | --- | --- |
 | `sunny_bg`, `cloudy_bg`, `rainy_bg`, `stormy_bg`, `snowy_bg`, `windy_bg` | Hex | Replaces that condition's sky with one built from this colour. It applies to that condition only: `rainy_bg` leaves pouring rain alone. Colorized palette only |
 | `text_color` | Hex, `rgb()`, `rgba()` or a colour name | All text on the card |
-| `temperature_color` | Same | The temperature, on either palette. On the theme palette it otherwise takes your theme's accent colour |
+| `temperature_color` | Same | The temperature, on either palette, or the time with `hero: clock`. On the theme palette it otherwise takes your theme's accent colour |
 | `sun_color` | Same | The sun |
 | `rain_color` | Same | Raindrops |
 | `snow_color` | Same | Snowflakes |

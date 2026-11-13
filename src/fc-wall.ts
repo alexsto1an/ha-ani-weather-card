@@ -26,8 +26,8 @@ import { fcWords, fill } from './fc-words';
 import { Daily, Hourly, createDaily, createHourly, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
-import { TimeText, minuteTicker } from './fc-clock';
-import { Model, buildModel, iconTints, valueText } from './fc-weather';
+import { TimeText, fitHeroTime, layoutLeft, minuteTicker } from './fc-clock';
+import { Model, buildModel, dayPeriods, iconTints, valueText } from './fc-weather';
 import { SKY_GLOW_WIDE } from './sky';
 import { dropView, openView } from './fc-view';
 import { cloudFloor } from './cloud-band';
@@ -204,16 +204,26 @@ export function attachWall(host: ForecastHost): ForecastExtras {
         fw.toggleAttribute('data-stack', L.stack);
         let date = '';
         try { date = dateText(new Date(), hass, { weekday: 'short', day: 'numeric', month: 'short' }); } catch { /* none */ }
+        // hero: clock swaps the two: the time in the temperature's place and size, the date in the clock's,
+        // and the temperature leading the condition's line ("16° Partly cloudy")
+        const big = host.config().hero === 'clock';
+        fw.toggleAttribute('data-hero', big);
+        const temp = `<span class="fw-tv">${t !== undefined ? esc(host.temperature(t)) : ''}</span><span class="fw-deg">°</span>`;
         fw.innerHTML = `<div class="fw-hero">`
-            + `<div class="fw-when"><span class="fw-clock"></span><span class="fw-date">${esc(date)}</span><span class="fw-away"><button type="button" class="awc-now awc-noclaim" aria-label="${esc(W.back)}"><i aria-hidden="true"></i>${esc(W.now)}</button><span class="fw-at"></span></span></div>`
-            + `<div class="fw-temp" aria-live="polite"><span class="fw-tv">${t !== undefined ? esc(host.temperature(t)) : ''}</span><span class="fw-deg">°</span></div>`
-            + `<div class="fw-today"><span class="fw-cond">${esc(s ? conditionNoun(s.state, hass, x => host.conditionName(x)) : '')}</span>`
+            + `<div class="fw-when">${big ? '' : '<span class="fw-clock"></span>'}<span class="fw-date">${esc(date)}</span><span class="fw-away"><button type="button" class="awc-now awc-noclaim" aria-label="${esc(W.back)}"><i aria-hidden="true"></i>${esc(W.now)}</button><span class="fw-at"></span></span></div>`
+            + (big ? `<div class="fw-temp awc-hero-clock"><span class="fw-big"></span></div>` : `<div class="fw-temp" aria-live="polite">${temp}</div>`)
+            + `<div class="fw-today">${big ? `<span class="fw-lead" aria-live="polite">${temp}</span>` : ''}<span class="fw-cond">${esc(s ? conditionNoun(s.state, hass, x => host.conditionName(x)) : '')}</span>`
             + (m.hl ? `<span class="fw-hl awc-hl-pair"><b>${esc(W.h)}</b> ${esc(host.temperature(m.hl[0]))}°</span><span class="fw-hl awc-hl-pair"><b>${esc(W.l)}</b> ${esc(host.temperature(m.hl[1]))}°</span>` : '')
             + (isFinite(feels) ? `<span class="fw-feels">${esc(W.feels_like)} ${esc(host.temperature(feels))}°</span>` : '')
             + `<span class="fw-chance"></span></div></div>`
             + `<div class="fw-next"><p class="fw-turn"></p><div class="fw-hours"></div><div class="fw-week"></div></div>`;
-        clock = new TimeText(fw.querySelector('.fw-clock') as HTMLElement);
+        clock = new TimeText(fw.querySelector(big ? '.fw-big' : '.fw-clock') as HTMLElement);
         tick();
+        // A hero clock stops where today's line does (72% of the column), short of the sun's light
+        if (big) {
+            const bigEl = fw.querySelector('.fw-big') as HTMLElement, box = fw.querySelector('.fw-temp') as HTMLElement, col = fw.querySelector('.fw-hero') as HTMLElement;
+            fitHeroTime(bigEl, layoutLeft(col) + 0.72 * col.offsetWidth, dayPeriods(host), size => (size === null ? box.style.removeProperty('--fw-t0') : box.style.setProperty('--fw-t0', `${size}px`)));
+        }
         ownControl(fw.querySelector('.awc-now') as HTMLElement, () => slide?.home());
         const turn = fw.querySelector('.fw-turn') as HTMLElement;
         setTurn(turn, m.lineAt(0));
@@ -244,13 +254,15 @@ export function attachWall(host: ForecastHost): ForecastExtras {
                 host, root, tl: m.tl, ruler: hourly, sliderHost: hourly.el, sliderLabel: W.hours, settleEvery: 2,
                 valueText: sl => valueText(m, host, sl),
                 onSlot: (sl: Slot | null, k: number) => {
-                    if (!sl) { tv.innerHTML = home.tv; cond.innerHTML = home.cond; setTurn(turn, m.lineAt(0)); chance.innerHTML = ''; delete fw.dataset.away; host.refresh(); return; }
+                    if (!sl) { tv.innerHTML = home.tv; cond.innerHTML = home.cond; setTurn(turn, m.lineAt(0)); chance.innerHTML = ''; delete fw.dataset.away; if (big) showTime(new Date(), false); host.refresh(); return; }
                     fw.dataset.away = '';
+                    // A hero clock goes to the hour, so the away line names only another day
+                    if (big) showTime(sl.at, false);
                     if (typeof sl.temperature === 'number') tv.textContent = host.temperature(sl.temperature);
                     cond.textContent = conditionNoun(sl.condition ?? '', hass, x => host.conditionName(x));
                     setTurn(turn, m.lineAt(k));
                     const sameDay = sl.at.toDateString() === new Date().toDateString();
-                    at.innerHTML = `${sameDay ? '' : `${esc(dayName(sl.at, hass))} `}${timeHtml(sl.at, hass)} <span class="fw-rel">${esc(relative(sl.at.getTime() - Date.now(), hass))}</span>`;
+                    at.innerHTML = `${sameDay ? '' : `${esc(dayName(sl.at, hass))} `}${big ? '' : timeHtml(sl.at, hass)} <span class="fw-rel">${esc(relative(sl.at.getTime() - Date.now(), hass))}</span>`;
                     const p = sl.precipitation_probability;
                     chance.innerHTML = typeof p === 'number' && p >= 20 ? `<span class="awc-hl-pair"><b>${esc(W[m.noun])}</b> ${Math.round(p)}%</span>` : '';
                 },
@@ -258,13 +270,19 @@ export function attachWall(host: ForecastHost): ForecastExtras {
                 // The days follow the needle: its day stands out, the dot rides its bar at the hour's temperature
                 onNeedle: (t, temp) => daily?.follow(t === null ? null : { at: t, temperature: temp }),
                 onHome: () => { if (pending) { pending = false; setTimeout(() => { key = keyOf(); build(); }, 0); } },
-                group: () => [tv.parentElement, cond.parentElement, turn, fw.querySelector('.fw-when')].filter((e): e is HTMLElement => !!e),
+                group: () => [fw.querySelector('.fw-temp'), cond.parentElement, turn, fw.querySelector('.fw-when')].filter((e): e is HTMLElement => !!e),
             });
         }
     }
+    /** The time at a moment: now, or on a hero clock the hour under the needle */
+    function showTime(at: Date, animate: boolean) {
+        const p = timeParts(at, host.hass());
+        clock?.set({ text: `${p.hour}:${p.minute}`, period: p.period }, { animate });
+    }
     function tick() {
-        const p = timeParts(new Date(), host.hass());
-        clock?.set({ text: `${p.hour}:${p.minute}`, period: p.period }, { animate: !host.still() });
+        // A hero clock away at another hour stays there; it comes back to now with the card
+        if (fw.hasAttribute('data-hero') && fw.dataset.away !== undefined) return;
+        showTime(new Date(), !host.still());
     }
     function teardown() {
         slide?.destroy(); slide = null;

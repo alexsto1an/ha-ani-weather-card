@@ -57,6 +57,12 @@ describe('the forecast on the weather card', () => {
         // The condition's line and the line under it stop at 74cqi less the padding: 0.68 of a phone's card
         check('condition line', grid(range(0.04, 0.68, 0.04), range(0.2, 0.5, 0.03)), at(SKY_GLOW));
     });
+    it('the time as the big value (hero: clock), large text at full strength, which stops where the condition\'s line does', () => {
+        // fitHeroTime keeps the widest time it can show left of 74cqi less the padding (0.68 of a phone's card), from the top
+        check('hero clock', grid(range(0.04, 0.68, 0.04), range(0.04, 0.5, 0.03)), at(SKY_GLOW), 1, 3);
+        // Wide, the line has no stop: "12:58 PM" at 120 px reaches 0.57 of a 640 px card
+        check('hero clock, wide', grid(range(0.02, 0.6, 0.04), range(0.04, 0.5, 0.03)), at(SKY_GLOW_WIDE), 1, 3);
+    });
     it('the wide card\'s row and lines in the hero\'s column, full strength', () => {
         check('wide hero column', grid(range(0.02, 0.6, 0.04), range(0.4, 0.95, 0.05)), at(SKY_GLOW_WIDE));
     });
@@ -109,6 +115,9 @@ describe('the wall', () => {
         // The temperature, 15% over its tiers' base: to 0.45 of the width and half the height
         check('temperature', grid(range(0.02, 0.45, 0.03), range(0.04, 0.5, 0.02)), at(SKY_GLOW_WIDE), 1, 3);
         check('turning line and figures', grid(range(0.02, 0.98, 0.03), range(0.44, 0.92, 0.03)), at(SKY_GLOW_WIDE), 1, 3);
+        // hero: clock, the time in the temperature's place, stopped where today's line is (72% of the column); the date in the clock's
+        check('hero clock', grid(range(0.02, 0.74, 0.03), range(0.04, 0.5, 0.02)), at(SKY_GLOW_WIDE), 1, 3);
+        check('date as the clock', grid(range(0.02, 0.62, 0.02), range(0.02, 0.12, 0.02)), at(SKY_GLOW_WIDE), 1, 3);
     });
 });
 

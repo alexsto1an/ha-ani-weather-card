@@ -171,14 +171,19 @@ const SLIDE_CSS = `
 const CARD_CSS = `
 /* ── The clock leads the location line: "13:10  Home". The time 15/20 weight 500 tabular at 0.94; the place weight 400 at 0.8, 8 px on, never nested. ── */
 /* The place is tinted, so the line stops at 0.57 of a narrow card, where the tint still holds 4.5:1 (forecast-contrast.test.ts) */
-.location:has(> .awc-clock) { opacity: 1; max-width: calc(57cqi - var(--awc-pad)); }
+.location:has(> :is(.awc-clock, .awc-date)) { opacity: 1; max-width: calc(57cqi - var(--awc-pad)); }
 .location > .awc-clock { font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; opacity: 0.94; }
-.location > .awc-clock:not(:empty) + .awc-place { margin-left: 8px; font-weight: 400; opacity: var(--awc-secondary, 0.8); }
+.location > :is(.awc-clock, .awc-date):not(:empty) + .awc-place { margin-left: 8px; font-weight: 400; opacity: var(--awc-secondary, 0.8); }
+/* The date goes with the time, in its weight: "13:10 Fri 13 Nov  Home". It leads the line when the time is the hero */
+.location > .awc-date { font-weight: 500; letter-spacing: -0.01em; opacity: 0.94; }
+.location > .awc-clock:not(:empty) + .awc-date { margin-left: 6px; }
+.compact-meta > .awc-date:not(:empty) { margin-right: 8px; }
+.awc-place[hidden] { display: none; }
 .awc-time { position: relative; display: inline-block; white-space: nowrap; vertical-align: baseline; }
 .awc-time > i, .awc-old > i, .awc-new > i { font-style: normal; }
 .awc-old { position: absolute; top: 0; white-space: nowrap; pointer-events: none; }
 .compact-meta > .awc-clock:not(:empty) { font-weight: 500; font-variant-numeric: tabular-nums; margin-right: 8px; }
-.theme-colors .location > .awc-clock:not(:empty) + .awc-place { color: var(--secondary-text-color); opacity: 1; }
+.theme-colors .location > :is(.awc-clock, .awc-date):not(:empty) + .awc-place { color: var(--secondary-text-color); opacity: 1; }
 
 /* ── The away line: the card shows another hour. "‹ Now  17:00  in 4 hr" in the location line's place, so the
    hero can never pass for now: the Now control, the hour, how far ahead. ── */
@@ -189,6 +194,8 @@ const CARD_CSS = `
 .awc-away .awc-rel[hidden] { display: none; }
 .animated-weather-card[data-awc-away="desc"] .awc-away { margin-right: 12px; font-size: 15px; line-height: 20px; }
 .awc-at { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* A hero clock shows the hour: the away line names only another day */
+.awc-at:empty { display: none; }
 .awc-rel { font-weight: 400; opacity: var(--awc-secondary, 0.8); }
 .awc-now {
   position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0; padding: 0 10px 0 8px; height: 22px; align-self: center;
@@ -324,7 +331,8 @@ const VIEW_CSS = `
 .animated-weather-card[data-fc-view] .location { display: block !important; font-size: 17px; line-height: 22px; font-weight: 500; }
 .animated-weather-card[data-fc-view] .temperature { font-size: 112px !important; font-weight: 200 !important; margin-top: 4px; letter-spacing: -0.045em; }
 .animated-weather-card[data-fc-view] .awc-desc-row { height: 26px; margin-top: 10px !important; max-width: calc(65cqi - 24px); }
-.animated-weather-card[data-fc-view] .weather-desc { font-size: 20px; line-height: 26px; }
+.animated-weather-card[data-fc-view] :is(.weather-desc, .awc-temp-lead) { font-size: 20px; line-height: 26px; }
+.animated-weather-card[data-fc-view] .temperature.awc-hero-clock { letter-spacing: -0.02em; }
 .animated-weather-card[data-fc-view] .awc-companion { font-size: 17px; line-height: 22px; }
 .animated-weather-card[data-fc-view] .hero-meta { display: flex !important; margin-top: 4px; font-size: 20px; line-height: 26px; letter-spacing: -0.012em; }
 .fv-top { flex: none; position: relative; padding: 26px 24px 0; touch-action: pan-x pinch-zoom; }
@@ -372,7 +380,7 @@ const VIEW_CSS = `
   .animated-weather-card[data-fc-view] .location { font-size: 21px; line-height: 26px; }
   .animated-weather-card[data-fc-view] .temperature { font-size: 192px !important; line-height: 0.86; letter-spacing: -0.05em; margin-top: 8px; }
   .animated-weather-card[data-fc-view] .awc-desc-row { height: 32px; max-width: none; margin-top: 14px !important; }
-  .animated-weather-card[data-fc-view] .weather-desc { font-size: 24px; line-height: 32px; }
+  .animated-weather-card[data-fc-view] :is(.weather-desc, .awc-temp-lead) { font-size: 24px; line-height: 32px; }
   .animated-weather-card[data-fc-view] .awc-companion { font-size: 21px; line-height: 26px; }
   .animated-weather-card[data-fc-view] .hero-meta { margin-top: auto; font-size: 48px; line-height: 53px; letter-spacing: -0.02em; }
   .animated-weather-card[data-fc-view] .hero-meta > .awc-line { font-weight: 400; white-space: normal; text-wrap: balance; }
@@ -488,6 +496,11 @@ const WALL_CSS = `
 .fw-clock { font-family: var(--awc-font-display); font-size: var(--fw-clock); line-height: 1.1; font-weight: 500; letter-spacing: -0.005em; }
 .fw-clock .awc-ampm { font-size: 0.62em; margin-left: 0.12em; }
 .fw-date { font-weight: 400; opacity: 0.8; }
+/* hero: clock. The date in the clock's place and type; the time in the temperature's, its figures proportional; the temperature leads today's line */
+.fw[data-hero] .fw-date { font-family: var(--awc-font-display); font-size: var(--fw-clock); line-height: 1.1; font-weight: 500; letter-spacing: -0.005em; opacity: 1; }
+.fw-temp.awc-hero-clock { letter-spacing: -0.02em; }
+.fw-temp.awc-hero-clock .awc-ampm { font-size: var(--fw-sentence); top: calc(var(--fw-t0) * 0.1); }
+.fw-lead { font-weight: 600; margin-right: -0.55em; }
 .fw-away { display: none; align-items: baseline; column-gap: 0.55em; }
 .fw[data-away] .fw-away { display: inline-flex; }
 .fw[data-away] :is(.fw-clock, .fw-date) { display: none; }
@@ -560,6 +573,7 @@ const WALL_CSS = `
 .fw[data-stack] .fw-next { grid-template-columns: minmax(0, 1fr); }
 .fw[data-stack] .fw-week { grid-area: 3 / 1; margin-top: var(--fw-week-gap); }
 .theme-colors .fw :is(.fw-date, .fw-rel) { color: var(--secondary-text-color); opacity: 1; }
+.theme-colors .fw[data-hero] .fw-date { color: inherit; }
 .theme-colors .fw-temp { color: var(--awc-hero-color, var(--primary-color)); }
 `;
 

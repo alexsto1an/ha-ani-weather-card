@@ -87,3 +87,46 @@ export function minuteTicker(tick: () => void): { stop(): void; rearm(): void } 
     arm();
     return { stop() { stopped = true; clearTimeout(timer); }, rearm: arm };
 }
+
+/** An element's left in layout px (its offsets to the page), which no transform moves: the view measures while it grows */
+export function layoutLeft(el: HTMLElement): number {
+    let x = 0;
+    for (let e: HTMLElement | null = el; e; e = e.offsetParent as HTMLElement | null) x += e.offsetLeft;
+    return x;
+}
+
+/**
+ * A big time (hero: clock) kept short of a limit, in layout px (layoutLeft): where even full-strength text meets
+ * the sun's light. Measured as the widest time it can show, not the time now, so it's one size all day and never
+ * changes at the minute; it's made smaller only when that would pass the limit. periods: the day periods a
+ * 12-hour clock shows ("AM", "PM"), none on a 24-hour one. set(null) gives the size back to CSS.
+ */
+export function fitHeroTime(clockEl: HTMLElement, limit: number, periods: string[], set: (size: number | null) => void): void {
+    set(null);
+    if (!isFinite(limit) || !clockEl.offsetWidth) return;
+    for (let i = 0; i < 2; i++) {
+        const fs = parseFloat(getComputedStyle(clockEl).fontSize);
+        // Widths in layout px: whatever scales the clock on screen (the view growing) scales its rect alike
+        const scale = clockEl.getBoundingClientRect().width / clockEl.offsetWidth || 1;
+        const w = widestTime(clockEl, periods) / scale;
+        const left = layoutLeft(clockEl);
+        if (!fs || !w || left + w <= limit + 0.5) return;
+        set(Math.floor((fs * (limit - left)) / w * 10) / 10);
+    }
+}
+
+/** The widest time a clock can show at its size: "20:58", or "10:58" and the wider period */
+function widestTime(clockEl: HTMLElement, periods: string[]): number {
+    const probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;white-space:nowrap';
+    probe.innerHTML = [...'0123456789:'].map(c => `<i style="font-style:normal">${c}</i>`).join('') + periods.map(p => `<span class="awc-ampm">${esc(p)}</span>`).join('');
+    clockEl.append(probe);
+    const adv: Record<string, number> = {};
+    for (const i of probe.querySelectorAll('i')) adv[i.textContent ?? ''] = i.getBoundingClientRect().width;
+    const ap = Math.max(0, ...[...probe.querySelectorAll<HTMLElement>('.awc-ampm')].map(e => e.getBoundingClientRect().width + (parseFloat(getComputedStyle(e).marginLeft) || 0)));
+    probe.remove();
+    const max = (set: string) => Math.max(...[...set].map(c => adv[c] ?? 0));
+    const minutes = (adv[':'] ?? 0) + max('012345') + max('0123456789');
+    return (periods.length ? (adv['1'] ?? 0) + max('012') : max('012') + max('0123456789')) + minutes + ap;
+}

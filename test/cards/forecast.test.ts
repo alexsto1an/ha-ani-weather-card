@@ -279,7 +279,8 @@ describe('the forecast on the weather card', () => {
         expect(list.hasAttribute('data-fc-follow')).toBe(true);
         expect(grown.querySelectorAll('[data-fc-day][data-fc-at]')).toHaveLength(1);
         slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-        await new Promise(r => setTimeout(r, 800));
+        // The spring home takes about half a second; a busy machine gets three
+        await until(() => !list.hasAttribute('data-fc-follow'));
         expect(list.hasAttribute('data-fc-follow')).toBe(false);
         (grown.querySelector('[data-fc-chips] [data-metric="chance"]') as HTMLElement).click();
         expect(list.dataset.metric).toBe('chance');
@@ -850,6 +851,114 @@ describe('the icons', () => {
     });
 });
 
+describe('the time as the big value (hero: clock), and the date (show_date)', () => {
+    const two = (n: number) => String(n).padStart(2, '0');
+    const clockText = (card: HTMLElement) => card.querySelector('.awc-hero-clock .awc-clock')?.textContent;
+
+    it('puts the time in the temperature\'s place, and the temperature at the start of the condition\'s line, as the nightstand says it', async () => {
+        const card = mount({ hero: 'clock', show_forecast: true, show_clock: true });
+        await settle();
+        const big = card.querySelector('.temperature.awc-hero-clock') as HTMLElement;
+        expect(clockText(card)).toMatch(/^\d{2}:\d{2}$/);
+        // A minute is no news: the time has a label, never a live region
+        expect(big.hasAttribute('aria-live')).toBe(false);
+        expect(big.querySelector('.awc-clock')?.getAttribute('aria-label')).toBe(clockText(card));
+        const row = card.querySelector('.awc-lead-row') as HTMLElement;
+        expect(row.firstElementChild?.classList.contains('awc-temp-lead')).toBe(true);
+        expect(row.querySelector('.awc-temp-lead')?.getAttribute('aria-live')).toBe('polite');
+        // One temperature on the card, where the live reading and the slide write it
+        expect(card.querySelectorAll('.temperature-value')).toHaveLength(1);
+        expect(row.querySelector('.temperature-value')?.textContent).toBe('21');
+        // Today's high and low share the row; the small clock steps aside for the big one
+        expect(row.querySelector('.weather-desc + .awc-companion')).not.toBeNull();
+        expect(card.querySelector('.location .awc-clock')).toBeNull();
+    });
+
+    it('writes the time before the forecast bundle keeps it, so the hero never stands empty', () => {
+        const card = document.createElement('animated-weather-card') as Card;
+        card.setConfig({ entity: 'weather.home', hero: 'clock', dev_mode: false });
+        (card as unknown as { _hass: unknown })._hass = makeHass();
+        const html = (card as unknown as { heroTime(): string }).heroTime();
+        expect(html).toMatch(/^\d{2}:\d{2}$/);
+    });
+
+    it('a new reading fades into the temperature on the condition\'s line', async () => {
+        const card = mount({ hero: 'clock', animate: false });
+        await settle();
+        const hass = makeHass();
+        (hass.states['weather.home'].attributes as Record<string, unknown>).temperature = 23;
+        card.hass = hass;
+        await new Promise(r => setTimeout(r, 400));
+        expect(card.querySelector('.awc-temp-lead .temperature-value')?.textContent).toBe('23');
+        expect(clockText(card)).toMatch(/^\d{2}:\d{2}$/);
+    });
+
+    it('dragged, the big clock shows the hour under the needle; the away line names only another day; it comes home to now', async () => {
+        const card = mount({ hero: 'clock', show_forecast: true });
+        await settle();
+        const slider = card.querySelector('[role="slider"]') as HTMLElement;
+        for (let i = 0; i < 3; i++) slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        const at = new Date(today(new Date().getHours()).getTime() + 3 * HOUR);
+        expect(clockText(card)).toBe(`${two(at.getHours())}:00`);
+        const name = card.querySelector('.awc-away .awc-at')?.textContent;
+        if (at.toDateString() === new Date().toDateString()) expect(name).toBe('');
+        else expect(name).toMatch(/^[A-Z][a-z]{2}$/);
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        // The spring home takes about half a second; a busy machine gets three
+        for (let i = 0; i < 150 && card.querySelector('.animated-weather-card')!.hasAttribute('data-awc-away'); i++) await new Promise(r => setTimeout(r, 20));
+        const now = new Date();
+        expect(clockText(card)).toBe(`${two(now.getHours())}:${two(now.getMinutes())}`);
+    });
+
+    it('the date follows the time on the location line, leads it when the time is the hero, and joins the compact strip\'s quiet line', async () => {
+        const date = new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date());
+        const small = mount({ show_clock: true, show_date: true });
+        await settle();
+        expect([...small.querySelector('.location')!.children].map(e => e.classList[0])).toEqual(['awc-clock', 'awc-date', 'awc-place']);
+        expect(small.querySelector('.awc-date')?.textContent).toBe(date);
+        expect(small.querySelector('.awc-date')?.getAttribute('aria-label')).toMatch(/day/);
+        const big = mount({ hero: 'clock', show_date: true });
+        await settle();
+        expect([...big.querySelector('.location')!.children].map(e => e.classList[0])).toEqual(['awc-date', 'awc-place']);
+        const strip = mount({ compact: true, show_date: true });
+        await settle();
+        expect(strip.querySelector('.compact-meta .awc-date')?.textContent).toBe(date);
+        // The date alone loads what draws it
+        const alone = mount({ show_date: true });
+        await settle();
+        expect(alone.querySelector('.awc-date')?.textContent).toBe(date);
+    });
+
+    it('leaves the nightstand, the forecast card and dev mode their own text', async () => {
+        for (const [config, type] of [[{ hero: 'clock', layout: 'nightstand' }, undefined], [{ hero: 'clock' }, 'animated-forecast-card'], [{ hero: 'clock', dev_mode: true }, undefined]] as const) {
+            const card = mount(config, makeHass(), type);
+            await settle();
+            expect(card.querySelector('.awc-hero-clock'), JSON.stringify(config)).toBeNull();
+        }
+    });
+
+    it('on the wall, the time takes the temperature\'s place and size, the date the clock\'s, and the temperature leads today\'s line', async () => {
+        const proto = HTMLElement.prototype;
+        const cw = Object.getOwnPropertyDescriptor(proto, 'clientWidth'), ch = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
+        Object.defineProperty(proto, 'clientWidth', { configurable: true, get() { return this.classList?.contains('animated-weather-card') ? 1278 : 0; } });
+        Object.defineProperty(proto, 'clientHeight', { configurable: true, get() { return this.classList?.contains('animated-weather-card') ? 758 : 0; } });
+        try {
+            const card = mount({ hero: 'clock', show_forecast: true });
+            await settle();
+            const fw = card.querySelector('.fw') as HTMLElement;
+            expect(fw.hasAttribute('data-hero')).toBe(true);
+            expect(fw.querySelector('.fw-temp.awc-hero-clock .fw-big')?.textContent).toMatch(/^\d{2}:\d{2}$/);
+            expect(fw.querySelector('.fw-when .fw-clock')).toBeNull();
+            expect(fw.querySelector('.fw-when .fw-date')?.textContent).not.toBe('');
+            expect(fw.querySelector('.fw-today > .fw-lead .fw-tv')?.textContent).toBe('21');
+            expect(fw.querySelectorAll('.fw-tv')).toHaveLength(1);
+        } finally {
+            if (cw) Object.defineProperty(proto, 'clientWidth', cw); else delete (proto as { clientWidth?: number }).clientWidth;
+            if (ch) Object.defineProperty(proto, 'clientHeight', ch); else delete (proto as { clientHeight?: number }).clientHeight;
+        }
+    });
+});
+
 describe('the clock', () => {
     it('changes only when the minute does', () => {
         const el = document.createElement('span');
@@ -887,8 +996,9 @@ describe('one needle across the page', () => {
         expect(last.temperature).toBeCloseTo(20.7, 5);
         expect(last.sky && Object.keys(last.sky).sort()).toEqual(['bottom', 'glow', 'mid', 'scrim', 'top']);
         slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        // The spring home takes about half a second; a busy machine gets three
+        for (let i = 0; i < 150 && heard[heard.length - 1].at !== null; i++) await new Promise(r => setTimeout(r, 20));
         await settle();
-        await new Promise(r => setTimeout(r, 700));
         expect(heard[heard.length - 1].at).toBeNull();
         expect(heard.filter(l => l.at === null)).toHaveLength(1);
     });

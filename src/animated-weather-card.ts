@@ -44,7 +44,7 @@ import type { NoteWriter, NoteStage } from './note-generator';
 // markup, styles, and entity-picker scaffolding.
 // Import weather data processing
 import { processWeatherData, readNote, noteExpiresAt, WeatherNote, temperatureDecimals } from './weather-data';
-import { localizeString, formatTime, timeHtml, localeKey } from './localize';
+import { localizeString, formatTime, timeHtml, localeKey, clockParts } from './localize';
 import { ActionsConfig, bindActions, readActions, syncActionTarget } from './actions';
 import { loadEditorBundle, loadSiblingBundle } from './bundles';
 import { IconName, icon, setIcon } from './icons';
@@ -204,7 +204,12 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
     /** The forecast bundle has something to draw here */
     private extrasWanted(): boolean {
-        return this.forecastOn() || (!!this.config?.show_clock && !this.config?.dev_mode);
+        return this.forecastOn() || ((!!this.config?.show_clock || !!this.config?.show_date || this.heroClock()) && !this.config?.dev_mode);
+    }
+
+    /** hero: clock, the time is the big value and the temperature leads the condition's line (not the forecast card's or the nightstand's text, which they draw themselves) */
+    private heroClock(): boolean {
+        return this.config?.hero === 'clock' && !this.config.dev_mode && this.surface !== 'forecast' && this.config.layout !== 'nightstand';
     }
 
     /** Listen to this entity's forecast through the page's subscriptions, while the card shows one */
@@ -508,6 +513,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
         // Compact: the hero on one line, no metric row
         const compact = !!this.config.compact;
+        const hero = this.heroClock();
 
         // Generate custom color styles using extracted utility function
         const customColorStyles = generateCustomColorStyles(this.config);
@@ -556,10 +562,14 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             <div class="weather-info" role="group" aria-label="Current weather">
               <div class="main-weather-info">
                 ${this.locationHtml(compact, location)}
-                <div class="temperature" aria-live="polite"><span class="temperature-value">${escapeHtml(temperature)}</span><span class="degree">°</span></div>
-                <div class="weather-desc" aria-live="polite">${escapeHtml(weatherCondition)}</div>
+                ${hero
+                    // The time, set now so the hero never stands empty while the forecast bundle that keeps it loads; its label says it, not the live region
+                    ? `<div class="temperature awc-hero-clock"><span class="awc-clock">${this.heroTime()}</span></div>
+                <div class="awc-desc-row awc-lead-row"><span class="awc-temp-lead" aria-live="polite"><span class="temperature-value">${escapeHtml(temperature)}</span><span class="degree">°</span></span><div class="weather-desc" aria-live="polite">${escapeHtml(weatherCondition)}</div></div>`
+                    : `<div class="temperature" aria-live="polite"><span class="temperature-value">${escapeHtml(temperature)}</span><span class="degree">°</span></div>
+                <div class="weather-desc" aria-live="polite">${escapeHtml(weatherCondition)}</div>`}
                 ${compact
-                    ? `<div class="compact-meta">${this.config.show_clock ? '<span class="awc-clock"></span>' : ''}<span class="awc-meta-text">${escapeHtml(this.compactMeta(location, feelsLike))}</span></div>`
+                    ? `<div class="compact-meta">${this.config.show_clock && !hero ? '<span class="awc-clock"></span>' : ''}${this.config.show_date && !this.config.dev_mode ? '<span class="awc-date"></span>' : ''}<span class="awc-meta-text">${escapeHtml(this.compactMeta(location, feelsLike))}</span></div>`
                     : `<div class="hero-meta">${this.heroMetaHtml(feelsLike, indoorTemperature, indoorHumidity)}</div>`}
                 ${this.noteEnabled() ? this.noteHtml(this.currentNote()) : ''}
               </div>
@@ -606,12 +616,19 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.mountExtras();
     }
 
-    /** The location line: the place, led by the clock's slot with show_clock */
+    /** The location line: the place, led by the clock's slot with show_clock (unless the time is the hero) and the date's with show_date */
     private locationHtml(compact: boolean, location: string | undefined): string {
         if (compact) return '';
         const place = this.config?.show_location !== false && location ? `<span class="awc-place">${escapeHtml(location)}</span>` : '';
-        const clock = this.config?.show_clock && !this.config.dev_mode ? '<span class="awc-clock"></span>' : '';
-        return place || clock ? `<div class="location">${clock}${place}</div>` : '';
+        const clock = this.config?.show_clock && !this.config.dev_mode && !this.heroClock() ? '<span class="awc-clock"></span>' : '';
+        const date = this.config?.show_date && !this.config.dev_mode ? '<span class="awc-date"></span>' : '';
+        return place || clock || date ? `<div class="location">${clock}${date}${place}</div>` : '';
+    }
+
+    /** The hero's time as the forecast bundle's clock writes it: "07:05", "7:05" and a smaller "AM" */
+    private heroTime(): string {
+        const { time, period } = clockParts(new Date(), this._hass);
+        return period ? `${escapeHtml(time)}<span class="awc-ampm">${escapeHtml(period)}</span>` : escapeHtml(time.replace(/^(\d)(\D)/, '0$1$2'));
     }
 
     /**

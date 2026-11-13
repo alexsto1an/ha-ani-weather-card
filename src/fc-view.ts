@@ -17,13 +17,13 @@
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { CURVE, HOUR, Slot, css, ease, esc, mixHex, num, reducedMotion, whole } from './fc-core';
-import { conditionNoun, timeParts, timeText, week } from './fc-data';
-import { TimeText, minuteTicker } from './fc-clock';
+import { conditionNoun, timeText, week } from './fc-data';
+import { layoutLeft, minuteTicker } from './fc-clock';
 import { FcWords, fcWords, fill } from './fc-words';
 import { Chips, Daily, Hourly, createChips, createDaily, createHourly, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
-import { Model, buildModel, feelsNow, iconTints, valueText } from './fc-weather';
+import { Model, buildModel, cardClock, feelsNow, iconTints, valueText } from './fc-weather';
 import { SKY_GLOW, SKY_GLOW_WIDE, relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
 import type { Metric } from './fc-data';
@@ -154,23 +154,29 @@ export function attachView(host: ForecastHost): ForecastExtras {
         meta.prepend(line);
     }
     const desc = root.querySelector('.weather-desc') as HTMLElement | null;
+    let hlRow: HTMLElement | null = null;
     if (desc) {
         const s = host.hass()?.states[host.config().entity ?? '']?.state;
         if (s) desc.textContent = conditionNoun(s, host.hass(), x => host.conditionName(x));
         // Today's high and low beside the condition, as on the card
         if (model.hl) {
-            const row = document.createElement('div');
-            row.className = 'awc-desc-row';
-            desc.before(row);
-            row.append(desc);
+            // With the time as the hero, the temperature already leads the condition in its row
+            const lead = desc.parentElement?.classList.contains('awc-lead-row') ? desc.parentElement : null;
+            const row = lead ?? document.createElement('div');
+            if (!lead) {
+                row.className = 'awc-desc-row';
+                desc.before(row);
+                row.append(desc);
+            }
             const [h, l] = model.hl;
+            hlRow = row;
             row.insertAdjacentHTML('beforeend', `<span class="awc-companion" data-show="hl" role="text" aria-label="${esc(fill(W.high_low, { h: `${host.temperature(h)}°`, l: `${host.temperature(l)}°` }))}"><span data-v="hl"><span class="awc-hl-pair"><b>${esc(W.h)}</b>\u2009${esc(host.temperature(h))}°</span><span class="awc-hl-pair"><b>${esc(W.l)}</b>\u2009${esc(host.temperature(l))}°</span></span></span>`);
         }
     }
-    // The clock leads the location line
-    const clockEl = root.querySelector('.location .awc-clock') as HTMLElement | null;
-    const clock = clockEl ? new TimeText(clockEl) : null;
-    const tick = () => { const p = timeParts(new Date(), host.hass()); clock?.set({ text: `${p.hour}:${p.minute}`, period: p.period }); };
+    // The clock leads the location line, or it's the hero (hero: clock), and the date follows it (show_date)
+    const clock = cardClock(host, root);
+    let browsing = false;
+    const tick = () => { clock.date(); if (!(clock.big && browsing)) clock.show(new Date(), false); };
     tick();
     const ticker = minuteTicker(tick);
     if (hourly && model.tl) {
@@ -181,6 +187,9 @@ export function attachView(host: ForecastHost): ForecastExtras {
             valueText: s => valueText(model, host, s), idleHome: false, dropScale: tablet() ? 0.6 : 0.4,
             onSlot: (s, k) => {
                 render(s);
+                // A hero clock goes to the hour, and back to now with the row
+                browsing = !!s && model.tl?.unit === 'hour';
+                if (clock.big) clock.show(browsing && s ? s.at : new Date(), false);
                 if (!s) { if (temp) temp.innerHTML = home.temp; if (desc) desc.innerHTML = home.desc; if (line) line.innerHTML = home.line; return; }
                 if (temp && typeof s.temperature === 'number') temp.textContent = host.temperature(s.temperature);
                 if (desc) desc.textContent = conditionNoun(s.condition ?? '', host.hass(), x => host.conditionName(x));
@@ -208,6 +217,14 @@ export function attachView(host: ForecastHost): ForecastExtras {
     return {
         levels: () => [], setLevel() {}, levelOk: () => true,
         fitted() {
+            clock.fit();
+            // Today's high and low whole, or not at all: the row stops short of the light
+            const comp = hlRow?.querySelector('.awc-companion') as HTMLElement | null;
+            if (comp && hlRow && desc && hlRow.getClientRects().length) {
+                comp.dataset.show = 'hl';
+                const mw = parseFloat(getComputedStyle(hlRow).maxWidth);
+                if (layoutLeft(comp) + comp.offsetWidth > layoutLeft(hlRow) + (isFinite(mw) ? mw : Infinity) - 4 || comp.offsetTop > desc.offsetTop + 4) comp.dataset.show = 'none';
+            }
             hourly?.remeasure();
             chips?.fit();
             // Clouds roam the whole sky above the hours, behind the hero's text, as on the card; on a tablet the week

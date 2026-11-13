@@ -331,10 +331,19 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             <ha-icon class="expand-icon" icon="mdi:chevron-down"></ha-icon>
           </div>
           <div class="section-content">
-            <div class="option">
+            <div class="option card-only">
+              <ha-select id="hero" label="The big value"></ha-select>
+            </div>
+            <div class="option card-only small-clock">
               <label class="switch-label">
                 <ha-switch id="show_clock" ${this._config.show_clock ? 'checked' : ''}></ha-switch>
                 <span>The time, leading the location line</span>
+              </label>
+            </div>
+            <div class="option card-only">
+              <label class="switch-label">
+                <ha-switch id="show_date" ${this._config.show_date ? 'checked' : ''}></ha-switch>
+                <span>The date, after the time</span>
               </label>
             </div>
             <div class="option">
@@ -706,8 +715,18 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
             if (value >= 0) this._updateConfig('note_max_age', value);
         });
 
+        this._bindSelect('hero', [
+            { value: 'temperature', label: 'The temperature' },
+            { value: 'clock', label: 'The time, with the temperature beside the condition' },
+        ], this._config?.hero === 'clock' ? 'clock' : 'temperature', (value) => {
+            this._updateConfig('hero', value === 'clock' ? value : undefined);
+            this.syncForecastOptions();
+        });
         this.querySelector('#show_clock')?.addEventListener('change', (e) => {
             this._updateConfig('show_clock', (e.target as HTMLInputElement).checked || undefined);
+        });
+        this.querySelector('#show_date')?.addEventListener('change', (e) => {
+            this._updateConfig('show_date', (e.target as HTMLInputElement).checked || undefined);
         });
         this.querySelector('#show_forecast')?.addEventListener('change', (e) => {
             this._updateConfig('show_forecast', (e.target as HTMLInputElement).checked || undefined);
@@ -1060,11 +1079,16 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         }, { forecast: 'Forecast' });
     }
 
-    /** The forecast's own options count only with it on; the nightstand's only with that layout */
+    /**
+     * The forecast's own options count only with it on; the nightstand's only with that layout, where the time is
+     * always the hero and the date its own; the small clock only while the time isn't the big value
+     */
     private syncForecastOptions(): void {
         const dim = (sel: string, on: boolean) => this.querySelectorAll<HTMLElement>(sel).forEach(o => { o.style.cssText = on ? '' : 'opacity: 0.5; pointer-events: none;'; });
         dim('.forecast-only', !!this._config?.show_forecast);
+        dim('.small-clock', this._config?.hero !== 'clock');
         this.querySelectorAll<HTMLElement>('.nightstand-only').forEach(o => { o.hidden = this._config?.layout !== 'nightstand'; });
+        this.querySelectorAll<HTMLElement>('.card-only').forEach(o => { o.hidden = this._config?.layout === 'nightstand'; });
     }
 
     /** The AI's controls count only with the switch on and no note entity; the status says what's missing. */
