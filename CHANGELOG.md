@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-14
+
 ### Added
 
 - A clock on the weather card: `show_clock` puts the time at the start of the location line, "13:10  Home". It changes only on the minute, and only the figures that change fade. It follows your profile's 12- or 24-hour setting and time zone, adds no rows, and on the compact strip leads the quiet line. For a large clock, `hero: clock` below makes the time the big value.
@@ -138,7 +140,8 @@ The first public release: two cards for Home Assistant, the Animated Weather Car
 - **Try it first.** A [live demo](https://alexsto1an.github.io/ha-ani-weather-card/) runs the real card in your browser, on sample data or your own weather, and a [setup guide](https://alexsto1an.github.io/ha-ani-weather-card/setup/) walks through every step.
 - **Developer mode.** `dev_mode: true` shows sample weather with a panel for every condition, time of day and layer, and a Fly a plane button. Only a card in dev mode logs to the console.
 
-[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/alexsto1an/ha-ani-weather-card/compare/v1.0.2...v1.1.0
