@@ -93,6 +93,8 @@ export function attachWall(host: ForecastHost): ForecastExtras {
                     chance.innerHTML = typeof p === 'number' && p >= 20 ? `<span class="awc-hl-pair"><b>${esc(W[m.noun])}</b> ${Math.round(p)}%</span>` : '';
                 },
                 onAway: a => hourly?.el.classList.toggle('fc-away', a),
+                // The days follow the needle: its day stands out, the dot rides its bar at the hour's temperature
+                onNeedle: (t, temp) => daily?.follow(t === null ? null : { at: t, temperature: temp }),
                 onHome: () => { if (pending) { pending = false; setTimeout(() => { key = keyOf(); build(); }, 0); } },
                 group: () => [tv.parentElement, cond.parentElement, turn, fw.querySelector('.fw-when')].filter((e): e is HTMLElement => !!e),
             });

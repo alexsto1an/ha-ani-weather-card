@@ -180,7 +180,7 @@ export function liveReading(data, name = 'Here') {
  */
 export const OPEN_METEO = {
     hourly: 'temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,is_day',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max',
     extra: 'forecast_hours=48&forecast_days=10&timezone=auto&timeformat=unixtime',
 };
 
@@ -220,6 +220,7 @@ export function liveForecast(data) {
         condition: weatherState(wmoCondition(d.weather_code?.[i]), 'day'),
         temperature: d.temperature_2m_max?.[i],
         templow: d.temperature_2m_min?.[i],
+        apparent_temperature: d.apparent_temperature_max?.[i],
         precipitation: d.precipitation_sum?.[i],
         precipitation_probability: d.precipitation_probability_max?.[i],
         wind_speed: d.wind_speed_10m_max?.[i],
@@ -464,6 +465,8 @@ export function sampleForecast({ conditionId, state, reading, dayTemp, now = new
             condition: weather === 'clear-night' ? 'sunny' : weather,
             temperature: round1(Math.max(...own.map(h => h.temperature))),
             templow: round1(Math.min(...own.map(h => h.temperature))),
+            // Feels like as integrations report a day's: its highest
+            apparent_temperature: round1(Math.max(...own.map(h => h.apparent_temperature))),
             precipitation_probability: Math.max(...own.map(h => h.precipitation_probability)),
             precipitation: round1(own.reduce((s, h) => s + h.precipitation, 0)),
             wind_speed: round1(Math.max(...own.map(h => h.wind_speed))),

@@ -73,6 +73,12 @@ export function buildModel(host: ForecastHost, current?: number): Model {
     };
 }
 
+/** The reading's feels like now, for today's span when the days show feels like */
+export function feelsNow(host: ForecastHost): number | undefined {
+    const v = host.hass()?.states[host.config().entity ?? '']?.attributes?.apparent_temperature;
+    return typeof v === 'number' && isFinite(v) ? v : undefined;
+}
+
 /** The brightest sky an hour's icon can be seen over: its own hour's and the hours before it in view */
 export function iconTints(host: ForecastHost, m: Model, opts: { y0: number; y1: number; glow: typeof SKY_GLOW; reach: number }): (i: number) => Tints | null {
     if (host.config().color_palette === 'theme') return () => null;

@@ -21,11 +21,15 @@
 // The page follows the needle (hour-link.ts): every frame it moves, the
 // slide says which time it's on, the temperature there and the sky it shows,
 // and once it's home it says so. The view doesn't, and neither does a slide
-// that steps by days.
+// that steps by days. An hourly slide on the same weather follows another
+// card's needle the way the finger moves it, ruler, sky and readout, and
+// says nothing while it does, so nothing echoes; a hand on it, or its Now
+// control, makes it the one that leads. The days on the same card follow its
+// own needle (onNeedle).
 
 import type { ForecastHost } from './forecast-host';
 import type { SkyCondition, SkyPhase } from './sky';
-import { sendHour } from './hour-link';
+import { onHour, sendHour } from './hour-link';
 import {
     CONTAINER, LAYER_NAMES, LAYER_OF, Lab, Slot, Timeline, clamp, cssOf, haptic, isWet, labOf, phaseWeights, reducedMotion,
     rubber, smooth, spring, sunDrop, sunModel,
@@ -102,6 +106,8 @@ export interface SlideOptions {
     disabled?(): boolean;
     /** The sun's drop, scaled (the tap view's tall sky) */
     dropScale?: number;
+    /** The needle's time (ms) and the temperature there, every frame it moves; null once home (the days follow it) */
+    onNeedle?(at: number | null, temperature: number | null): void;
 }
 
 export interface Slide {
@@ -113,6 +119,8 @@ export interface Slide {
     home(instant?: boolean): void;
     /** Park at a slot at once (the view opening where the card was) */
     park(slots: number): void;
+    /** Follow another card's needle (ms); null: home with it */
+    follow(at: number | null): void;
     rebuild(): void;
     destroy(): void;
 }
@@ -126,7 +134,7 @@ export function attachSlide(o: SlideOptions): Slide {
     const slotHours = tl.slotMs / 3600_000;
     const state = {
         offset: 0, v: 0, raw: 0,
-        dragging: false, active: false, k: -1, settling: false, settleTo: 0, settleTau: 0, parked: false,
+        dragging: false, active: false, k: -1, settling: false, settleTo: 0, settleTau: 0, parked: false, following: false,
         lastWet: null as boolean | null, prewarmed: false, stopTimer: 0, idleTimer: 0, pointer: false, keyboard: false, swallow: false,
     };
     let rel: { x0: number; p: number; vp: number; from: Picture; swapped: boolean; hadSlot: boolean } | null = null;
@@ -401,7 +409,7 @@ export function attachSlide(o: SlideOptions): Slide {
         return typeof b === 'number' ? a + (b - a) * f : a;
     }
     function emit() {
-        if (!link) return;
+        if (!link || state.following) return;
         const h = slotsAt(state.offset);
         linked = true;
         sendHour({
@@ -427,6 +435,7 @@ export function attachSlide(o: SlideOptions): Slide {
         else if (railRuler) railRuler.style.transform = `translate3d(${(-state.offset).toFixed(2)}px, 0, 0)`;
         stepSky(dt);
         emit();
+        if (o.onNeedle) { const h = slotsAt(state.offset); o.onNeedle(Date.now() + h * tl.slotMs, temperatureAt(h)); }
         // The readout follows the needle: while held, while settling, and on the keys
         if (!rel) {
             const k = slotOf(state.offset);
@@ -442,7 +451,7 @@ export function attachSlide(o: SlideOptions): Slide {
         }
     }
     function leave() {
-        Object.assign(state, { active: false, settling: false, parked: false, dragging: false, keyboard: false, k: -1, offset: 0, v: 0, raw: 0 });
+        Object.assign(state, { active: false, settling: false, parked: false, dragging: false, keyboard: false, following: false, k: -1, offset: 0, v: 0, raw: 0 });
         rel = null;
         root.classList.remove('awc-pulling', 'awc-dial', 'awc-held');
         if (ext) ext.setOffset(0); else if (railRuler) railRuler.style.transform = '';
@@ -460,6 +469,7 @@ export function attachSlide(o: SlideOptions): Slide {
         clearTimeout(state.idleTimer);
         schedulePrewarmStop();
         emitHome();
+        o.onNeedle?.(null, null);
         o.onAway?.(false);
         o.onHome?.();
     }
@@ -529,7 +539,7 @@ export function attachSlide(o: SlideOptions): Slide {
             // Caught: it stops this frame, the needle's hour comes back, and it tracks from where it is.
             // The press is the slide's, never a tap on the card (this listens before the card's actions do)
             e.stopPropagation();
-            rel = null; state.settling = false; state.settleTau = 0;
+            rel = null; state.settling = false; state.settleTau = 0; lead();
             state.dragging = true; state.v = 0; state.raw = state.offset; state.k = -1;
             groupOpacity(null);
             root.classList.add('awc-dial', 'awc-held');
@@ -540,7 +550,8 @@ export function attachSlide(o: SlideOptions): Slide {
             kick();
             return;
         }
-        start = { x: e.clientX, y: e.clientY, id: e.pointerId, claimed: false, base: state.parked ? state.offset : 0, slop: SLIDE.slopPx };
+        // Left at an hour, or following another card's: the drag continues from the hour it shows
+        start = { x: e.clientX, y: e.clientY, id: e.pointerId, claimed: false, base: state.parked || state.following ? state.offset : 0, slop: SLIDE.slopPx };
         void prewarm();
     }) as EventListener, true);
     on(gesture, 'pointermove', ((e: PointerEvent) => {
@@ -583,7 +594,10 @@ export function attachSlide(o: SlideOptions): Slide {
     // A click that ended a pull is not a tap
     on(gesture, 'click', ((e: Event) => { if (state.swallow) { e.stopPropagation(); e.preventDefault(); state.swallow = false; } }) as EventListener, true);
 
+    /** A hand on a card that follows: from here it leads, and the card it followed follows it */
+    function lead() { state.following = false; }
     function claim(base = 0) {
+        lead();
         Object.assign(state, { dragging: true, settling: false, settleTau: 0, parked: false, swallow: true, v: 0, raw: base });
         rel = null;
         clearTimeout(state.idleTimer);
@@ -607,10 +621,15 @@ export function attachSlide(o: SlideOptions): Slide {
         root.classList.remove('awc-held');
         kick();
     }
-    /** Home on one spring: from what is visible straight to now */
-    function goHome(instant = false) {
+    /**
+     * Home on one spring: from what is visible straight to now. A card that follows and is sent home by a hand (its Now
+     * control, its keys) leads the way, so the card it followed comes home with it; one that's brought home by the card
+     * it follows, or at once (scrolled away, a new forecast), keeps following.
+     */
+    function goHome(instant = false, byHand = true) {
         clearTimeout(state.idleTimer);
         if (!state.active) return;
+        if (byHand && !instant && state.following) { lead(); linked = true; }
         if (instant || !host.seen()) { rel = null; cancelAnimationFrame(raf); raf = 0; showSlot(0); leave(); return; }
         const hadSlot = state.k > 0;
         Object.assign(state, { dragging: false, keyboard: false, settling: false, settleTau: 0, parked: false });
@@ -642,6 +661,7 @@ export function attachSlide(o: SlideOptions): Slide {
             e.preventDefault();
             const cur = state.active ? Math.round(state.offset / pxs) : 0;
             const k = clamp(cur + step, 0, maxK());
+            if (state.following) { lead(); linked = true; }
             if (!state.active) enter();
             rel = null; Object.assign(state, { settling: false, settleTau: 0, dragging: false, keyboard: true });
             groupOpacity(null);
@@ -671,6 +691,27 @@ export function attachSlide(o: SlideOptions): Slide {
         wheelTimer = window.setTimeout(() => release(0), SLIDE.wheelRest);
     }) as EventListener, { passive: false });
 
+    /**
+     * Another card's needle on the same weather: the ruler goes to its time at once, as a finger would take it, and the
+     * sky, the sun and the readout follow on their own time. Never while a hand is on this one.
+     */
+    function follow(at: number | null) {
+        if (state.dragging || (state.keyboard && document.activeElement === slider)) return;
+        // Home with the card it follows: that card's way home brought the ruler and the sky here already, so it's home at once
+        if (at === null) { if (state.active && state.following) goHome(!host.seen() || Math.abs(state.offset) < 1, false); return; }
+        if (!state.active) enter();
+        // It was leading (left at an hour of its own): it follows now, and it's the other card that will say it's home
+        state.following = true; linked = false;
+        rel = null; groupOpacity(null);
+        Object.assign(state, { settling: false, settleTau: 0, parked: false, v: 0 });
+        clearTimeout(state.idleTimer);
+        root.classList.add('awc-dial');
+        setRaw(clamp(((at - Date.now()) / tl.slotMs) * pxs, 0, maxPx()));
+        kick();
+    }
+    const unfollow = link ? onHour(l => { if (l.source !== host.element && l.entity === link.entity) follow(l.at); }) : null;
+    if (unfollow) cleanup.push(unfollow);
+
     let roRaf = 0;
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { cancelAnimationFrame(roRaf); roRaf = requestAnimationFrame(() => { if (!state.active) buildRail(); }); }) : null;
     ro?.observe(root);
@@ -681,7 +722,8 @@ export function attachSlide(o: SlideOptions): Slide {
         slots: () => (state.active ? Math.round(state.offset / pxs) : 0),
         away: () => state.active,
         active: () => state.active,
-        home: goHome,
+        home: (instant?: boolean) => goHome(instant),
+        follow,
         park(k: number) {
             if (k <= 0) return;
             enter();

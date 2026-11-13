@@ -487,10 +487,22 @@ export interface Daily {
      * the dot rides that day's bar at that temperature. null: back to now.
      */
     follow(at: { at: number; temperature: number | null } | null): void;
+    /**
+     * What the days show, as the chips do for the hours: the temperature's range, the feels-like range, the chance of
+     * rain or the amount, each on one scale for the week. The dot for now is the temperature's only.
+     */
+    setMetric(m: Metric, o?: { animate?: boolean }): void;
     draw(): void;
     destroy(): void;
 }
-export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; current?: number; glyphSize?: number; tints?: Tints | null; theme: boolean; fahrenheit?: boolean; conditionName(c: string): string; ring?: number }): Daily {
+/** What a day shows for a metric: a span on the week's scale and its two labels */
+interface DayValue { lo?: number; hi?: number; loText: string; hiText: string }
+export function createDaily(o: {
+    hass?: HomeAssistant; W: FcWords; week: Week; current?: number; glyphSize?: number; tints?: Tints | null; theme: boolean; fahrenheit?: boolean;
+    conditionName(c: string): string; ring?: number;
+    /** For the other metrics: the hours (their feels like), the reading's feels like now, what falls, the amount's unit */
+    hours?: Array<{ date: Date; feels: number | null }>; currentFeels?: number; noun?: Noun; unit?: string; lang?: string;
+}): Daily {
     const { W, week } = o;
     const el = document.createElement('div');
     el.className = 'fc-daily';
@@ -498,7 +510,7 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
     el.setAttribute('role', 'list');
     el.setAttribute('aria-label', W.daily);
     const days = week.days.filter(d => d.high !== undefined || d.low !== undefined);
-    if (!days.length) { el.hidden = true; return { el, empty: true, arrive() {}, setNow() {}, follow() {}, draw() {}, destroy() { el.remove(); } }; }
+    if (!days.length) { el.hidden = true; return { el, empty: true, arrive() {}, setNow() {}, follow() {}, setMetric() {}, draw() {}, destroy() { el.remove(); } }; }
     const ring = o.ring ?? 5.5;
     const today = days[0].isToday ? days[0] : null;
     let now: number | null = today && o.current !== undefined && isFinite(o.current) ? clamp(o.current, today.low ?? o.current, today.high ?? o.current) : null;
@@ -515,19 +527,88 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
     }).join('');
     const rows = [...el.querySelectorAll<HTMLElement>('.fc-day')];
     const fills = rows.map(r => r.querySelector('.fc-fill') as HTMLElement);
+    const los = rows.map(r => r.querySelector('.fc-d-lo') as HTMLElement), his = rows.map(r => r.querySelector('.fc-d-hi') as HTMLElement);
+    const labels = rows.map(r => r.getAttribute('aria-label') ?? '');
+
+    // ── The metrics: each day's span and labels, and the week's scale ──
+    const lang = o.lang || o.hass?.locale?.language || o.hass?.language || 'en';
+    const noun: Noun = o.noun ?? 'rain';
+    const amountText = (v: number) => num(v, lang, v > 0 && v < 10 ? 1 : 0);
+    /** Feels like through the day: the hours in it, the day's own figure, and now's reading on today */
+    const feelsOf = (d: typeof days[number]): number[] => {
+        const key = dayKey(d.date, o.hass);
+        const v = (o.hours ?? []).filter(h => h.feels !== null && dayKey(h.date, o.hass) === key).map(h => h.feels as number);
+        const own = d.entry.apparent_temperature;
+        if (typeof own === 'number' && isFinite(own)) v.push(own);
+        if (d.isToday && o.currentFeels !== undefined && isFinite(o.currentFeels)) v.push(o.currentFeels);
+        return v;
+    };
+    function valuesFor(m: Metric): { vals: DayValue[]; min: number; max: number; wet: boolean } {
+        if (m === 'chance' || m === 'amount') {
+            const raw = days.map(d => (m === 'chance' ? d.chance : d.precipitation));
+            const top = m === 'chance' ? 100 : Math.max(o.unit === 'in' ? 0.2 : 5, ...raw.map(v => v ?? 0));
+            return {
+                wet: true, min: 0, max: top,
+                vals: raw.map(v => (v === undefined ? { loText: '', hiText: '–' } : { lo: 0, hi: v, loText: '', hiText: m === 'chance' ? `${num(Math.round(v), lang)}%` : amountText(v) })),
+            };
+        }
+        if (m === 'feels') {
+            const vals = days.map(d => {
+                const f = feelsOf(d);
+                if (!f.length) return { loText: '', hiText: '–' };
+                const lo = Math.min(...f), hi = Math.max(...f);
+                return { lo, hi, loText: f.length > 1 ? deg(lo) : '', hiText: deg(hi) };
+            });
+            const all = vals.flatMap(v => (v.lo === undefined ? [] : [v.lo, v.hi!]));
+            let min = all.length ? Math.min(...all) : week.min, max = all.length ? Math.max(...all) : week.max;
+            if (max - min < 1) max = min + 1;
+            return { wet: false, min, max, vals };
+        }
+        return { wet: false, min: week.min, max: week.max, vals: days.map(d => ({ lo: d.low, hi: d.high, loText: deg(d.low), hiText: deg(d.high) })) };
+    }
+    let metric: Metric = 'temp';
+    let cur = valuesFor('temp');
+    /** The spoken row for a metric other than the temperature: its name and what it says */
+    function spoken(i: number, m: Metric): string {
+        if (m === 'temp') return labels[i];
+        const d = days[i], v = cur.vals[i];
+        const long = dayName(d.date, o.hass, 'long');
+        const day = d.isToday ? `${long}, ${W.today.toLowerCase()}` : long;
+        const cond = o.conditionName(d.condition ?? '');
+        if (m === 'feels') return v.lo === undefined ? `${day}: ${cond}` : fill(W.day_row, { day, cond: `${cond}, ${W.name_feels}`, lo: fill(W.degrees, { v: whole(v.lo) }), hi: fill(W.degrees, { v: whole(v.hi!) }) });
+        const what = v.hi === undefined ? '–' : m === 'chance' ? fill(W.percent, { v: String(Math.round(v.hi)) }) : `${amountText(v.hi)} ${o.unit ?? ''}`.trim();
+        return `${day}: ${cond}, ${chipName(W, m, noun)} ${what}`;
+    }
     const inks = rows.map(r => r.querySelector('.fc-d-ink') as HTMLElement);
     let dot = el.querySelector('.fc-dot') as HTMLElement | null;
     /** The row the dot is on: today's, or the day another card's needle is in */
     let dotRow = 0;
     /** Now, to come back to after following another card's needle */
     const home = { now, row: 0, dot: !!dot };
-    const st = { min: week.min, max: week.max, edge: 1, nowX: 0, nowV: 0, dotOp: 1 };
+    const st = { min: week.min, max: week.max, edge: 1, nowX: 0, nowV: 0, dotOp: 1, mix: 1 };
     const frac = (t: number) => (t - st.min) / (st.max - st.min);
+    /** Each day's span on the scale, as fractions: what the bars glide from when the metric changes */
+    const spanOf = (v: DayValue, min: number, max: number): [number, number] | null => {
+        if (v.lo === undefined && v.hi === undefined) return null;
+        const f = (t: number) => (t - min) / Math.max(1e-6, max - min);
+        return [f(v.lo ?? v.hi!), f(v.hi ?? v.lo!)];
+    };
+    let from: Array<[number, number] | null> = [];
     function draw() {
-        const g = o.theme ? '' : scaleGradient(st.min, st.max, o.fahrenheit);
+        const g = o.theme || cur.wet ? '' : scaleGradient(st.min, st.max, o.fahrenheit);
         const bw = fills[0]?.parentElement?.clientWidth || 150;
         days.forEach((d, i) => {
-            const lo = frac(d.low ?? d.high!), hi = frac(d.high ?? d.low!);
+            const f = fills[i];
+            f.style.backgroundImage = g;
+            f.classList.toggle('fc-wet', cur.wet);
+            // Nothing falls, nothing to draw: a dry day's chance or amount is its figure alone
+            const v = cur.vals[i];
+            const to = cur.wet && !((v.hi ?? 0) > 0) ? null : spanOf(v, st.min, st.max);
+            // Mid-change, a bar glides from the last metric's span to this one's; a day with nothing to show fades
+            const was = st.mix < 1 ? from[i] : to;
+            const span = to && was ? [was[0] + (to[0] - was[0]) * st.mix, was[1] + (to[1] - was[1]) * st.mix] : to ?? was;
+            if (!span) { fills[i].style.opacity = '0'; return; }
+            const [lo, hi] = span;
             // Never thinner than its own height: a day whose high and low meet is still a mark
             const minW = 6 / bw;
             const a = Math.min(lo, 1 - minW), b = Math.max(hi, a + minW);
@@ -535,25 +616,25 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
             let right = Math.min(b, st.edge);
             let left = a;
             if (right <= left + 0.0005) { fills[i].style.opacity = '0'; return; }
-            fills[i].style.opacity = '';
+            fills[i].style.opacity = !to ? (1 - st.mix).toFixed(3) : !was ? st.mix.toFixed(3) : '';
             // Beside the dot a sliver of fill shorter than the ring is noise: the fill ends at the ring
-            if (i === dotRow && dot && now !== null) {
+            if (i === dotRow && dot && now !== null && metric === 'temp') {
                 const r = (ring + 8.5) / bw;
                 if (right > st.nowX && right - st.nowX < r) right = Math.min(right, st.nowX);
                 if (st.nowX > left && st.nowX - left < r) left = Math.max(left, st.nowX);
             }
-            const f = fills[i];
-            if (g) f.style.backgroundImage = g;
             const clip = `inset(0 ${((1 - right) * 100).toFixed(3)}% 0 ${(left * 100).toFixed(3)}% round 999px)`;
             f.style.clipPath = clip;
             f.style.setProperty('-webkit-clip-path', clip);
         });
         if (dot && now !== null) {
             const x = st.nowX * bw;
+            // The dot is the temperature's: on another metric it steps aside, and so does its ring
+            const op = st.dotOp * (metric === 'temp' ? st.mix : 1 - st.mix) * (metric === 'temp' || st.mix < 1 ? 1 : 0);
             dot.style.transform = `translate3d(${x.toFixed(2)}px, 0, 0)`;
-            dot.style.opacity = st.dotOp.toFixed(3);
+            dot.style.opacity = op.toFixed(3);
             // The ring: the sky shows through the track and the fill around the dot
-            const m = st.dotOp > 0.01 ? `radial-gradient(circle at ${x.toFixed(2)}px 50%, transparent ${ring}px, #000 ${ring + 0.75}px)` : 'none';
+            const m = op > 0.01 ? `radial-gradient(circle at ${x.toFixed(2)}px 50%, transparent ${ring}px, #000 ${ring + 0.75}px)` : 'none';
             inks.forEach((ink, i) => {
                 const v = i === dotRow ? m : '';
                 if (ink.style.maskImage !== v) { ink.style.setProperty('-webkit-mask-image', v); ink.style.maskImage = v; }
@@ -647,11 +728,43 @@ export function createDaily(o: { hass?: HomeAssistant; W: FcWords; week: Week; c
         st.nowX = clamp(frac(now));
         draw();
     }
+    /** The chips changed what the hours show: the days show it too, the bars gliding to their new spans */
+    let mixRaf = 0;
+    function setMetric(m: Metric, { animate = true } = {}) {
+        if (m === metric) return;
+        const old = cur;
+        from = days.map((_, i) => spanOf(old.vals[i], st.min, st.max));
+        metric = m;
+        cur = valuesFor(m);
+        // Re-express where the bars were on the new scale, so the glide is the bars', not the scale's
+        from = from.map(f => (f ? [old.min + f[0] * (old.max - old.min), old.min + f[1] * (old.max - old.min)] : null))
+            .map(v => (v ? [(v[0] - cur.min) / Math.max(1e-6, cur.max - cur.min), (v[1] - cur.min) / Math.max(1e-6, cur.max - cur.min)] as [number, number] : null));
+        if (old.wet !== cur.wet) from = from.map(() => null);
+        st.min = cur.min; st.max = cur.max;
+        el.dataset.metric = m;
+        rows.forEach((r, i) => {
+            los[i].textContent = cur.vals[i].loText;
+            his[i].textContent = cur.vals[i].hiText;
+            r.setAttribute('aria-label', spoken(i, m));
+        });
+        if (now !== null) st.nowX = clamp(frac(now));
+        cancelAnimationFrame(mixRaf);
+        if (!animate || reducedMotion()) { st.mix = 1; draw(); return; }
+        const t0 = performance.now();
+        st.mix = 0; draw();
+        const f = (ts: number) => {
+            const t = clamp((ts - t0) / ROW_MOTION.rescale);
+            st.mix = ease.drawer(t);
+            draw();
+            mixRaf = t < 1 ? requestAnimationFrame(f) : 0;
+        };
+        mixRaf = requestAnimationFrame(f);
+    }
     draw();
     let roRaf = 0;
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { cancelAnimationFrame(roRaf); roRaf = requestAnimationFrame(() => { if (el.isConnected && !raf) draw(); }); }) : null;
     ro?.observe(el);
-    return { el, empty: false, arrive, setNow, follow, draw, destroy() { stop(); cancelAnimationFrame(roRaf); ro?.disconnect(); el.remove(); } };
+    return { el, empty: false, arrive, setNow, follow, setMetric, draw, destroy() { stop(); cancelAnimationFrame(roRaf); cancelAnimationFrame(mixRaf); ro?.disconnect(); el.remove(); } };
 }
 
 void HOUR;

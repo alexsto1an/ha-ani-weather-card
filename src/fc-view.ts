@@ -23,7 +23,7 @@ import { FcWords, fcWords, fill } from './fc-words';
 import { Chips, Daily, Hourly, createChips, createDaily, createHourly } from './fc-row';
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
-import { Model, buildModel, iconTints, valueText } from './fc-weather';
+import { Model, buildModel, feelsNow, iconTints, valueText } from './fc-weather';
 import { SKY_GLOW, SKY_GLOW_WIDE, relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
 import type { Metric } from './fc-data';
@@ -121,7 +121,7 @@ export function attachView(host: ForecastHost): ForecastExtras {
             conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)),
         });
         fc.append(hourly.el);
-        chips = createChips({ W, metrics: model.metrics, value: metric, noun: model.noun, minLevel: tablet() ? 0 : spec?.chipsLevel ?? 0, onChange: (k, { keys }) => { metric = k; hourly?.setMetric(k, { animate: !keys }); } });
+        chips = createChips({ W, metrics: model.metrics, value: metric, noun: model.noun, minLevel: tablet() ? 0 : spec?.chipsLevel ?? 0, onChange: (k, { keys }) => { metric = k; hourly?.setMetric(k, { animate: !keys }); daily?.setMetric(k, { animate: !keys }); } });
         fc.append(chips.el);
     }
     const f = host.forecast();
@@ -130,7 +130,8 @@ export function attachView(host: ForecastHost): ForecastExtras {
     const st = host.hass()?.states[host.config().entity ?? '']?.state ?? 'sunny';
     for (const x of [0.12, 0.5, 0.88]) for (const y of [0.5, 0.7, 0.9]) lum = Math.max(lum, relativeLuminance(sampleSkyAt(classOf(st) as SkyCondition, host.phase(), x, y, SKY_GLOW)));
     const wk = week(f.daily, f.dailyType === 'twice_daily' ? 'twice_daily' : 'daily', Date.now(), host.hass(), { count: tablet() ? 8 : 7, current: host.current() });
-    daily = createDaily({ hass: host.hass(), W, week: wk, current: host.current(), theme, fahrenheit: model.fahrenheit, tints: theme ? null : litTints(45, false, lum), conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)) });
+    daily = createDaily({ hass: host.hass(), W, week: wk, current: host.current(), theme, fahrenheit: model.fahrenheit, tints: theme ? null : litTints(45, false, lum), hours: model.hours, currentFeels: feelsNow(host), noun: model.noun, unit: model.unit, lang: model.lang, conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)) });
+    if (metric !== 'temp') daily.setMetric(metric, { animate: false });
     list.append(daily.el);
     list.insertAdjacentHTML('beforeend', `<section class="fv-now"><h3 class="fv-head"></h3><div class="fv-readings"></div></section>`
         + `<button class="fv-more awc-noclaim" type="button"><span>${esc(W.more)}</span><i aria-hidden="true"></i></button>`);
@@ -185,6 +186,8 @@ export function attachView(host: ForecastHost): ForecastExtras {
                 if (line) line.innerHTML = model.lineAt(k)?.html ?? '';
             },
             onAway: a => hourly?.el.classList.toggle('fc-away', a),
+            // The days follow the needle: its day stands out, the dot rides its bar at the hour's temperature
+            onNeedle: (at, t) => daily?.follow(at === null ? null : { at, temperature: t }),
             group: () => [line, root.querySelector('.temperature') as HTMLElement | null, desc].filter((e): e is HTMLElement => !!e),
             mirror: () => [chips?.sel, root.querySelector('.fv-close') as HTMLElement | null].filter((e): e is HTMLElement => !!e),
             disabled: () => !!el.dataset.dragging,
@@ -197,7 +200,7 @@ export function attachView(host: ForecastHost): ForecastExtras {
         close: root.querySelector('.fv-close') as HTMLElement,
         more: list.querySelector('.fv-more') as HTMLElement,
         top, list,
-        setMetric(m) { if (chips) chips.set(m, { travel: false, silent: true }); hourly?.setMetric(m, { animate: false }); metric = m; },
+        setMetric(m) { if (chips) chips.set(m, { travel: false, silent: true }); hourly?.setMetric(m, { animate: false }); daily?.setMetric(m, { animate: false }); metric = m; },
         park(k) { slide?.park(k); },
     };
     el.awcView = api;

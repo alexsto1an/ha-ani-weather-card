@@ -215,6 +215,26 @@ describe('the forecast on the weather card', () => {
         }
     });
 
+    it('in the view, the days follow its hours, and its chips change what the days show', async () => {
+        const card = mount({ show_forecast: true });
+        await settle();
+        card.openForecast();
+        const until = async (ok: () => boolean) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 20)); };
+        await until(() => !!document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
+        const grown = document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
+        const list = grown.querySelector('[data-fc-daily]') as HTMLElement;
+        const slider = grown.querySelector('[role="slider"]') as HTMLElement;
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        expect(list.hasAttribute('data-fc-follow')).toBe(true);
+        expect(grown.querySelectorAll('[data-fc-day][data-fc-at]')).toHaveLength(1);
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        await new Promise(r => setTimeout(r, 800));
+        expect(list.hasAttribute('data-fc-follow')).toBe(false);
+        (grown.querySelector('[data-fc-chips] [data-metric="chance"]') as HTMLElement).click();
+        expect(list.dataset.metric).toBe('chance');
+        (grown.querySelector('.fv-close') as HTMLElement).click();
+    });
+
     it('the nightstand is no button: a tap does nothing unless tap_action sets one', async () => {
         const card = mount({ layout: 'nightstand' });
         await settle();
@@ -265,6 +285,49 @@ describe('the forecast card', () => {
         await settle();
         expect(card.querySelector('.fc-empty')?.textContent).toBe(FC_WORDS.en.no_forecast);
     });
+
+    it('its chips change what the days show too, on that card only', async () => {
+        // A week that says how likely rain is, how much, and how it feels
+        const wet = daily.map((d, i) => ({ ...d, precipitation_probability: i * 10, precipitation: i * 1.5, apparent_temperature: 20 + i }));
+        const hass = makeHass(3, {
+            connection: {
+                subscribeMessage: async (listener: (m: unknown) => void, message: { forecast_type: string }) => {
+                    listener({ type: message.forecast_type, forecast: message.forecast_type === 'hourly' ? forecast() : wet });
+                    return () => {};
+                },
+            },
+        });
+        const a = mount({}, hass, 'animated-forecast-card');
+        const b = mount({}, hass, 'animated-forecast-card');
+        await settle();
+        const his = (c: Card) => [...c.querySelectorAll<HTMLElement>('.fc-d-hi')].map(e => e.textContent);
+        const los = (c: Card) => [...c.querySelectorAll<HTMLElement>('.fc-d-lo')].map(e => e.textContent);
+        const chip = (c: Card, m: string) => (c.querySelector(`[data-fc-chips] [data-metric="${m}"]`) as HTMLElement).click();
+        expect(his(a)[1]).toBe('23°');
+        chip(a, 'chance');
+        await settle();
+        const list = a.querySelector('[data-fc-daily]') as HTMLElement;
+        expect(list.dataset.metric).toBe('chance');
+        expect(his(a)).toEqual(['0%', '10%', '20%', '30%', '40%', '50%', '60%']);
+        expect(los(a).every(t => t === '')).toBe(true);
+        expect(a.querySelector('.fc-fill')?.classList.contains('fc-wet')).toBe(true);
+        expect(a.querySelector('[data-fc-day]')?.getAttribute('aria-label')).toMatch(/Chance of rain 0 percent$/);
+        // The other card keeps its own
+        expect(his(b)[1]).toBe('23°');
+        chip(a, 'amount');
+        await settle();
+        expect(his(a).slice(0, 4)).toEqual(['0', '1.5', '3.0', '4.5']);
+        // Feels like: the hours in the day, the day's own figure and now's reading, coolest to warmest
+        chip(a, 'feels');
+        await settle();
+        expect(list.dataset.metric).toBe('feels');
+        expect(his(a)[6]).toBe('26°');
+        expect(a.querySelector('.fc-fill')?.classList.contains('fc-wet')).toBe(false);
+        chip(a, 'temp');
+        await settle();
+        expect(his(a)[1]).toBe('23°');
+        expect(los(a)[1]).toBe('13°');
+    });
 });
 
 describe('the slide: it stays where it\'s left', () => {
@@ -285,9 +348,11 @@ describe('the slide: it stays where it\'s left', () => {
         } as unknown as ForecastHost;
         const offsets: number[] = [];
         const slots: Array<number | null> = [];
+        const needles: Array<{ at: number; t: number | null } | null> = [];
         const slide = attachSlide({
             host, root, tl, ruler: { pitch: 50, el: root, setOffset: px => offsets.push(px) }, sliderHost: root, sliderLabel: 'Hours ahead',
             valueText: (s, k) => (s ? `slot ${k}` : 'Now'), onSlot: (s, k) => slots.push(s ? k : null), group: () => [],
+            onNeedle: (at, t) => needles.push(at === null ? null : { at, t }),
         });
         const pointer = (type: string, x: number, y = 100) => {
             const e = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0 });
@@ -302,8 +367,21 @@ describe('the slide: it stays where it\'s left', () => {
             vi.advanceTimersByTime(200);   // a rest before the lift: no flick
             pointer('pointerup', 300 + dx);
         };
-        return { root, slide, offsets, slots, drag, pointer };
+        return { root, slide, offsets, slots, needles, drag, pointer };
     }
+
+    it('tells the days where its needle is, every frame it moves, and once it\'s home', () => {
+        const { slide, needles, drag } = rig();
+        drag(-150);
+        vi.advanceTimersByTime(2000);
+        const last = needles[needles.length - 1]!;
+        // Three hours on, at the pitch of 50 px an hour, with the temperature there
+        expect(Math.round((last.at - Date.now()) / HOUR)).toBe(3);
+        expect(last.t).toBeCloseTo(20.1, 5);
+        slide.home();
+        vi.advanceTimersByTime(2000);
+        expect(needles[needles.length - 1]).toBeNull();
+    });
 
     it('under fog, the sun stays hidden as the drag starts, and the fog leaves at the hours without it', () => {
         // The card under fog: its sun hidden by its class, its fog running
@@ -540,33 +618,69 @@ describe('one needle across the page', () => {
         expect(heard.filter(l => l.at === null)).toHaveLength(1);
     });
 
-    it('the forecast card shows the day the needle is in, and comes back to now', async () => {
+    const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+    it('the forecast card follows another card\'s needle on its weather, row, sky and days, and comes home with it', async () => {
         const fc = mount({}, makeHass(), 'animated-forecast-card');
         await settle();
         const rows = [...fc.querySelectorAll<HTMLElement>('[data-fc-day]')];
         const list = fc.querySelector('[data-fc-daily]') as HTMLElement;
+        const slider = fc.querySelector('[role="slider"]') as HTMLElement;
         const other = document.createElement('div');
-        // Tomorrow at noon, 23°
-        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: today(12).getTime() + 24 * HOUR, temperature: 23, sky: null });
+        const at = Date.now() + 5 * HOUR;
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 19.5, sky: null });
+        await settle();
+        // Its row went to the hour, as a finger would take it
+        expect(slider.getAttribute('aria-valuenow')).toBe('5');
+        expect(fc.querySelector('.fc-fcard')?.classList.contains('fc-away')).toBe(true);
+        // Its days show the day the hour is in
         expect(list.hasAttribute('data-fc-follow')).toBe(true);
-        expect(rows.map(r => r.hasAttribute('data-fc-at'))).toEqual([false, true, false, false, false, false, false]);
-        expect(rows[1].querySelector('.fc-dot')).not.toBeNull();
-        expect(rows[0].querySelector('.fc-dot')).toBeNull();
+        expect(rows.filter(r => r.hasAttribute('data-fc-at'))).toHaveLength(1);
+        // It follows quietly: nothing echoes back
+        expect(heard.filter(l => l.source === fc)).toHaveLength(0);
         // Another weather's needle is not this card's
-        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at: today(12).getTime() + 48 * HOUR, temperature: 20, sky: null });
-        expect(rows[2].hasAttribute('data-fc-at')).toBe(false);
+        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at: Date.now() + 9 * HOUR, temperature: 20, sky: null });
+        await settle();
+        expect(slider.getAttribute('aria-valuenow')).toBe('5');
+        // Home with the card it follows
         sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        await wait(800);
+        expect(slider.getAttribute('aria-valuenow')).toBe('0');
         expect(list.hasAttribute('data-fc-follow')).toBe(false);
         expect(rows.some(r => r.hasAttribute('data-fc-at'))).toBe(false);
         expect(rows[0].querySelector('.fc-dot')).not.toBeNull();
+        expect(heard.filter(l => l.source === fc)).toHaveLength(0);
     });
 
-    it('the forecast card doesn\'t follow while it shows an hour of its own', async () => {
+    it('dragging the forecast card takes the weather card along; its days follow its own needle; a hand on either leads', async () => {
+        const card = mount({ show_forecast: true });
         const fc = mount({}, makeHass(), 'animated-forecast-card');
         await settle();
         const own = fc.querySelector('[role="slider"]') as HTMLElement;
+        const theirs = card.querySelector('[role="slider"]') as HTMLElement;
         own.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: today(12).getTime() + 24 * HOUR, temperature: 23, sky: null });
+        own.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        await settle();
+        expect(own.getAttribute('aria-valuenow')).toBe('2');
+        expect(theirs.getAttribute('aria-valuenow')).toBe('2');
+        // The days follow the card's own needle
+        expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(true);
+        // Only the card in the hand speaks
+        expect(heard.filter(l => l.source === card)).toHaveLength(0);
+        expect(heard.filter(l => l.source === fc).length).toBeGreaterThan(0);
+        // A hand on the weather card: it leads now, and the forecast card follows it
+        heard.length = 0;
+        theirs.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        await settle();
+        expect(theirs.getAttribute('aria-valuenow')).toBe('3');
+        expect(own.getAttribute('aria-valuenow')).toBe('3');
+        expect(heard.filter(l => l.source === fc)).toHaveLength(0);
+        // Home on the weather card brings both home
+        theirs.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        await wait(900);
+        expect(theirs.getAttribute('aria-valuenow')).toBe('0');
+        expect(own.getAttribute('aria-valuenow')).toBe('0');
         expect(fc.querySelector('[data-fc-daily]')?.hasAttribute('data-fc-follow')).toBe(false);
+        expect(heard.filter(l => l.at === null && l.source === card)).toHaveLength(1);
     });
 });

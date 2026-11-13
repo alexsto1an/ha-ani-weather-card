@@ -96,6 +96,8 @@ const PARTS = `
 .fc-d-ink { position: absolute; inset: 0; }
 .fc-track { position: absolute; inset: 0; border-radius: 999px; background: currentColor; opacity: 0.2; }
 .fc-fill { position: absolute; inset: 0; background-color: #f7fafe; }
+/* The chance and the amount: one colour, the sky's own cold light, from zero */
+.fc-fill.fc-wet { background-color: #b1daf8; }
 .fc-dot { position: absolute; left: -4px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ffffff; will-change: transform; }
 
 /* ── Theme palette: no sky, so no gradient (the ramp is 1.07:1 on white). One solid ink on the divider's colour. ── */

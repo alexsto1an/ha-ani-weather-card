@@ -11,10 +11,12 @@
 // half a minute without a touch, the page hidden, the card scrolled away,
 // and a new forecast: one spring, the same as the weather card's.
 //
-// It follows another card's needle on the same weather (hour-link.ts): while
-// the weather card above it is dragged, the day the needle is in stands out
-// and the dot rides that day's bar at the hour's temperature. Its own row
-// stays where it is, and while it shows an hour of its own it doesn't follow.
+// The days follow its own needle: the day the hour is in stands out and the
+// dot rides that day's bar at the hour's temperature. It follows another
+// card's needle on the same weather (hour-link.ts): while the weather card
+// above it is dragged, its row, sky and days go to that hour with it, and
+// dragging this one takes the weather card along. Without hours of its own,
+// only its days follow.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
@@ -24,7 +26,7 @@ import { Chips, Daily, Hourly, createChips, createDaily, createHourly, hourCols 
 import { litTints } from './fc-glyphs';
 import { Slide, attachSlide } from './fc-slide';
 import { minuteTicker } from './fc-clock';
-import { Model, buildModel, iconTints, valueText } from './fc-weather';
+import { Model, buildModel, feelsNow, iconTints, valueText } from './fc-weather';
 import { dropView, openView, prepareView } from './fc-view';
 import { relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
 import { classOf } from './fc-core';
@@ -104,7 +106,7 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             if (strip) hourly.el.style.marginLeft = `${13 - pitch / 2}px`;
             left.append(hourly.el);
             if (!strip) {
-                chips = createChips({ W, metrics: m.metrics, value: metric, noun: m.noun, onChange: (k, { keys }) => { metric = k; hourly?.setMetric(k, { animate: !keys }); } });
+                chips = createChips({ W, metrics: m.metrics, value: metric, noun: m.noun, onChange: (k, { keys }) => { metric = k; hourly?.setMetric(k, { animate: !keys }); daily?.setMetric(k, { animate: !keys }); } });
                 left.append(chips.el);
             }
         }
@@ -116,8 +118,10 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             let lum = 0;
             const st = host.hass()?.states[cfg().entity ?? '']?.state ?? 'sunny';
             for (const x of [0.12, 0.5, 0.88]) for (const y of [0.45, 0.7, 0.95]) lum = Math.max(lum, relativeLuminance(sampleSkyAt(classOf(st) as SkyCondition, host.phase(), x, y, FORECAST_GLOW)));
-            daily = createDaily({ hass: host.hass(), W, week: wk, current: host.current(), theme, fahrenheit: m.fahrenheit, tints: theme ? null : litTints(45, false, lum), conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)) });
+            daily = createDaily({ hass: host.hass(), W, week: wk, current: host.current(), theme, fahrenheit: m.fahrenheit, tints: theme ? null : litTints(45, false, lum), hours: m.hours, currentFeels: feelsNow(host), noun: m.noun, unit: m.unit, lang: m.lang, conditionName: c => conditionNoun(c, host.hass(), s => host.conditionName(s)) });
             card.append(daily.el);
+            // The days show what the chips do (not shared between cards)
+            if (metric !== 'temp') daily.setMetric(metric, { animate: false });
             daily.draw();
             if (!arrived && host.seen() && !host.still()) daily.arrive();
             arrived = true;
@@ -135,7 +139,8 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             host, root, tl: m.tl!, ruler: hourly, sliderHost: hourly.el, sliderLabel: m.W.hours,
             valueText: s => valueText(m, host, s),
             onSlot: (s, k) => writeLead(s ? k : 0, s),
-            onAway: a => { card.classList.toggle('fc-away', a); hourly?.el.classList.toggle('fc-away', a); if (back) back.tabIndex = a ? 0 : -1; if (a) daily?.follow(null); },
+            onAway: a => { card.classList.toggle('fc-away', a); hourly?.el.classList.toggle('fc-away', a); if (back) back.tabIndex = a ? 0 : -1; },
+            onNeedle: (at, t) => daily?.follow(at === null ? null : { at, temperature: t }),
             onHome: () => { if (pending) { pending = false; setTimeout(rebuild, 0); } },
             group: () => (sentence ? [sentence] : []),
             mirror: () => (chips?.sel ? [chips.sel] : []),
@@ -173,9 +178,10 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         if (hourly && host.seen() && !host.still()) hourly.step(() => { key = keyOf(); rebuild(); });
         else { key = keyOf(); rebuild(); }
     });
-    // Another card's needle on the same weather: the days follow it, unless this card shows an hour of its own
+    // Another card's needle on the same weather: an hourly row follows it (the slide does, and its needle takes the days);
+    // without one, the days follow it, unless this card shows a day of its own
     const unlink = onHour(l => {
-        if (l.source === el || l.entity !== cfg().entity || !daily) return;
+        if (l.source === el || l.entity !== cfg().entity || !daily || (slide && model?.tl?.unit === 'hour')) return;
         if (l.at === null || slide?.active()) daily.follow(null);
         else daily.follow({ at: l.at, temperature: l.temperature });
     });

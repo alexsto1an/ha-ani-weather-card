@@ -343,7 +343,7 @@ forecast_metric: chance  # temp, feels, chance or amount
 - **It says so.** While the card shows another hour, the location line becomes "‹ Now  16:00  in 3 hr.": the Now control, the hour, and how far ahead it is. Today's high and low step out, and the hour's chance of rain takes their place.
 - **Coming home.** The card comes back to now when you tap **Now**, press Home or Escape, leave it alone for half a minute, scroll it off screen or hide the page, and when a new forecast arrives. It comes home on one quick spring: the row, the sky and every layer of weather go straight from the hour you left to now.
 - **You can catch it.** A press while it moves stops it where it is. Nothing changes when your finger first lands.
-- **The other cards follow.** A sun tracker on the same sun moves its sun to the hour you're on; with the same `weather_entity`, it takes the card's sky too. A forecast card on the same weather shows the day the hour falls in: its name in bold, a dot on its bar at that hour's temperature, and the other days stepping back. They come back to now with the card.
+- **The other cards follow.** A forecast card on the same weather goes to the hour with it: its row, its sky and its days, which show the day the hour falls in (its name in bold, a dot on its bar at that hour's temperature, the other days stepping back). It works both ways: drag the forecast card and the weather card goes along, and whichever you touch leads. A sun tracker on the same sun moves its sun to the hour you're on; with the same `weather_entity`, it takes the card's sky too. They come back to now together.
 - **The page still scrolls.** A drag up or down scrolls the dashboard; the card takes only a drag that's clearly sideways. On a trackpad, swipe sideways with two fingers.
 - **Keyboard and screen readers.** The hours are a slider you can Tab to: the arrows step an hour, Page Up and Page Down three, and Home or Escape come back to now. A screen reader hears "16:00, in 3 hr.: Cloudy, 22°, 40% chance". The row also has a list of the next 24 hours for screen readers, and the chips are a group of choices with their full names, such as "Chance of rain".
 - **Reduced motion.** With reduced motion, or `animate: false`, the sky stays still and steps with the hour, the row still follows your finger, the chips swap without moving, and the way home is a short fade.
@@ -367,11 +367,11 @@ With the forecast on, a tap opens the whole forecast. The card's own sky grows f
 
 - the clock and the place, the temperature, the condition with today's high and low, and the line on what turns
 - the row and its chips, which drag and stay where you leave them, as on the card
-- seven days with their ranges, eight on a tablet
+- seven days with their ranges, eight on a tablet. As you drag the row, the days show the day the hour falls in, and the chips change what the days show too, as on the forecast card
 - every reading your weather entity reports: feels like, wind with its gusts, humidity, dew point, UV, cloud cover, precipitation, visibility and pressure. While you're at another hour, they're that hour's ("At 17:00").
 - **History and settings**, which opens Home Assistant's own dialog for the entity
 
-Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone. It's a dialog: focus moves into it, the page behind it can't be reached, and focus comes back to the card when it closes. On a tablet, 900 px and wider, it has two columns and nothing scrolls. It's built ahead of time, hidden and with its weather paused, so it opens on the next frame. The row in the view doesn't come home on its own; it does when the view closes.
+Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone, where it starts just below the status bar. It's a dialog: focus moves into it, the page behind it can't be reached, and focus comes back to the card when it closes. On a tablet, 900 px and wider, it has two columns and nothing scrolls. It's built ahead of time, hidden and with its weather paused, so it opens on the next frame. The row in the view doesn't come home on its own; it does when the view closes.
 
 To have a tap do something else, set `tap_action`, or pick it under **Interactions** in the editor.
 
@@ -383,7 +383,7 @@ With the forecast on, a card of at least 640 × 540 px, such as two sections col
 - the clock as a quiet line on the temperature's baseline, with the date
 - the condition, with the high, the low and feels like
 - open sky, then the line on what turns at 48 px
-- under it, six two-hour columns with 40 px figures above one line, beside five days of ranges
+- under it, six two-hour columns with 40 px figures above one line, beside five days of ranges, which show the day the hour falls in as you drag
 
 There are no chips, and the slide works the same.
 
@@ -422,14 +422,14 @@ wake_time: "07:00"
 
 `type: custom:animated-forecast-card`
 
-The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. While you drag a weather card on the same entity, its days show the day the hour falls in, and dragging its own row moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
+The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. Its row and a weather card's on the same entity move together: drag either and the other goes to the same hour, its sky too, and dragging it moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
 
 ```yaml
 type: custom:animated-forecast-card
 entity: weather.forecast_home
 ```
 
-Each day has its name, its icon, the low, a bar and the high; the bar takes the width that's left, so the low sits by the icon. The bars share one scale for the week, from the coldest low to the warmest high, and their colour is set by the temperature: the sky's blue-white for cold, white in the middle and the sun's gold for warm. Today's bar has a dot for now. The bars draw in with one sweep across the scale. On the theme palette, they're one solid colour. From 640 px wide, the hours sit on the left and the week on the right. In a frame shorter than it asks for, the days give way from the end. An entity without a forecast says so: "This weather entity has no forecast".
+Each day has its name, its icon, the low, a bar and the high; the bar takes the width that's left, so the low sits by the icon. The bars share one scale for the week, from the coldest low to the warmest high, and their colour is set by the temperature: the sky's blue-white for cold, white in the middle and the sun's gold for warm. Today's bar has a dot for now, and as you drag the row the days show the day the hour falls in, with the dot on its bar at that hour's temperature. The chips change what the days show, on this card only: Feels like shows each day's feels-like range (from the hours, and the day's own figure where your integration gives one), the chance and the amount show as bars from zero, the chance on a scale to 100% and the amount to the week's wettest day. The bars draw in with one sweep across the scale. On the theme palette, they're one solid colour. From 640 px wide, the hours sit on the left and the week on the right. In a frame shorter than it asks for, the days give way from the end. An entity without a forecast says so: "This weather entity has no forecast".
 
 As a strip, it sits under the compact weather card: the hours' labels, icons and line, with no words or chips, its first and last labels on the weather card's text edges.
 
