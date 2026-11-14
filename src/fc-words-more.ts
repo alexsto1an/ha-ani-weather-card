@@ -1,4 +1,4 @@
-// The forecast's words in the card's other seven languages, beside English
+// The forecast's words in the card's other eight languages, beside English
 // and German in fc-words.ts. "Feels like" and its kin reuse localize.ts's
 // words, so the card says the same thing everywhere.
 //
@@ -211,4 +211,34 @@ const RO: FcWords = {
     no_forecast: 'Această entitate meteo nu are prognoză',
 };
 
-export const FC_WORDS_MORE: Record<string, FcWords> = { es: ES, fr: FR, it: IT, nl: NL, pl: PL, pt: PT, ro: RO };
+const NB: FcWords = {
+    now: 'Nå', back: 'Tilbake til nå', hours: 'Kommende timer', hourly: 'Varsel time for time', daily: 'Varsel dag for dag', show: 'Vis',
+    today: 'I dag', tonight: 'I natt',
+    temp: ['Temperatur', 'Temp.'], feels: ['Føles som', 'Føles som'],
+    chance_rain: 'Sjanse for regn', chance_snow: 'Sjanse for snø', chance_sleet: 'Sjanse for sludd',
+    amount_rain: 'Regnmengde', amount_snow: 'Snømengde', amount_sleet: 'Sluddmengde',
+    chance: 'Sjanse', amount: 'Mengde',
+    name_temp: 'Temperatur', name_feels: 'Følt temperatur',
+    name_chance_rain: 'Sannsynlighet for regn', name_chance_snow: 'Sannsynlighet for snø', name_chance_sleet: 'Sannsynlighet for sludd',
+    name_amount_rain: 'Regnmengde', name_amount_snow: 'Snømengde', name_amount_sleet: 'Sluddmengde',
+    degrees: '{v} grader', percent: '{v} prosent',
+    day_row: '{day}: {cond}, laveste {lo}, høyeste {hi}', day_now: ', nå {v}',
+    h: 'H', l: 'L', high_low: 'Høyeste {h}, laveste {l}',
+    rain: 'Regn', snow: 'Snø', sleet: 'Sludd', storms: 'Tordenvær',
+    from: '{k} fra {a}', from_to: '{k} fra {a} til {b}', until: '{k} til {b}', all_day: '{k} hele dagen', all_night: '{k} hele natten',
+    until_bare: 'til {b}', all_day_bare: 'hele dagen', all_night_bare: 'hele natten',
+    dry_day: 'Oppholdsvær hele dagen', dry_night: 'Oppholdsvær i natt', dry_morning: 'Oppholdsvær i formiddag',
+    k_today: '{k} i dag', k_tomorrow: '{k} i morgen', midnight: 'midnatt',
+    chance_of: '{v}\u00a0% sjanse',
+    sunny: 'Klart', 'clear-night': 'Klart', partlycloudy: 'Delvis skyet', cloudy: 'Skyet', fog: 'Tåke', rainy: 'Regn', pouring: 'Kraftig regn',
+    lightning: 'Torden', 'lightning-rainy': 'Tordenbyger', snowy: 'Snø', 'snowy-rainy': 'Sludd', hail: 'Hagl', windy: 'Vind',
+    'windy-variant': 'Vind', exceptional: 'Ekstremvær',
+    view: 'Været i {place}', close: 'Lukk', more: 'Historikk og innstillinger', now_head: 'Nå', at_head: 'Kl. {t}',
+    wind: 'Vind', gusts: 'Vindkast {v}', humidity: 'Luftfuktighet', dew_point: 'Duggpunkt', uv: 'UV-indeks', cloud_cover: 'Skydekke',
+    precipitation: 'Nedbør', visibility: 'Sikt', pressure: 'Lufttrykk', feels_like: 'Føles som',
+    clock: 'Klokke og vær', alarm: 'Alarm', gusts_to: 'Vindkast opptil {v} kl. {t}', freezing: '{v} kl. {t}',
+    no_forecast: 'Denne værentiteten har ikke noe varsel',
+};
+
+// Home Assistant's Norwegian is Bokmål (`nb`); `no` and Nynorsk (`nn`) get the same words, as in localize.ts
+export const FC_WORDS_MORE: Record<string, FcWords> = { es: ES, fr: FR, it: IT, nl: NL, pl: PL, pt: PT, ro: RO, nb: NB, no: NB, nn: NB };

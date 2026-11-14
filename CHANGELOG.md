@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The cards speak Norwegian (Bokmål), the forecast's words included, and Nynorsk shows the same words. Thanks to Henrik Hills ([#21](https://github.com/alexsto1an/ha-ani-weather-card/pull/21)).
+
 ### Changed
 
 - The forecast card shows its sky alone by default: the condition's colour and light, going to the hour you drag to, with no rain, snow, fog, wind or lightning moving in it, so stacked under the weather card the weather falls once. `weather_effects: true`, also a switch in its editor, brings them back. The view that opens on tap keeps its weather.
