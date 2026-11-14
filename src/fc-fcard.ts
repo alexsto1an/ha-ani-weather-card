@@ -16,7 +16,7 @@
 // card's needle on the same weather (hour-link.ts): while the weather card
 // above it is dragged, its row, sky and days go to that hour with it, and
 // dragging this one takes the weather card along. Without hours of its own,
-// only its days follow.
+// its days, its sky and its weather follow, as the weather card shows them.
 
 import type { ForecastExtras, ForecastHost } from './forecast-host';
 import { HOUR, Slot, esc, ownControl } from './fc-core';
@@ -24,12 +24,12 @@ import { conditionNoun, dayName, timeHtml, week } from './fc-data';
 import { fcWords } from './fc-words';
 import { Chips, Daily, Hourly, createChips, createDaily, createHourly, hourCols, graphOf } from './fc-row';
 import { litTints } from './fc-glyphs';
-import { Slide, attachSlide } from './fc-slide';
+import { SLIDE, Slide, attachSlide } from './fc-slide';
 import { minuteTicker } from './fc-clock';
 import { Model, buildModel, feelsNow, iconTints, valueText } from './fc-weather';
 import { dropView, openView, prepareView } from './fc-view';
 import { relativeLuminance, sampleSkyAt, type SkyCondition } from './sky';
-import { classOf } from './fc-core';
+import { CONTAINER, LAYER_NAMES, classOf } from './fc-core';
 import { onHour } from './hour-link';
 
 /** The corner light, as the forecast card paints it (fc-css.ts): its contrast is measured against this */
@@ -180,7 +180,7 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         else { key = keyOf(); rebuild(); }
     });
     // Another card's needle on the same weather: an hourly row follows it (the slide does, and its needle takes the days);
-    // without one, the days and the sky follow it, the sky's colour only, never its weather, unless this card shows a day
+    // without one, the days, the sky and the weather follow it, as that card shows them, unless this card shows a day
     // of its own
     const SKY_KEYS = ['top', 'mid', 'bottom', 'glow', 'scrim'];
     let skyLed = false;
@@ -191,11 +191,56 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
         // The card it followed came home on its own spring, so its last sky is this card's: they meet without a jump
         else if (skyLed) { for (const k of SKY_KEYS) sky.style.removeProperty(`--awc-sky-${k}`); skyLed = false; }
     }
+    // The weather goes with it: each layer at the strength the other card shows (it has no clouds of its own). A layer
+    // this card doesn't run now starts unseen, as the slide pre-warms one, and stops a moment after the needle is home
+    const OWN_LAYERS = LAYER_NAMES.filter(n => n !== 'clouds');
+    const followed: string[] = [];
+    let weatherLed = false, stopTimer = 0;
+    const container = (name: string) => root.querySelector(CONTAINER[name]) as HTMLElement | null;
+    function stopFollowed() {
+        clearTimeout(stopTimer);
+        const layers = host.layers();
+        for (const name of followed.splice(0)) {
+            layers?.stopAnimation(name).catch(() => {});
+            const c = container(name);
+            if (c) c.style.opacity = '';
+        }
+    }
+    function followWeather(w: Record<string, number> | null | undefined) {
+        const layers = host.layers();
+        if (w && layers && !host.still()) {
+            clearTimeout(stopTimer);
+            // Frame by frame: the layers' own 0.6 s fade would trail the needle
+            root.classList.add('awc-warm');
+            for (const name of OWN_LAYERS) {
+                const c = container(name), a = layers.animations[name];
+                if (!c || !a) continue;
+                const v = Math.max(0, Math.min(1, w[name] ?? 0));
+                if (v > 0 && !a.isActive && !followed.includes(name)) {
+                    followed.push(name);
+                    c.style.opacity = '0';
+                    layers.startAnimation(name, { intensity: 1 }).catch(() => {});
+                }
+                c.style.opacity = v.toFixed(3);
+            }
+            weatherLed = true;
+            return;
+        }
+        if (!weatherLed) return;
+        weatherLed = false;
+        // The card it followed came home on its own spring, so its last weather is this card's: letting go doesn't jump,
+        // and the layers' fade carries any difference
+        root.classList.remove('awc-warm');
+        for (const name of OWN_LAYERS) { const c = container(name); if (c) c.style.opacity = followed.includes(name) ? '0' : ''; }
+        clearTimeout(stopTimer);
+        stopTimer = window.setTimeout(stopFollowed, SLIDE.prewarmStop);
+    }
     const unlink = onHour(l => {
         if (l.source === el || l.entity !== cfg().entity || (slide && model?.tl?.unit === 'hour')) return;
-        if (l.at === null || slide?.active()) { daily?.follow(null); followSky(null); return; }
+        if (l.at === null || slide?.active()) { daily?.follow(null); followSky(null); followWeather(null); return; }
         daily?.follow({ at: l.at, temperature: l.temperature });
         followSky(cfg().color_palette === 'theme' ? null : l.sky);
+        followWeather(l.weather);
     });
     let roRaf = 0, lastWide = wide();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
@@ -223,6 +268,6 @@ export function attachForecastCard(host: ForecastHost): ForecastExtras {
             if (!model?.tl) { host.moreInfo(); return; }
             openView(host, { model, metric, slots: slide?.slots() ?? 0, chipsLevel: chips?.level() ?? 0, small: root });
         },
-        destroy() { unlink(); info.removeEventListener('pointerdown', prepare); dropView(el); ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); teardown(); card.remove(); delete root.dataset.fcCard; },
+        destroy() { unlink(); followWeather(null); stopFollowed(); root.classList.remove('awc-warm'); info.removeEventListener('pointerdown', prepare); dropView(el); ticker.stop(); ro?.disconnect(); cancelAnimationFrame(roRaf); teardown(); card.remove(); delete root.dataset.fcCard; },
     };
 }

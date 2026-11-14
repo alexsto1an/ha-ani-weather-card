@@ -256,6 +256,8 @@ export interface AnimatedWeatherCardConfig {
     forecast_days?: number;
     /** The forecast card: the hourly row (default true) */
     show_hours?: boolean;
+    /** The forecast card: the weather behind it, rain, snow, fog, wind and lightning (default false: the sky alone) */
+    weather_effects?: boolean;
     /** The card's layout: the regular card, or the nightstand (the time as the hero) */
     layout?: 'default' | 'nightstand';
     /** The nightstand: a sensor with the next alarm (a timestamp, or an input_datetime) */

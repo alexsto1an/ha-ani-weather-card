@@ -94,3 +94,25 @@ describe('the big value and the date in the weather card\'s editor (hero, show_d
         for (const id of ['#hero', '#show_clock', '#show_date']) expect((editor.querySelector(id)!.closest('.option') as HTMLElement).hidden, id).toBe(true);
     });
 });
+
+describe('the forecast card\'s weather in its editor (weather_effects)', () => {
+    let editor: Editor;
+    afterEach(() => editor?.remove());
+
+    it('is off by default, and writes only the weather being on', async () => {
+        editor = document.createElement('animated-forecast-card-editor') as Editor;
+        editor.setConfig({ type: 'custom:animated-forecast-card', entity: 'weather.home' });
+        document.body.appendChild(editor);
+        await flush();
+        const toggle = editor.querySelector('#weather_effects') as HTMLInputElement;
+        expect(toggle.hasAttribute('checked')).toBe(false);
+        let config: Record<string, unknown> | undefined;
+        editor.addEventListener('config-changed', (e) => { config = (e as CustomEvent).detail.config; });
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change'));
+        expect(config).toMatchObject({ weather_effects: true });
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event('change'));
+        expect(config).not.toHaveProperty('weather_effects');
+    });
+});

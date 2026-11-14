@@ -7,10 +7,14 @@
  * grid below. The card's sky follows the sun's real elevation, in the same
  * palette as the weather card.
  *
+ * Its sky's weather is its weather_entity's, or without one, the first
+ * weather card's on its sun (weather-share.ts), so under a weather card it
+ * reads as one piece either way.
+ *
  * It follows a weather card's needle on the same sun (hour-link.ts): while
  * one is dragged through the hours, the sun goes to that time on its path,
- * and with the same weather_entity the sky is the weather card's own. When
- * the card comes home, so does the tracker.
+ * and on the same weather the sky is the weather card's own. When the card
+ * comes home, so does the tracker.
  * It only listens here: the forecast bundle, which draws the needle, moves
  * it (fc-tracker.ts).
  */
@@ -23,6 +27,7 @@ import { ActionConfig, ActionsConfig, bindActions, readActions, syncActionTarget
 import { loadEditorBundle } from './bundles';
 import { IconName, icon } from './icons';
 import { HOUR_EVENT, HourLink } from './hour-link';
+import { onSharedWeather, weatherOnSun } from './weather-share';
 import { COMPACT_PATH, PathGeometry, REGULAR_PATH, VH, VW, hourFrac, pathElevation, xFor, yFor } from './sun-path';
 
 export { pathElevation };
@@ -36,7 +41,7 @@ import {
 export interface SunTrackerConfig {
     sun_entity?: string;
     moon_entity?: string;
-    /** Match the sky to this weather entity's condition, e.g. under a weather card */
+    /** Match the sky to this weather entity's condition; without it, the first weather card's on the same sun */
     weather_entity?: string;
     /** One line: the next sunrise or sunset beside the sun's path */
     compact?: boolean;
@@ -541,6 +546,9 @@ class AnimatedSunTrackerCard extends HTMLElement {
     /** A weather card's needle this tracker follows, and the way to stop listening */
     private _link: HourLink | null = null;
     private _onHour = (e: Event) => this._follow((e as CustomEvent<HourLink>).detail);
+    /** The weather the sky was last drawn for, and the way to stop hearing the page's weather cards */
+    private _drawnWeather: string | undefined;
+    private _unshare?: () => void;
 
     constructor() {
         super();
@@ -563,7 +571,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
         const oldMoonPhase = this._hass?.states[moonId]?.state;
         const newMoonPhase = hass.states[moonId]?.state;
         const localeChanged = localeKey(this._hass) !== localeKey(hass);
-        const weatherId = this.config.weather_entity || '';
+        const weatherId = this._weatherId() || '';
         const weatherChanged = weatherId && this._hass?.states[weatherId]?.state !== hass.states[weatherId]?.state;
         this._hass = hass;
 
@@ -584,6 +592,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
         if (!this._clock) this._clock = setInterval(() => this._render(), 60_000);
         // The same listener twice is one
         window.addEventListener(HOUR_EVENT, this._onHour);
+        // A weather card on its sun arrives, leaves or changes its weather: the sky follows when it's this one's
+        if (!this._unshare) this._unshare = onSharedWeather(() => { if (this._weatherId() !== this._drawnWeather) this._render(); });
         if (!this._resizeObserver && typeof ResizeObserver !== 'undefined') {
             this._resizeObserver = new ResizeObserver(() => this._fit());
             this._resizeObserver.observe(this);
@@ -594,6 +604,8 @@ class AnimatedSunTrackerCard extends HTMLElement {
         if (this._clock) clearInterval(this._clock);
         this._clock = undefined;
         window.removeEventListener(HOUR_EVENT, this._onHour);
+        this._unshare?.();
+        this._unshare = undefined;
         this._link = null;
         this._resizeObserver?.disconnect();
         this._resizeObserver = undefined;
@@ -639,12 +651,17 @@ class AnimatedSunTrackerCard extends HTMLElement {
             : { columns: 12, rows: 6, min_columns: 6, min_rows: 3 };
     }
 
+    /** The weather whose sky this tracker shows: its own weather_entity, else the first weather card's on its sun */
+    private _weatherId(): string | undefined {
+        return this.config.weather_entity || weatherOnSun(this.config.sun_entity);
+    }
+
     /**
-     * The sky's condition: a configured weather entity's, so the tracker
-     * shares the sky of the weather card it sits with; otherwise a clear sky.
+     * The sky's condition: that weather's, so the tracker shares the sky of
+     * the weather card it sits with; with none on the page, a clear sky.
      */
     private _skyCondition(phase: SkyPhase): SkyCondition {
-        const id = this.config.weather_entity;
+        const id = this._weatherId();
         const state = id ? this._hass?.states[id]?.state : undefined;
         if (state && state !== 'unavailable' && state !== 'unknown') {
             const weatherClass = getWeatherClass(state, false, undefined, undefined, this._hass?.config?.time_zone,
@@ -703,6 +720,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
     }
 
     private _render(): void {
+        this._drawnWeather = this._weatherId();
         const sun = this._getSunData();
         const moon = this._getMoonData();
         const colorized = this.config.color_palette !== 'theme';
@@ -870,7 +888,7 @@ class AnimatedSunTrackerCard extends HTMLElement {
         }
         const card = this._shadow.querySelector('.st-card') as HTMLElement | null;
         if (card && this._path && this._link) {
-            window.AnimatedWeatherCardForecast?.followTracker?.({ card, hass: this._hass, weather: this.config.weather_entity, ...this._path, compact: !!this.config.compact }, this._link);
+            window.AnimatedWeatherCardForecast?.followTracker?.({ card, hass: this._hass, weather: this._weatherId(), ...this._path, compact: !!this.config.compact }, this._link);
         }
     }
 }

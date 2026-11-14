@@ -140,6 +140,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
                 <ha-select id="forecast_days" label="Days"></ha-select>
                 <div class="fc-switches">
                     ${toggle('show_hours', 'The hours', 'The hourly row and its chips: drag it, and the sky goes there', c.show_hours !== false)}
+                    ${toggle('weather_effects', 'Weather', 'Rain, snow, fog, wind and lightning move behind the forecast, and go to the hour you drag to', !!c.weather_effects)}
                     ${toggle('compact', 'Strip', 'The hours alone, to sit under the compact weather card', !!c.compact)}
                     ${toggle('theme_palette', 'Blend with dashboard theme', 'Use theme colors instead of the sky', c.color_palette === 'theme')}
                 </div>
@@ -177,6 +178,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
         };
         onSwitch('compact', checked => ({ compact: checked || undefined }));
         onSwitch('show_hours', checked => ({ show_hours: checked ? undefined : false }));
+        onSwitch('weather_effects', checked => ({ weather_effects: checked || undefined }));
         onSwitch('theme_palette', checked => ({ color_palette: checked ? 'theme' : undefined }));
         this.querySelector('#weather-picker')?.addEventListener('value-changed', (e: Event) => {
             this._update({ entity: (e as CustomEvent).detail.value || undefined });

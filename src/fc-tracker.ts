@@ -1,9 +1,10 @@
 // The sun tracker at another card's needle (hour-link.ts). The tracker, in
 // the main bundle, only listens: a needle exists only where this bundle draws
 // a slide, so placing the sun and the now line, and taking the card's sky
-// (on the same weather, or any when it has none of its own), live here, and
-// the main bundle stays light. Everything moves in place,
-// never through the tracker's render: it's every frame of a drag. The
+// (on the same weather: its weather_entity, else the first weather card's on
+// its sun; or any when there's neither), live here, and the main bundle stays
+// light. Everything moves in place, never through the tracker's render: it's
+// every frame of a drag. The
 // headline stays on the real next sunrise or sunset, as the weather card's
 // own sunset reading does while it's dragged.
 
@@ -29,7 +30,7 @@ export function followTracker(t: TrackerLink, link: HourLink): void {
     }
     const line = card.querySelector('.st-now-line');
     if (line) { const x = xFor(hour, t.rtl).toFixed(1); line.setAttribute('x1', x); line.setAttribute('x2', x); }
-    // The card's sky: on the same weather, or, with no weather of its own, from any card on its sun. Colour only, never weather
+    // The card's sky: on the same weather as its own, or, with none at all, from any card on its sun. Colour only, never weather
     if (link.sky && card.classList.contains('sky') && (!t.weather || t.weather === link.entity)) {
         for (const k of SKY) {
             const v = link.sky[k];

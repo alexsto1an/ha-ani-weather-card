@@ -1066,6 +1066,39 @@ describe('the clock', () => {
     });
 });
 
+describe('the forecast card\'s weather (weather_effects)', () => {
+    const rainy = () => { const h = makeHass(); h.states['weather.home'].state = 'rainy'; return h; };
+    type Layers = { animations: Record<string, { isActive: boolean }> };
+    const active = (el: HTMLElement) => Object.entries((el as unknown as { animationController: Layers }).animationController.animations).filter(([, a]) => a.isActive).map(([k]) => k);
+
+    it('is the sky alone by default: the condition\'s colour and light, no weather, and nothing for the slide to bring in', async () => {
+        const fc = mount({}, rainy(), 'animated-forecast-card');
+        const root = fc.querySelector('.animated-weather-card') as HTMLElement;
+        await until(() => root.classList.contains('rainy') && !root.classList.contains('loading'));
+        await new Promise(r => setTimeout(r, 400));
+        expect(root.classList.contains('rainy')).toBe(true);
+        expect(root.classList.contains('static')).toBe(false);
+        expect(active(fc)).toEqual([]);
+        // Its slide still moves, the sky to the hour, with no weather to bring in
+        const slider = fc.querySelector('[role="slider"]') as HTMLElement;
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        await settle();
+        expect(root.classList.contains('awc-warm')).toBe(false);
+        expect(active(fc)).toEqual([]);
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        // The weather card on the same weather keeps its rain
+        const card = mount({}, rainy());
+        await until(() => active(card).includes('rain'));
+        expect(active(card)).toContain('rain');
+    });
+
+    it('with weather_effects, its rain falls as the weather card\'s does', async () => {
+        const fc = mount({ weather_effects: true }, rainy(), 'animated-forecast-card');
+        await until(() => active(fc).includes('rain'));
+        expect(active(fc)).toContain('rain');
+    });
+});
+
 describe('one needle across the page', () => {
     const heard: HourLink[] = [];
     const listen = (e: Event) => heard.push((e as CustomEvent<HourLink>).detail);
@@ -1153,6 +1186,66 @@ describe('one needle across the page', () => {
         await settle();
         sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 12, sky: colours });
         expect((themed.querySelector('.animated-weather-card .sky') as HTMLElement).style.getPropertyValue('--awc-sky-top')).toBe('');
+    });
+
+    it('a forecast card without hours takes the needle\'s weather too, as the other card shows it, and lets it go with that card', async () => {
+        const rainy = makeHass();
+        rainy.states['weather.home'].state = 'rainy';
+        const fc = mount({ show_hours: false, weather_effects: true }, rainy, 'animated-forecast-card');
+        type Layers = { animations: Record<string, { isActive: boolean }> };
+        const layers = () => (fc as unknown as { animationController: Layers }).animationController.animations;
+        await until(() => layers().rain.isActive);
+        expect(layers().rain.isActive).toBe(true);
+        const root = fc.querySelector('.animated-weather-card') as HTMLElement;
+        const rain = root.querySelector('.rain-container') as HTMLElement;
+        const snow = root.querySelector('.snow-container') as HTMLElement;
+        const other = document.createElement('div');
+        const at = Date.now() + 3 * HOUR;
+        const weather = (w: Record<string, number>) => ({ rain: 0, snow: 0, sleet: 0, clouds: 0, fog: 0, wind: 0, lightning: 0, ...w });
+        // Another weather's needle is not this card's
+        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at, temperature: 2, sky: null, weather: weather({ snow: 1 }) });
+        expect(rain.style.opacity).toBe('');
+        // A snowy hour on the card it follows: its rain goes, snow comes in, frame by frame
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 2, sky: null, weather: weather({ snow: 0.4, clouds: 1 }) });
+        expect(root.classList.contains('awc-warm')).toBe(true);
+        expect(rain.style.opacity).not.toBe('');
+        expect(parseFloat(rain.style.opacity)).toBe(0);
+        expect(parseFloat(snow.style.opacity)).toBeCloseTo(0.4, 3);
+        await settle();
+        expect(layers().snow.isActive).toBe(true);
+        // No clouds of its own
+        expect(layers().clouds.isActive).toBe(false);
+        // Home with that card: its own rain is back at once, the snow it took goes, and stops a moment later
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null, weather: null });
+        expect(root.classList.contains('awc-warm')).toBe(false);
+        expect(rain.style.opacity).toBe('');
+        expect(parseFloat(snow.style.opacity)).toBe(0);
+        await until(() => !layers().snow.isActive && snow.style.opacity === '', SLIDE.prewarmStop + 3000);
+        expect(layers().snow.isActive).toBe(false);
+        expect(snow.style.opacity).toBe('');
+        expect(layers().rain.isActive).toBe(true);
+        // A card that moves no weather sends none: this one keeps its own
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 2, sky: null, weather: null });
+        expect(rain.style.opacity).toBe('');
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null, weather: null });
+    });
+
+    it('the slide sends the weather it shows under the needle; a forecast card without its weather sends none', async () => {
+        const card = mount({ show_forecast: true });
+        const fc = mount({}, makeHass(), 'animated-forecast-card');
+        await settle();
+        for (const [el, shows] of [[card, true], [fc, false]] as const) {
+            heard.length = 0;
+            const slider = el.querySelector('[role="slider"]') as HTMLElement;
+            slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+            const moved = heard.filter(l => l.source === el && l.at !== null);
+            expect(moved.length).toBeGreaterThan(0);
+            const w = moved[moved.length - 1].weather;
+            if (shows) expect(Object.keys(w!).sort()).toEqual(['clouds', 'fog', 'lightning', 'rain', 'sleet', 'snow', 'wind']);
+            else expect(w).toBeNull();
+            slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+            await until(() => heard[heard.length - 1]?.at === null);
+        }
     });
 
     it('dragging the forecast card takes the weather card along; its days follow its own needle; a hand on either leads', async () => {

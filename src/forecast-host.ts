@@ -86,7 +86,7 @@ export interface TrackerLink {
     /** Its .st-card, in its shadow root */
     card: HTMLElement;
     hass: HomeAssistant | undefined;
-    /** Its weather entity: the needle's sky is its sky only on the same weather */
+    /** Its weather (its weather_entity, else the first weather card's on its sun): the needle's sky is its sky only on the same weather */
     weather: string | undefined;
     /** Sunrise and sunset as hours of the day, as its path is drawn, and whether that's the compact path */
     riseH: number;

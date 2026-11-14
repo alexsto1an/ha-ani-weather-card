@@ -23,6 +23,7 @@ import {
 // Import the animation controller. Every per-condition animation is now
 // served by a modular `*-animation.ts` class via the controller's bridge.
 import { WeatherAnimationController } from './animation-controller';
+import { shareWeather } from './weather-share';
 // Defensive cleanup helpers — fog/snow add elements to the card directly
 // (outside the per-type layers), so we wipe them on full teardown to catch
 // stragglers from a previously-stopped animation.
@@ -207,6 +208,23 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         return this.forecastOn() || ((!!this.config?.show_clock || !!this.config?.show_date || this.heroClock()) && !this.config?.dev_mode);
     }
 
+    /**
+     * Tell the page which weather this card shows, on which sun (weather-share.ts): a sun tracker with no weather of
+     * its own takes its sky. Not the view, a second instance of a card already on the page, nor dev mode's sample weather.
+     */
+    private shareSky(): void {
+        const shows = this.isConnected && this.surface !== 'view' && !this.config?.dev_mode;
+        shareWeather(this, shows ? this.config?.entity : undefined, this.config?.sun_entity);
+    }
+
+    /**
+     * The weather moves on this card: always on the weather card and the view, and on the forecast card only with
+     * weather_effects, so stacked under the weather card it falls once. Without it, the forecast card is its sky alone.
+     */
+    private weatherShown(): boolean {
+        return this.surface !== 'forecast' || this.config?.weather_effects === true;
+    }
+
     /** hero: clock, the time is the big value and the temperature leads the condition's line (not the forecast card's or the nightstand's text, which they draw themselves) */
     private heroClock(): boolean {
         return this.config?.hero === 'clock' && !this.config.dev_mode && this.surface !== 'forecast' && this.config.layout !== 'nightstand';
@@ -248,7 +266,8 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             config: () => this.config!,
             hass: () => this._hass,
             forecast: () => this.forecastFeed,
-            layers: () => this.animationController as unknown as ReturnType<ForecastHost['layers']>,
+            // The forecast card without its weather has none for the slide to bring in
+            layers: () => this.weatherShown() ? this.animationController as unknown as ReturnType<ForecastHost['layers']> : undefined,
             skyColors,
             phase: () => this.currentSkyPhase(),
             current: () => {
@@ -306,6 +325,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
             this.lastFlightsState = undefined;
         }
         this.config = config;
+        this.shareSky();
 
         // New actions reach the gestures as they happen; the target's role follows now
         const info = this.querySelector('.weather-info') as HTMLElement | null;
@@ -364,6 +384,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
         this.style.position = 'relative';
         this.style.display = 'block';
         this.style.height = '100%';
+        this.shareSky();
 
         if (!this.resizeObserver && typeof ResizeObserver !== 'undefined') {
             this.resizeObserver = new ResizeObserver(() => {
@@ -1000,10 +1021,12 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
 
             // animate: false and OS-level reduced motion get a still sky: the
             // condition's colors and light, no weather motion. The CSS
-            // @media block also hides the animation layers.
+            // @media block also hides the animation layers. The forecast card
+            // without weather_effects is that sky too, but its slide still
+            // moves as it always does (host.still() is untouched).
             const reducedMotion = typeof window !== 'undefined'
                 && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-            if (config.animate === false || reducedMotion) {
+            if (config.animate === false || reducedMotion || !this.weatherShown()) {
                 applyCardClass(config.animate === false ? 'static' : '');
                 this.currentWeatherClass = weatherClass;
                 return;
@@ -1575,6 +1598,7 @@ class AnimatedWeatherCard extends HTMLElement implements LovelaceCard {
     }
 
     disconnectedCallback(): void {
+        shareWeather(this);
         if (this.conditionChangeTimeout) clearTimeout(this.conditionChangeTimeout);
         this.conditionChangeTimeout = undefined;
         clearTimeout(this.noteExpiryTimer);

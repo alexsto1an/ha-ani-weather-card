@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The forecast card shows its sky alone by default: the condition's colour and light, going to the hour you drag to, with no rain, snow, fog, wind or lightning moving in it, so stacked under the weather card the weather falls once. `weather_effects: true`, also a switch in its editor, brings them back. The view that opens on tap keeps its weather.
+
+### Fixed
+
+- A sun tracker with no `weather_entity` showed a clear sky until a weather card on its sun was dragged through the hours, then that card's sky, then the clear sky again. It now shares the sky of the first weather card on its sun from the start; `weather_entity` still names one.
+- A forecast card without its hours, following a weather card dragged through the hours, took the hour's sky but kept its own weather: its rain kept falling at a dry hour. With its weather on, it now takes the hour's weather too, and gives it back when the card comes home.
+
 ## [1.3.0] - 2026-11-14
 
 ### Added
