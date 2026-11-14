@@ -116,7 +116,7 @@ export const DEV_MODE_SAMPLE_DATA = {
 };
 
 
-export const CARD_VERSION = '1.3.0';
+export const CARD_VERSION = '1.3.1';
 
 // Day/Night color schemes for animations
 export const DAY_NIGHT_ANIMATION_COLORS = {
