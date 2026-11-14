@@ -24,6 +24,7 @@ import { TimeText, fitHeroTime, layoutLeft, minuteTicker } from './fc-clock';
 import { dropView, openView, prepareView } from './fc-view';
 import { cloudFloor } from './cloud-band';
 import { shortDate } from './localize';
+import { precipitationUnit } from './units';
 
 /** The share of a narrow card's height above which the row's first line can't sit (the light law) */
 const ROW_TOP_MIN = 0.43;
@@ -68,7 +69,7 @@ export function buildModel(host: ForecastHost, current?: number): Model {
     const unitT = String(entity?.attributes?.temperature_unit ?? hass?.config?.unit_system?.temperature ?? '°C');
     return {
         W, lang, tl, entries: tl?.slots ?? [], hours: hrs, has, metrics, noun: wetNoun(fine),
-        fahrenheit: /F/.test(unitT), unit: String(entity?.attributes?.precipitation_unit ?? hass?.config?.unit_system?.length === 'mi' ? 'in' : 'mm'),
+        fahrenheit: /F/.test(unitT), unit: precipitationUnit(entity?.attributes, hass?.config?.unit_system),
         lineAt, hl: tl ? highLow(f.daily, f.dailyType === 'twice_daily' ? 'twice_daily' : f.dailyType ? 'daily' : null, tl.slots, now, current, hass) : null,
         current,
     };

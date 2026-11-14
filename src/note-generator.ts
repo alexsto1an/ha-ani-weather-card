@@ -12,6 +12,7 @@ import { HA_CONDITION_NAMES, WeatherNote } from './weather-data';
 import { convertWindSpeedToKmh, lookup } from './utils';
 import { cardLanguage, formatTime } from './localize';
 import { ForecastEntry, ForecastType, forecastTypeFor, subscribeForecast } from './forecast-data';
+import { precipitationUnit } from './units';
 
 export type { ForecastEntry, ForecastType } from './forecast-data';
 
@@ -85,6 +86,8 @@ export interface FactsInput {
     now: number;
     /** A clock time the way the dashboard writes them ("15:00", "3:00 PM") */
     formatHour: (date: Date) => string;
+    /** The server's unit system, for rain when the entity doesn't say its unit */
+    unitSystem?: HomeAssistant['config']['unit_system'];
 }
 
 /** How far ahead an hourly note looks. */
@@ -190,12 +193,12 @@ export function calendarWindows(events: readonly CalendarEvent[], now: number, h
 }
 
 /** Work out the facts a note may state. */
-export function computeFacts({ weather, forecast, forecastType, windows = [], now, formatHour }: FactsInput): NoteFacts {
+export function computeFacts({ weather, forecast, forecastType, windows = [], now, formatHour, unitSystem }: FactsInput): NoteFacts {
     const attrs = weather.attributes ?? {};
     const units = {
         temperature: String(attrs.temperature_unit ?? '°C'),
         wind: String(attrs.wind_speed_unit ?? 'km/h'),
-        precipitation: String(attrs.precipitation_unit ?? 'mm'),
+        precipitation: precipitationUnit(attrs, unitSystem),
     };
     const facts: NoteFacts = {
         condition: weather.state,
@@ -848,6 +851,7 @@ export class NoteWriter {
             weather, forecast: this.forecast, forecastType: this.forecastType,
             windows: calendarWindows(this.events, Date.now()), now: Date.now(),
             formatHour: date => formatTime(date.toISOString(), hass),
+            unitSystem: hass.config?.unit_system,
         });
         const key = noteStorageKey(config, cardLanguage(hass));
         const signature = noteSignature(hass);

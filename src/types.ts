@@ -27,6 +27,8 @@ export interface HomeAssistant {
         elevation: number;
         unit_system: {
             length: string;
+            /** What rain is measured in: mm or in */
+            accumulated_precipitation?: string;
             mass: string;
             temperature: string;
             volume: string;

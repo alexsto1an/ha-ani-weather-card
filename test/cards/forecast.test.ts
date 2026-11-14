@@ -498,6 +498,95 @@ describe('the forecast card', () => {
     });
 });
 
+describe('the rain\'s unit, on the hours, the days and the view', () => {
+    const metricSystem = { time_zone: 'UTC', unit_system: { length: 'km', temperature: '°C' } };
+    const imperialSystem = { time_zone: 'UTC', unit_system: { length: 'mi', temperature: '°C' } };
+    // A week of a little rain each day, 0.1 of whatever the unit is: the days' scale shows which unit it was read as
+    const damp = daily.map(d => ({ ...d, precipitation_probability: 40, precipitation: 0.1 }));
+    function hassWith(unit: string | undefined, config: object) {
+        const hass = makeHass(3, {
+            config,
+            connection: {
+                subscribeMessage: async (listener: (m: unknown) => void, message: { forecast_type: string }) => {
+                    listener({ type: message.forecast_type, forecast: message.forecast_type === 'hourly' ? forecast() : damp });
+                    return () => {};
+                },
+            },
+        });
+        const attrs = hass.states['weather.home'].attributes as Record<string, unknown>;
+        if (unit !== undefined) attrs.precipitation_unit = unit;
+        return hass;
+    }
+    /** The forecast card on the amount: its hours' values with their unit, its days' figures, their spoken unit, and how far the bars reach */
+    async function read(unit: string | undefined, config: object) {
+        const card = mount({ forecast_metric: 'amount' }, hassWith(unit, config), 'animated-forecast-card');
+        await settle();
+        (card.querySelector('[data-fc-chips] [data-metric="amount"]') as HTMLElement)?.click();
+        const list = card.querySelector('[data-fc-daily]') as HTMLElement;
+        await until(() => list?.dataset.metric === 'amount');
+        const fills = () => [...card.querySelectorAll<HTMLElement>('.fc-d-fill, .fc-fill')];
+        // The bar's right inset: how much of the scale a day of 0.1 leaves empty
+        const inset = () => Number(/inset\(0 ([\d.]+)%/.exec(fills()[1]?.style.clipPath ?? '')?.[1] ?? NaN);
+        let last = NaN;
+        await until(() => { const v = inset(); const still = v === last; last = v; return still && !isNaN(v); }, 3000);
+        return {
+            hours: [...card.querySelectorAll<HTMLElement>('[data-t]')].filter(v => v.querySelector('.fc-u')).map(v => v.textContent),
+            days: [...card.querySelectorAll<HTMLElement>('.fc-d-hi')].map(e => e.textContent),
+            spoken: card.querySelectorAll('[data-fc-day]')[1]?.getAttribute('aria-label') ?? '',
+            inset: inset(),
+        };
+    }
+
+    it('an entity that reports mm reads mm, on a metric or an imperial system', async () => {
+        for (const config of [metricSystem, imperialSystem]) {
+            const r = await read('mm', config);
+            // The hours: one decimal, the unit on each wet run's wettest hour
+            expect(r.hours.length).toBeGreaterThan(0);
+            expect(r.hours.every(t => t === '1.2mm')).toBe(true);
+            expect(r.spoken).toMatch(/ 0\.1 mm$/);
+            // The days on a scale of 5 mm at least: 0.1 mm is a sliver (the bar's 6 px minimum of 150), not half the scale
+            expect(r.inset).toBeCloseTo(96, 1);
+        }
+    });
+
+    it('an entity that reports in reads in: two decimals, and the days on a scale of 0.2 in', async () => {
+        const r = await read('in', metricSystem);
+        expect(r.hours.length).toBeGreaterThan(0);
+        expect(r.hours.every(t => t === '1.20in')).toBe(true);
+        expect(r.spoken).toMatch(/ 0\.1 in$/);
+        expect(r.inset).toBeCloseTo(50, 1);
+    });
+
+    it('with no unit on the entity, the unit system decides: in where it measures miles, mm elsewhere', async () => {
+        const us = await read(undefined, imperialSystem);
+        expect(us.hours.every(t => t === '1.20in')).toBe(true);
+        expect(us.spoken).toMatch(/ in$/);
+        expect(us.inset).toBeCloseTo(50, 1);
+        const eu = await read(undefined, metricSystem);
+        expect(eu.hours.every(t => t === '1.2mm')).toBe(true);
+        expect(eu.spoken).toMatch(/ mm$/);
+        expect(eu.inset).toBeCloseTo(96, 1);
+    });
+
+    it('the view\'s reading names the same unit', async () => {
+        for (const [unit, config, want] of [['mm', imperialSystem, 'mm'], [undefined, imperialSystem, 'in'], [undefined, metricSystem, 'mm']] as const) {
+            const hass = hassWith(unit, config);
+            (hass.states['weather.home'].attributes as Record<string, unknown>).precipitation = 0.3;
+            const card = mount({ show_forecast: true }, hass);
+            await settle();
+            card.openForecast();
+            await until(() => !!document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
+            const grown = document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
+            const reading = [...grown.querySelectorAll('.fv-rd')].find(r => r.querySelector('.fv-rd-l')?.textContent === FC_WORDS.en.precipitation);
+            expect(reading?.querySelector('strong')?.textContent).toBe(`0.3 ${want}`);
+            (grown.querySelector('.fv-close') as HTMLElement).click();
+            await until(() => !document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
+            card.remove();
+            document.querySelector('.awc-view-host')?.remove();
+        }
+    });
+});
+
 describe('the slide: it stays where it\'s left', () => {
     beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] }));
     function rig({ html = '', layers }: { html?: string; layers?: unknown } = {}) {
