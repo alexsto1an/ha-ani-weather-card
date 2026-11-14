@@ -81,7 +81,7 @@ Prefer your dashboard's own look? The theme palette drops the sky and draws the 
 
 ## The details.
 
-- **Speaks your language.** Conditions, the humidity, wind and pressure labels, and the moon phase come from Home Assistant's own translations. The cards' own words, like "Feels like", "Sunset" and the forecast's lines, are in nine languages, and fall back to English in others. Times follow your profile's 12- or 24-hour setting and its time zone.
+- **Speaks your language.** Conditions, the humidity, wind and pressure labels, and the moon phase come from Home Assistant's own translations. The cards' own words, like "Feels like", "Sunset" and the forecast's lines, are in ten languages, and fall back to English in others. Times follow your profile's 12- or 24-hour setting and its time zone.
 - **Your own sensors.** Point the card at your weather station and it shows what they measure: temperature, feels like, humidity, wind and pressure, indoors and out. The sky still follows the forecast.
 - **Updates in place.** New readings fade in without a re-render. When the condition changes, the old weather fades out as the new one arrives.
 - **Rests when unseen.** Motion pauses while the tab is hidden or the card is scrolled out of view. It can also pause while the window is in the background.
@@ -823,7 +823,7 @@ Free-text conditions can also reach these skies:
 
 The cards follow your Home Assistant profile: its language, its 12/24-hour time format and its time zone, the server's or the device's.
 
-- **From Home Assistant:** the weather condition (with the forecast on, the card names it itself in its nine languages: "Rain" for Rainy), the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
+- **From Home Assistant:** the weather condition (with the forecast on, the card names it itself in its ten languages: "Rain" for Rainy), the moon phase, and the humidity, wind and pressure labels come from Home Assistant's own translations.
 - **The cards' own words:** "Feels like", "Indoors", sunrise and sunset, the sun tracker's labels and the forecast's words, from "Rain from 17:00 to 19:00" to the chips and the days, are translated into:
   - English
   - German
@@ -834,6 +834,7 @@ The cards follow your Home Assistant profile: its language, its 12/24-hour time 
   - Polish
   - Portuguese
   - Romanian
+  - Norwegian (Bokmål, which Nynorsk shows too)
 
 Other languages show English for those words. The strings live in [`src/localize.ts`](src/localize.ts), and the forecast's in [`src/fc-words.ts`](src/fc-words.ts) and [`src/fc-words-more.ts`](src/fc-words-more.ts). Corrections and new languages are welcome.
 

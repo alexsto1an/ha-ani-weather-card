@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The cards speak Norwegian (Bokmål), the forecast's words included, and Nynorsk shows the same words. Thanks to Henrik Hills ([#21](https://github.com/alexsto1an/ha-ani-weather-card/pull/21)).
+
 ## [1.3.0] - 2026-11-14
 
 ### Added

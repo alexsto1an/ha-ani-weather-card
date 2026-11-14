@@ -79,7 +79,18 @@ const STRINGS: Record<string, Partial<Record<CardString, string>>> = {
         in_duration: 'în {duration}',
         note_reading: 'Citesc prognoza', note_writing: 'Scriu nota',
     },
+    nb: {
+        feels_like: 'Føles som', indoors: 'Inne',
+        sunrise: 'Soloppgang', sunset: 'Solnedgang', solar_noon: 'Solens høydepunkt', daylight: 'Dagslengde',
+        first_light: 'Morgengry', last_light: 'Kveldsskumring', moon: 'Måne',
+        in_duration: 'om {duration}',
+        note_reading: 'Leser værmeldingen', note_writing: 'Skriver notatet',
+    },
 };
+
+// Home Assistant's Norwegian is Bokmål (`nb`); `no` and Nynorsk (`nn`) get the same words.
+STRINGS.no = STRINGS.nb;
+STRINGS.nn = STRINGS.nb;
 
 /** The parts of `hass` these helpers read. */
 export interface LocaleSource {
