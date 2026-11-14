@@ -137,7 +137,8 @@ export class AnimatedSunTrackerEditor extends HTMLElement {
         const pickers = [
             { id: '#sun-picker', value: this._config.sun_entity || '', label: 'Sun entity', domains: ['sun'] },
             { id: '#moon-picker', value: this._config.moon_entity || '', label: 'Moon phase entity (optional)', domains: ['sensor'] },
-            { id: '#weather-picker', value: this._config.weather_entity || '', label: 'Share the sky of a weather entity (optional)', domains: ['weather'] },
+            { id: '#weather-picker', value: this._config.weather_entity || '', label: 'Share the sky of a weather entity (optional)', domains: ['weather'],
+                helper: 'Without one, it shares the sky of the weather card on the same sun' },
         ];
         for (const p of pickers) {
             const el = this.querySelector(p.id) as any;
@@ -146,6 +147,7 @@ export class AnimatedSunTrackerEditor extends HTMLElement {
             el.value = p.value;
             el.label = p.label;
             el.includeDomains = p.domains;
+            if ('helper' in p) el.helper = p.helper;
         }
     }
 

@@ -19,8 +19,8 @@
 // 80 ms only. A vertical drag stays the page's (touch-action: pan-y).
 //
 // The page follows the needle (hour-link.ts): every frame it moves, the
-// slide says which time it's on, the temperature there and the sky it shows,
-// and once it's home it says so. The view doesn't, and neither does a slide
+// slide says which time it's on, the temperature there and the sky and the
+// weather it shows, and once it's home it says so. The view doesn't, and neither does a slide
 // that steps by days. An hourly slide on the same weather follows another
 // card's needle the way the finger moves it, ruler, sky and readout, and
 // says nothing while it does, so nothing echoes; a hand on it, or its Now
@@ -417,19 +417,26 @@ export function attachSlide(o: SlideOptions): Slide {
         if (typeof a !== 'number') return null;
         return typeof b === 'number' ? a + (b - a) * f : a;
     }
+    /** The weather as this card shows it under the needle; none from a card that moves none */
+    function weatherShown(): Record<string, number> | null {
+        if (!vis || !host.layers() || still()) return null;
+        const out: Record<string, number> = {};
+        for (const name of LAYER_NAMES) out[name] = Math.round(clamp(vis.n[name]) * 1000) / 1000;
+        return out;
+    }
     function emit() {
         if (!link || state.following) return;
         const h = slotsAt(state.offset);
         linked = true;
         sendHour({
             source: host.element, ...link, at: Date.now() + h * tl.slotMs, temperature: temperatureAt(h),
-            sky: host.config().color_palette === 'theme' ? null : skyCss,
+            sky: host.config().color_palette === 'theme' ? null : skyCss, weather: weatherShown(),
         });
     }
     function emitHome() {
         if (!link || !linked) return;
         linked = false;
-        sendHour({ source: host.element, ...link, at: null, temperature: null, sky: null });
+        sendHour({ source: host.element, ...link, at: null, temperature: null, sky: null, weather: null });
     }
     const groupOpacity = (v: number | null) => { for (const el of o.group()) el.style.opacity = v === null ? '' : v.toFixed(3); };
     function showSlot(k: number) {

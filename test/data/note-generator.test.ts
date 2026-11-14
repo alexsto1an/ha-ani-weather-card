@@ -153,6 +153,19 @@ describe('the note\'s facts', () => {
         expect(facts({ forecast: [{ datetime: at(0), precipitation: 20 }], forecastType: 'daily' }).severe).toBeNull();
     });
 
+    it('reads rain in the entity\'s unit, else the unit system\'s, as the forecast does', () => {
+        const imperial = { length: 'mi', mass: 'lb', temperature: '°F', volume: 'gal' };
+        const metric = { length: 'km', mass: 'kg', temperature: '°C', volume: 'L' };
+        const unit = (attrs: Record<string, unknown>, unitSystem?: typeof metric) =>
+            facts({ weather: weather('cloudy', attrs), unitSystem }).units.precipitation;
+        expect(unit({ precipitation_unit: 'mm' }, imperial)).toBe('mm');
+        expect(unit({ precipitation_unit: undefined }, imperial)).toBe('in');
+        expect(unit({ precipitation_unit: undefined }, metric)).toBe('mm');
+        expect(unit({ precipitation_unit: undefined })).toBe('mm');
+        // Half an inch in an hour, with no unit on an imperial system, is heavy rain
+        expect(facts({ weather: weather('cloudy', { precipitation_unit: undefined }), unitSystem: imperial, forecast: hours(h => ({ precipitation: h === 15 ? 0.5 : 0 })), forecastType: 'hourly' }).severe).toBe('heavy rain');
+    });
+
     it('reads the weather for each stretch out of the house', () => {
         const early = new Date(2026, 9, 20, 6, 10).getTime();
         const forecast = hours(h => ({

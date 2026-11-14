@@ -228,7 +228,7 @@ indoor_humidity_entity: sensor.living_room_humidity
 
 ### Weather and sun tracker
 
-This is the pairing in the screenshot above. `show_sun: false` leaves the next sunset to the tracker, which frees a slot so the weather card's three remaining metrics can share one row. `weather_entity` gives the tracker the weather card's sky. With the forecast on, drag the weather card through the hours and the tracker's sun goes there too.
+This is the pairing in the screenshot above. `show_sun: false` leaves the next sunset to the tracker, which frees a slot so the weather card's three remaining metrics can share one row. The tracker takes the sky of the weather card on its sun; `weather_entity` names the weather when the dashboard has more than one, or none. With the forecast on, drag the weather card through the hours and the tracker's sun goes there too.
 
 ```yaml
 type: vertical-stack
@@ -364,7 +364,7 @@ forecast_graph: bars     # line, area, bars or none
 - **It says so.** While the card shows another hour, the location line becomes "‹ Now  16:00  in 3 hr.": the Now control, the hour, and how far ahead it is. Today's high and low step out, and the hour's chance of rain takes their place.
 - **Coming home.** The card comes back to now when you tap **Now**, press Home or Escape, leave it alone for half a minute, scroll it off screen or hide the page, and when a new forecast arrives. It comes home on one quick spring: the row, the sky and every layer of weather go straight from the hour you left to now.
 - **You can catch it.** A press while it moves stops it where it is. Nothing changes when your finger first lands.
-- **The other cards follow.** A forecast card on the same weather goes to the hour with it: its row, its sky and its days, which show the day the hour falls in (its name in bold, a dot on its bar at that hour's temperature, the other days stepping back). It works both ways: drag the forecast card and the weather card goes along, and whichever you touch leads. A forecast card without hours shows the day and takes the hour's sky. A sun tracker on the same sun moves its sun to the hour you're on and takes the card's sky, when it has the same `weather_entity` or none of its own. Those take only the sky's colour, never its weather. They come back to now together.
+- **The other cards follow.** A forecast card on the same weather goes to the hour with it: its row, its sky and its days, which show the day the hour falls in (its name in bold, a dot on its bar at that hour's temperature, the other days stepping back). It works both ways: drag the forecast card and the weather card goes along, and whichever you touch leads. A forecast card without hours shows the day and takes the hour's sky, and with `weather_effects` on, the hour's rain, snow, fog, wind and lightning too. A sun tracker on the same sun moves its sun to the hour you're on and takes the card's sky when it shows the same weather: its `weather_entity`, or without one, the weather card's on its sun. The tracker takes only the sky's colour. They come back to now together.
 - **The page still scrolls.** A drag up or down scrolls the dashboard; the card takes only a drag that's clearly sideways. On a trackpad, swipe sideways with two fingers.
 - **Keyboard and screen readers.** The hours are a slider you can Tab to: the arrows step an hour, Page Up and Page Down three, and Home or Escape come back to now. A screen reader hears "16:00, in 3 hr.: Cloudy, 22°, 40% chance". The row also has a list of the next 24 hours for screen readers, and the chips are a group of choices with their full names, such as "Chance of rain".
 - **Reduced motion.** With reduced motion, or `animate: false`, the sky stays still and steps with the hour, the row still follows your finger, the chips swap without moving, and the way home is a short fade.
@@ -449,7 +449,7 @@ wake_time: "07:00"
 
 `type: custom:animated-forecast-card`
 
-The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and the card's real rain falls behind the numbers, with a "‹ Now" control at the end of the lead to come back. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun, and it has its own light in the corner. Its row and a weather card's on the same entity move together: drag either and the other goes to the same hour, its sky too, and dragging it moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
+The hours and the week on a card of their own, on your weather entity's sky: the line on what turns as its lead, the row with its chips, and the days. It's the weather card's own engine, so its row works the same way: leave it at 17:00 and its sky goes to that hour, with a "‹ Now" control at the end of the lead to come back. By default it shows the sky alone, its colour and its light, with no weather moving in it; `weather_effects: true` brings in the rain, snow, fog, wind and lightning, which go to the hour too. It has no sun, clouds or stars of its own, so stacked under the weather card there's one sun and, by default, one rain, and it has its own light in the corner. Its row and a weather card's on the same entity move together: drag either and the other goes to the same hour, its sky too, and dragging it moves a sun tracker on the same sun. A tap opens the view that opens on tap. Search for **Animated Forecast** in the card list, or pick **Forecast** or **Forecast strip** under **By entity**.
 
 ![The forecast card on a partly cloudy afternoon, with the line on what turns, the hours with their chips and seven days, beside the compact weather card with the forecast strip under it](docs/images/forecast-card.webp)
 
@@ -480,6 +480,7 @@ cards:
 | `compact` | `false` | The strip: the hours alone, to sit under the compact weather card. Two rows in the sections view |
 | `forecast_days` | `7` | How many days the list shows, 0 to 10. `0` leaves the days out |
 | `show_hours` | `true` | Show the hourly row and its chips |
+| `weather_effects` | `false` | The weather behind the forecast: rain, snow, fog, wind and lightning, as on the weather card, going to the hour you drag to. Without it, the sky alone |
 | `forecast_metric` | `temp` | What the row shows first: `temp`, `feels`, `chance` or `amount` |
 | `forecast_graph` | `line` | The hours' graph, the same for every metric: `line`, `area` (the line over a soft fill), `bars`, or `none` (the values alone) |
 | `color_palette` | `default` | `default` for the sky, or `theme` for your dashboard's colours |
@@ -487,7 +488,7 @@ cards:
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does |
 
-The weather card's `animate`, `spill_particles`, `engine_settings` and `custom_colors` work on it too, and with `outdoor_sensor_entity` its reading for now comes from your own sensor.
+The weather card's `animate` and `custom_colors` work on it too, and with `weather_effects`, `spill_particles` and `engine_settings`, and with `outdoor_sensor_entity` its reading for now comes from your own sensor.
 
 In the sections view it asks for 12 × 7, or 12 × 5 with three days or fewer. Without the hours, it asks for as many rows as its days need: five for a week.
 
@@ -777,7 +778,7 @@ Its options, with examples, are under [The forecast card](#the-forecast-card).
 | --- | --- | --- |
 | `sun_entity` | required | Usually `sun.sun` |
 | `moon_entity` | — | A moon phase sensor, such as the Moon integration's `sensor.moon_phase` |
-| `weather_entity` | — | Share this weather entity's sky: its condition at the current time of day. Without it, the sky is clear |
+| `weather_entity` | — | Share this weather entity's sky: its condition at the current time of day. Without it, the tracker shares the sky of the first weather card on its sun, or keeps a clear sky when there's none |
 | `compact` | `false` | One line about 110 px tall: the next sunrise or sunset beside the sun's path. Two rows in the sections view |
 | `title` | — | A title above the headline. Not on the compact tracker |
 | `show_header` | `true` | Show the next sunrise or sunset and the time until it |

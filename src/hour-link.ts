@@ -2,8 +2,9 @@
 // (the weather card's slide, or the forecast card's), the card tells the page
 // which time its needle is on, and the cards that share its sun or its
 // weather follow: the sun tracker's sun goes to that time, the forecast
-// card's days show the day it falls in. When the card comes home, it says so
-// once, and they come back to now.
+// card's days show the day it falls in, and a forecast card without hours
+// takes its sky and its weather. When the card comes home, it says so once,
+// and they come back to now.
 //
 // A window event, because the bundles don't share a module scope, with plain
 // names on it. Only a slide sends, and a card that follows has no slide
@@ -23,6 +24,12 @@ export interface HourLink {
     temperature: number | null;
     /** The sky the card shows, as its five --awc-sky-* colours (top, mid, bottom, glow, scrim); null on the theme palette and at home */
     sky: Record<string, string> | null;
+    /**
+     * The weather the card shows there, each layer's strength from 0 to 1 (rain, snow, sleet, clouds, fog, wind,
+     * lightning); null at home, and from a card that moves no weather (reduced motion, animate: false, a forecast card
+     * without weather_effects). A card that follows without a slide of its own takes it (the forecast card's days).
+     */
+    weather?: Record<string, number> | null;
 }
 
 export function sendHour(link: HourLink): void {

@@ -28,6 +28,7 @@ import { SKY_GLOW, SKY_GLOW_WIDE, relativeLuminance, sampleSkyAt, type SkyCondit
 import { classOf } from './fc-core';
 import type { Metric } from './fc-data';
 import { cloudFloor } from './cloud-band';
+import { precipitationUnit } from './units';
 import type { AnimatedWeatherCardConfig, HomeAssistant } from './types';
 
 export const VIEW = { grow: 420, shrink: 300, restFrom: 160, restStep: 28, restDur: 220, restRise: 6, restOut: 100, closeVelocity: 0.5, closeShare: 0.3 };
@@ -75,7 +76,7 @@ function readingsHtml(host: ForecastHost, W: FcWords, slot: Slot | null): string
     if (cloud !== null) out.push({ label: W.cloud_cover, value: `${num(Math.round(cloud), lang)}%` });
     const amt = slot ? n(slot.precipitation) : n(a.precipitation);
     const ch = slot ? n(slot.precipitation_probability) : null;
-    if (amt !== null || ch !== null) out.push({ label: W.precipitation, value: `${num(amt ?? 0, lang, 1)} ${a.precipitation_unit ?? 'mm'}`, sub: ch !== null && ch >= 20 ? fill(W.chance_of, { v: num(Math.round(ch), lang) }) : '' });
+    if (amt !== null || ch !== null) out.push({ label: W.precipitation, value: `${num(amt ?? 0, lang, 1)} ${precipitationUnit(a, hass?.config?.unit_system)}`, sub: ch !== null && ch >= 20 ? fill(W.chance_of, { v: num(Math.round(ch), lang) }) : '' });
     const vis = n(a.visibility);
     if (vis !== null && !slot) out.push({ label: W.visibility, value: `${num(vis, lang)} ${a.visibility_unit ?? 'km'}` });
     const pr = n(pick('pressure'));

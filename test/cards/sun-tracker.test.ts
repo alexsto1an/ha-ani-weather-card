@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { pathElevation, detailColumns } from '../../src/sun-tracker-card';
 import { skyPhaseFromSun, skyColors } from '../../src/sky';
 import { sendHour } from '../../src/hour-link';
+import { shareWeather } from '../../src/weather-share';
 // The forecast bundle moves a tracker that follows a needle
 import '../../src/animated-weather-card-forecast';
 import { hourOfDay } from '../../src/localize';
@@ -219,6 +220,43 @@ describe('sun tracker card', () => {
         tracker.hass = sunHass(30);
         expect(card(tracker).style.getPropertyValue('--awc-sky-top')).toBe(skyColors('sunny', 'day').top);
         tracker.remove();
+    });
+
+    it('without a weather entity, shares the sky of the first weather card on its sun, from the start and as cards come and go', () => {
+        const base = sunHass(30);
+        const hass = { ...base, states: { ...base.states,
+            'weather.home': { entity_id: 'weather.home', state: 'rainy', attributes: {} },
+            'weather.away': { entity_id: 'weather.away', state: 'snowy', attributes: {} } } };
+        const top = (t: Tracker) => card(t).style.getPropertyValue('--awc-sky-top');
+        const first = {}, second = {}, elsewhere = {};
+        shareWeather(elsewhere, 'weather.away', 'sun.elsewhere');
+        shareWeather(first, 'weather.home', 'sun.sun');
+        const tracker = mount();
+        tracker.hass = hass;
+        // At rest, the weather card's sky, as it is while that card is dragged
+        expect(top(tracker)).toBe(skyColors('rainy', 'day').top);
+        // A second card on its sun doesn't take it over; the first one leaving hands it on
+        shareWeather(second, 'weather.away', 'sun.sun');
+        expect(top(tracker)).toBe(skyColors('rainy', 'day').top);
+        shareWeather(first);
+        expect(top(tracker)).toBe(skyColors('snowy', 'day').top);
+        // Its own weather entity wins
+        const own = mount({ weather_entity: 'weather.home' });
+        own.hass = hass;
+        expect(top(own)).toBe(skyColors('rainy', 'day').top);
+        // The needle's sky comes only from the weather it shows
+        const sky = { top: '#101820', mid: '#203040', bottom: '#304050', glow: '#000000', scrim: '#000000' };
+        sendHour({ source: document.createElement('div'), entity: 'weather.home', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky });
+        expect(top(tracker)).toBe(skyColors('snowy', 'day').top);
+        sendHour({ source: document.createElement('div'), entity: 'weather.away', sun: 'sun.sun', at: Date.now() + 3600_000, temperature: 14, sky });
+        expect(top(tracker)).toBe('#101820');
+        sendHour({ source: document.createElement('div'), entity: 'weather.away', sun: 'sun.sun', at: null, temperature: null, sky: null });
+        // None left on its sun: a clear sky
+        shareWeather(second);
+        expect(top(tracker)).toBe(skyColors('sunny', 'day').top);
+        shareWeather(elsewhere);
+        tracker.remove();
+        own.remove();
     });
 
     it('changes phase at the same elevations as the weather card', () => {

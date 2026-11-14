@@ -498,6 +498,95 @@ describe('the forecast card', () => {
     });
 });
 
+describe('the rain\'s unit, on the hours, the days and the view', () => {
+    const metricSystem = { time_zone: 'UTC', unit_system: { length: 'km', temperature: '°C' } };
+    const imperialSystem = { time_zone: 'UTC', unit_system: { length: 'mi', temperature: '°C' } };
+    // A week of a little rain each day, 0.1 of whatever the unit is: the days' scale shows which unit it was read as
+    const damp = daily.map(d => ({ ...d, precipitation_probability: 40, precipitation: 0.1 }));
+    function hassWith(unit: string | undefined, config: object) {
+        const hass = makeHass(3, {
+            config,
+            connection: {
+                subscribeMessage: async (listener: (m: unknown) => void, message: { forecast_type: string }) => {
+                    listener({ type: message.forecast_type, forecast: message.forecast_type === 'hourly' ? forecast() : damp });
+                    return () => {};
+                },
+            },
+        });
+        const attrs = hass.states['weather.home'].attributes as Record<string, unknown>;
+        if (unit !== undefined) attrs.precipitation_unit = unit;
+        return hass;
+    }
+    /** The forecast card on the amount: its hours' values with their unit, its days' figures, their spoken unit, and how far the bars reach */
+    async function read(unit: string | undefined, config: object) {
+        const card = mount({ forecast_metric: 'amount' }, hassWith(unit, config), 'animated-forecast-card');
+        await settle();
+        (card.querySelector('[data-fc-chips] [data-metric="amount"]') as HTMLElement)?.click();
+        const list = card.querySelector('[data-fc-daily]') as HTMLElement;
+        await until(() => list?.dataset.metric === 'amount');
+        const fills = () => [...card.querySelectorAll<HTMLElement>('.fc-d-fill, .fc-fill')];
+        // The bar's right inset: how much of the scale a day of 0.1 leaves empty
+        const inset = () => Number(/inset\(0 ([\d.]+)%/.exec(fills()[1]?.style.clipPath ?? '')?.[1] ?? NaN);
+        let last = NaN;
+        await until(() => { const v = inset(); const still = v === last; last = v; return still && !isNaN(v); }, 3000);
+        return {
+            hours: [...card.querySelectorAll<HTMLElement>('[data-t]')].filter(v => v.querySelector('.fc-u')).map(v => v.textContent),
+            days: [...card.querySelectorAll<HTMLElement>('.fc-d-hi')].map(e => e.textContent),
+            spoken: card.querySelectorAll('[data-fc-day]')[1]?.getAttribute('aria-label') ?? '',
+            inset: inset(),
+        };
+    }
+
+    it('an entity that reports mm reads mm, on a metric or an imperial system', async () => {
+        for (const config of [metricSystem, imperialSystem]) {
+            const r = await read('mm', config);
+            // The hours: one decimal, the unit on each wet run's wettest hour
+            expect(r.hours.length).toBeGreaterThan(0);
+            expect(r.hours.every(t => t === '1.2mm')).toBe(true);
+            expect(r.spoken).toMatch(/ 0\.1 mm$/);
+            // The days on a scale of 5 mm at least: 0.1 mm is a sliver (the bar's 6 px minimum of 150), not half the scale
+            expect(r.inset).toBeCloseTo(96, 1);
+        }
+    });
+
+    it('an entity that reports in reads in: two decimals, and the days on a scale of 0.2 in', async () => {
+        const r = await read('in', metricSystem);
+        expect(r.hours.length).toBeGreaterThan(0);
+        expect(r.hours.every(t => t === '1.20in')).toBe(true);
+        expect(r.spoken).toMatch(/ 0\.1 in$/);
+        expect(r.inset).toBeCloseTo(50, 1);
+    });
+
+    it('with no unit on the entity, the unit system decides: in where it measures miles, mm elsewhere', async () => {
+        const us = await read(undefined, imperialSystem);
+        expect(us.hours.every(t => t === '1.20in')).toBe(true);
+        expect(us.spoken).toMatch(/ in$/);
+        expect(us.inset).toBeCloseTo(50, 1);
+        const eu = await read(undefined, metricSystem);
+        expect(eu.hours.every(t => t === '1.2mm')).toBe(true);
+        expect(eu.spoken).toMatch(/ mm$/);
+        expect(eu.inset).toBeCloseTo(96, 1);
+    });
+
+    it('the view\'s reading names the same unit', async () => {
+        for (const [unit, config, want] of [['mm', imperialSystem, 'mm'], [undefined, imperialSystem, 'in'], [undefined, metricSystem, 'mm']] as const) {
+            const hass = hassWith(unit, config);
+            (hass.states['weather.home'].attributes as Record<string, unknown>).precipitation = 0.3;
+            const card = mount({ show_forecast: true }, hass);
+            await settle();
+            card.openForecast();
+            await until(() => !!document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
+            const grown = document.querySelector('.awc-view-host')!.shadowRoot!.querySelector('.fv-sheet > animated-weather-card') as HTMLElement;
+            const reading = [...grown.querySelectorAll('.fv-rd')].find(r => r.querySelector('.fv-rd-l')?.textContent === FC_WORDS.en.precipitation);
+            expect(reading?.querySelector('strong')?.textContent).toBe(`0.3 ${want}`);
+            (grown.querySelector('.fv-close') as HTMLElement).click();
+            await until(() => !document.querySelector('.awc-view-host')?.shadowRoot?.querySelector('dialog')?.hasAttribute('open'));
+            card.remove();
+            document.querySelector('.awc-view-host')?.remove();
+        }
+    });
+});
+
 describe('the slide: it stays where it\'s left', () => {
     beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] }));
     function rig({ html = '', layers }: { html?: string; layers?: unknown } = {}) {
@@ -1066,6 +1155,39 @@ describe('the clock', () => {
     });
 });
 
+describe('the forecast card\'s weather (weather_effects)', () => {
+    const rainy = () => { const h = makeHass(); h.states['weather.home'].state = 'rainy'; return h; };
+    type Layers = { animations: Record<string, { isActive: boolean }> };
+    const active = (el: HTMLElement) => Object.entries((el as unknown as { animationController: Layers }).animationController.animations).filter(([, a]) => a.isActive).map(([k]) => k);
+
+    it('is the sky alone by default: the condition\'s colour and light, no weather, and nothing for the slide to bring in', async () => {
+        const fc = mount({}, rainy(), 'animated-forecast-card');
+        const root = fc.querySelector('.animated-weather-card') as HTMLElement;
+        await until(() => root.classList.contains('rainy') && !root.classList.contains('loading'));
+        await new Promise(r => setTimeout(r, 400));
+        expect(root.classList.contains('rainy')).toBe(true);
+        expect(root.classList.contains('static')).toBe(false);
+        expect(active(fc)).toEqual([]);
+        // Its slide still moves, the sky to the hour, with no weather to bring in
+        const slider = fc.querySelector('[role="slider"]') as HTMLElement;
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        await settle();
+        expect(root.classList.contains('awc-warm')).toBe(false);
+        expect(active(fc)).toEqual([]);
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        // The weather card on the same weather keeps its rain
+        const card = mount({}, rainy());
+        await until(() => active(card).includes('rain'));
+        expect(active(card)).toContain('rain');
+    });
+
+    it('with weather_effects, its rain falls as the weather card\'s does', async () => {
+        const fc = mount({ weather_effects: true }, rainy(), 'animated-forecast-card');
+        await until(() => active(fc).includes('rain'));
+        expect(active(fc)).toContain('rain');
+    });
+});
+
 describe('one needle across the page', () => {
     const heard: HourLink[] = [];
     const listen = (e: Event) => heard.push((e as CustomEvent<HourLink>).detail);
@@ -1153,6 +1275,66 @@ describe('one needle across the page', () => {
         await settle();
         sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 12, sky: colours });
         expect((themed.querySelector('.animated-weather-card .sky') as HTMLElement).style.getPropertyValue('--awc-sky-top')).toBe('');
+    });
+
+    it('a forecast card without hours takes the needle\'s weather too, as the other card shows it, and lets it go with that card', async () => {
+        const rainy = makeHass();
+        rainy.states['weather.home'].state = 'rainy';
+        const fc = mount({ show_hours: false, weather_effects: true }, rainy, 'animated-forecast-card');
+        type Layers = { animations: Record<string, { isActive: boolean }> };
+        const layers = () => (fc as unknown as { animationController: Layers }).animationController.animations;
+        await until(() => layers().rain.isActive);
+        expect(layers().rain.isActive).toBe(true);
+        const root = fc.querySelector('.animated-weather-card') as HTMLElement;
+        const rain = root.querySelector('.rain-container') as HTMLElement;
+        const snow = root.querySelector('.snow-container') as HTMLElement;
+        const other = document.createElement('div');
+        const at = Date.now() + 3 * HOUR;
+        const weather = (w: Record<string, number>) => ({ rain: 0, snow: 0, sleet: 0, clouds: 0, fog: 0, wind: 0, lightning: 0, ...w });
+        // Another weather's needle is not this card's
+        sendHour({ source: other, entity: 'weather.away', sun: 'sun.sun', at, temperature: 2, sky: null, weather: weather({ snow: 1 }) });
+        expect(rain.style.opacity).toBe('');
+        // A snowy hour on the card it follows: its rain goes, snow comes in, frame by frame
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 2, sky: null, weather: weather({ snow: 0.4, clouds: 1 }) });
+        expect(root.classList.contains('awc-warm')).toBe(true);
+        expect(rain.style.opacity).not.toBe('');
+        expect(parseFloat(rain.style.opacity)).toBe(0);
+        expect(parseFloat(snow.style.opacity)).toBeCloseTo(0.4, 3);
+        await settle();
+        expect(layers().snow.isActive).toBe(true);
+        // No clouds of its own
+        expect(layers().clouds.isActive).toBe(false);
+        // Home with that card: its own rain is back at once, the snow it took goes, and stops a moment later
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null, weather: null });
+        expect(root.classList.contains('awc-warm')).toBe(false);
+        expect(rain.style.opacity).toBe('');
+        expect(parseFloat(snow.style.opacity)).toBe(0);
+        await until(() => !layers().snow.isActive && snow.style.opacity === '', SLIDE.prewarmStop + 3000);
+        expect(layers().snow.isActive).toBe(false);
+        expect(snow.style.opacity).toBe('');
+        expect(layers().rain.isActive).toBe(true);
+        // A card that moves no weather sends none: this one keeps its own
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at, temperature: 2, sky: null, weather: null });
+        expect(rain.style.opacity).toBe('');
+        sendHour({ source: other, entity: 'weather.home', sun: 'sun.sun', at: null, temperature: null, sky: null, weather: null });
+    });
+
+    it('the slide sends the weather it shows under the needle; a forecast card without its weather sends none', async () => {
+        const card = mount({ show_forecast: true });
+        const fc = mount({}, makeHass(), 'animated-forecast-card');
+        await settle();
+        for (const [el, shows] of [[card, true], [fc, false]] as const) {
+            heard.length = 0;
+            const slider = el.querySelector('[role="slider"]') as HTMLElement;
+            slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+            const moved = heard.filter(l => l.source === el && l.at !== null);
+            expect(moved.length).toBeGreaterThan(0);
+            const w = moved[moved.length - 1].weather;
+            if (shows) expect(Object.keys(w!).sort()).toEqual(['clouds', 'fog', 'lightning', 'rain', 'sleet', 'snow', 'wind']);
+            else expect(w).toBeNull();
+            slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+            await until(() => heard[heard.length - 1]?.at === null);
+        }
     });
 
     it('dragging the forecast card takes the weather card along; its days follow its own needle; a hand on either leads', async () => {

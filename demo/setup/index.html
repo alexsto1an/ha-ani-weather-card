@@ -247,13 +247,14 @@ forecast_graph: bars     # line, area, bars or none</code></pre>
                     <p>With the forecast on, a tap grows the card's sky into the screen: the hours, the chips, seven days with their ranges (eight on a tablet), and every reading your weather entity reports. <b>History and settings</b> opens Home Assistant's own dialog. Close it with ×, Escape, Back, a tap outside it, or a swipe down on a phone. To have a tap do something else, set it under <b>Interactions</b>.</p>
 
                     <h3 id="forecast-card">The forecast card</h3>
-                    <p>The hours and the week on a card of their own, on your weather entity's sky: the line on what turns, the row with its chips, and the days with their ranges on one scale for the week. Search for <b>Animated Forecast</b>, or pick it under <b>By entity</b>. Its row works the same way: leave it at an hour and its sky goes there, and a weather card on the same weather goes with it. Its days show the day the hour falls in, and the chips change what they show: each day's feels-like range, its chance of rain or its amount.</p>
+                    <p>The hours and the week on a card of their own, on your weather entity's sky: the line on what turns, the row with its chips, and the days with their ranges on one scale for the week. Search for <b>Animated Forecast</b>, or pick it under <b>By entity</b>. Its row works the same way: leave it at an hour and its sky goes there, and a weather card on the same weather goes with it. It shows its sky alone, with no weather moving in it, so stacked under the weather card the rain falls once; <code>weather_effects: true</code> brings in the rain, snow, fog, wind and lightning. Its days show the day the hour falls in, and the chips change what they show: each day's feels-like range, its chance of rain or its amount.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">Card YAML</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: custom:animated-forecast-card
 entity: weather.forecast_home
 # Optional
-forecast_days: 5  # 0 to 10</code></pre>
+forecast_days: 5  # 0 to 10
+weather_effects: true  # rain, snow and wind behind it</code></pre>
                     </div>
                     <p>As a strip, it sits under the compact weather card: the hours alone, lined up with the card's text.</p>
                     <div class="code" data-lang="yaml">
@@ -370,7 +371,7 @@ indoor_humidity_entity: sensor.living_room_humidity</code></pre>
                     </div>
 
                     <h3 id="tracker">The sun tracker</h3>
-                    <p>It comes in the same download: the sun's path through your day, and the next sunrise or sunset as its headline. Stacked under the weather card it takes the card's sky, and the weather card can leave the sunset to it. South of the equator the sun runs right to left, as it crosses your sky; <code>direction: left_to_right</code> or <code>right_to_left</code> sets it.</p>
+                    <p>It comes in the same download: the sun's path through your day, and the next sunrise or sunset as its headline. Stacked under the weather card it takes the card's sky, by itself or from <code>weather_entity</code> when the dashboard has more than one weather, and the weather card can leave the sunset to it. South of the equator the sun runs right to left, as it crosses your sky; <code>direction: left_to_right</code> or <code>right_to_left</code> sets it.</p>
                     <div class="code" data-lang="yaml">
                         <div class="code-bar"><span class="code-name">A vertical stack</span><button type="button" class="copy"><span class="copy-icon" aria-hidden="true"></span><span class="copy-label">Copy</span></button></div>
                         <pre><code>type: vertical-stack
