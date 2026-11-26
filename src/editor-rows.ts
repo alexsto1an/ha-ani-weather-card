@@ -34,7 +34,7 @@ export const DEFAULTS: Readonly<Record<string, unknown>> = {
     forecast_metric: 'temp', show_chips: true, forecast_graph: 'line',
     show_attributes: true, show_attribute_labels: true, show_attribute_icons: true, show_indoor: true, indoor_style: 'label',
     show_flight_labels: true, flight_label: 'flight', plane_speed: 1, planes_on_load: false,
-    animate: true, spill_particles: true, disable_lightning_shake: false, auto_pause: false, dev_mode: false,
+    animate: true, spill_particles: true, gpu_snow: false, gpu_rain: false, disable_lightning_shake: false, auto_pause: false, dev_mode: false,
     enable_day_night_cycle: false, sunrise_hour: 6, sunset_hour: 20,
     night: 'auto', night_red: true, night_lux: 5, wake_time: '07:00',
     show_note: false, note_tone: 'snarky', note_attribute: 'note', note_max_age: 180, sun_entity: 'sun.sun',
@@ -166,6 +166,8 @@ export const ROWS: Readonly<Record<string, RowSpec>> = {
     // Sky and motion
     animate: { tier: 'all', keys: ['animate'] },
     spill_particles: { tier: 'all', keys: ['spill_particles'], when: animated },
+    gpu_snow: { tier: 'all', keys: ['gpu_snow'], when: animated },
+    gpu_rain: { tier: 'all', keys: ['gpu_rain'], when: animated },
     lightning: { tier: 'all', keys: ['disable_lightning_shake'], when: animated },
     auto_pause: { tier: 'all', keys: ['auto_pause'] },
     sky_follows: { tier: 'all', keys: ['enable_day_night_cycle'] },
@@ -210,7 +212,7 @@ export const SECTIONS: Readonly<Record<string, readonly string[]>> = {
     forecast: ['why_forecast_nightstand', 'show_forecast', 'forecast_days', 'forecast_metric', 'show_chips', 'forecast_graph', 'time_date', 'hero'],
     note: ['note', 'why_note_compact', 'why_note_nightstand', 'note_tone', 'note_ai_task_entity', 'note_calendar', 'note_entity', 'note_attribute', 'note_max_age'],
     readings: ['show_attributes', 'readings', 'reading_style', 'indoor_temperature_entity', 'indoor_humidity_entity', 'indoor_line'],
-    sky: ['animate', 'spill_particles', 'lightning', 'auto_pause', 'sky_follows', 'day_hours', 'sun_entity', 'moon_entity', 'engine_mode', 'amounts'],
+    sky: ['animate', 'spill_particles', 'gpu_snow', 'gpu_rain', 'lightning', 'auto_pause', 'sky_follows', 'day_hours', 'sun_entity', 'moon_entity', 'engine_mode', 'amounts'],
     colors: ['sky_colors', 'why_sky_colors_theme', 'ink_colors'],
     planes: ['flights_entity', 'plane_tags', 'plane_speed', 'planes_on_load'],
     interactions: ['actions'],
@@ -263,7 +265,7 @@ export function sectionShown<C = Config>(ids: readonly string[], config: C, x: R
 /** What the forecast card does when an option is left out */
 export const FORECAST_DEFAULTS: Readonly<Record<string, unknown>> = {
     compact: false, color_palette: 'default', show_hours: true, show_summary: true, forecast_days: 7, forecast_metric: 'temp', show_chips: true, forecast_graph: 'line',
-    weather_effects: false, sun_entity: 'sun.sun', dev_mode: false,
+    weather_effects: false, gpu_snow: false, gpu_rain: false, sun_entity: 'sun.sun', dev_mode: false,
 };
 
 const strip = (c: Config) => !!c.compact;
@@ -284,6 +286,8 @@ export const FORECAST_TABLE: RowTable = {
         show_chips: { tier: 'all', keys: ['show_chips'], when: c => !strip(c) && hoursShown(c) },
         forecast_graph: { tier: 'all', keys: ['forecast_graph'], when: hoursShown },
         weather_effects: { tier: 'all', keys: ['weather_effects'] },
+        gpu_snow: { tier: 'all', keys: ['gpu_snow'], when: c => c.weather_effects === true },
+        gpu_rain: { tier: 'all', keys: ['gpu_rain'], when: c => c.weather_effects === true },
         sun_entity: { tier: 'all', keys: ['sun_entity'] },
         another_place: { tier: 'all', keys: ['latitude', 'longitude', 'time_zone'] },
         place_fields: { tier: 'all', keys: ['latitude', 'longitude', 'time_zone'], when: (_, x) => x.place },
@@ -293,7 +297,7 @@ export const FORECAST_TABLE: RowTable = {
     },
     sections: {
         forecast: ['entity', 'layout', 'color_palette', 'forecast_metric'],
-        shows: ['show_summary', 'show_hours', 'forecast_days', 'show_chips', 'forecast_graph', 'weather_effects'],
+        shows: ['show_summary', 'show_hours', 'forecast_days', 'show_chips', 'forecast_graph', 'weather_effects', 'gpu_snow', 'gpu_rain'],
         sky: ['sun_entity', 'another_place', 'place_fields'],
         interactions: ['actions'],
         dev: ['dev_mode'],

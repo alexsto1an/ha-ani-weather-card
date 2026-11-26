@@ -86,6 +86,20 @@ describe('the forecast card\'s editor', () => {
         await open('animated-forecast-card-editor', { ...FORECAST, tap_action: { action: 'forecast' } });
         expect(openRows()).not.toContain('actions');
     });
+
+    it('lets weather effects opt into the GPU renderers independently', async () => {
+        await open('animated-forecast-card-editor', FORECAST);
+        flip('#all_settings', true);
+        expect(openRows()).not.toContain('gpu_rain');
+        expect(openRows()).not.toContain('gpu_snow');
+        flip('#weather_effects', true);
+        expect(openRows()).toEqual(expect.arrayContaining(['gpu_rain', 'gpu_snow']));
+        flip('#gpu_rain', true);
+        expect(sent.at(-1)).toMatchObject({ weather_effects: true, gpu_rain: true });
+        expect(sent.at(-1)).not.toHaveProperty('gpu_snow');
+        flip('#gpu_rain', false);
+        expect(sent.at(-1)).not.toHaveProperty('gpu_rain');
+    });
 });
 
 describe('the sun tracker\'s editor', () => {

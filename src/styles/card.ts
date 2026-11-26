@@ -1186,6 +1186,8 @@ ${iconBoxCss('animated-weather-card')}
           pointer-events: none;
         }
         .snowflake { position: absolute; border-radius: 50%; pointer-events: none; }
+        .snow-webgl, .rain-webgl { position: absolute; top: 0; pointer-events: none; }
+        .snow-webgl { color: var(--weather-snow-color, #fff); }
 
         /* ── Planes (Flightradar24) ──────────────────────────────────────── */
         /* Inside .animation-layer at z-index 5: in front of the sun, stars and
