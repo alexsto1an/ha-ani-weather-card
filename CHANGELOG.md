@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Experimental GPU snow (`gpu_snow: true`) and rain (`gpu_rain: true`), with the standard effects as fallbacks.
+- Experimental WebGL rendering for rain, snow, sleet and hail (`use_webgl: true`), with the standard effects as fallbacks.
 
 ## [1.4.0] - 2026-11-25
 

@@ -7,6 +7,7 @@ import { DEFAULT_ENGINE_SETTINGS } from './constants';
 import { ParticlePool, prewarm, areaFactor } from './particle-pool';
 import { RAIN_DROP_LENGTH, RAIN_JOIN_STAGGER, RAIN_REBOUNDS, RAIN_SPLASH_DOTS, rainDot, rainDropOpacity, rainDropWidth, rainFall, rainPoolSize, rainRebound } from './rain-motion';
 import { WebGLRain } from './rain-webgl';
+import { mountWebGLParticles } from './precipitation-webgl';
 import type { GSAPTimeline, RainKind } from './types';
 
 export type { RainKind };
@@ -96,34 +97,19 @@ export class RainAnimation extends BaseAnimation {
         const spill = this.cardConfig.spill_particles !== false;
 
         this.splashBounce = settings.splashBounce / DEFAULT_ENGINE_SETTINGS.splashBounce;
-        if (this.cardConfig.gpu_rain === true) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'rain-webgl';
-            canvas.style.color = color;
-            rainLayer.appendChild(canvas);
-            try {
-                this.gpu = new WebGLRain(canvas, card, {
-                    spill,
-                    splash: this.rainConfig.splashEnabled,
-                    bounce: this.splashBounce,
-                    lost: () => {
-                        console.warn('Animated Weather Card: WebGL rain context lost; using standard rain.');
-                        this.gpu?.stop();
-                        this.gpu = undefined;
-                        this.startDom(rainLayer, card, spill, color);
-                    },
-                });
-                this.gpu.resizePopulation(this.kind, this.dropCount(), true);
+        const startDom = () => this.startDom(rainLayer, card, spill, color);
+        if (this.cardConfig.use_webgl === true) {
+            this.gpu = mountWebGLParticles(rainLayer, 'rain', (canvas, lost) => {
+                canvas.style.color = color;
+                return new WebGLRain(canvas, card, { spill, splash: this.rainConfig.splashEnabled, bounce: this.splashBounce, lost });
+            }, renderer => renderer.resizePopulation(this.kind, this.dropCount(), true),
+            () => { this.gpu = undefined; startDom(); });
+            if (this.gpu) {
                 if (!this.paused) this.gpu.resume();
                 return;
-            } catch (error) {
-                console.warn('Animated Weather Card: WebGL rain could not start; using standard rain.', error);
-                this.gpu?.stop();
-                this.gpu = undefined;
-                canvas.remove();
             }
         }
-        this.startDom(rainLayer, card, spill, color);
+        startDom();
     }
 
     private startDom(layer: HTMLElement, card: HTMLElement, spill: boolean, color: string): void {

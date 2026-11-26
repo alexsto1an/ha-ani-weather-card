@@ -6,18 +6,16 @@ import { AnimatedWeatherCardConfig, EngineAmounts } from './types';
 import type { GSAPTimeline } from './types';
 import { getWeatherSettings, devLog } from './utils';
 import { ParticlePool, prewarm, between, areaFactor } from './particle-pool';
-import { snowWindFactor } from './snow-animation';
+import { SLEET_PELLET_SIZE, SLEET_POOL_SIZE, sleetFall, snowWindFactor } from './snow-motion';
+import { WebGLFrozen } from './frozen-webgl';
+import { mountWebGLParticles } from './precipitation-webgl';
+
+export { SLEET_POOL_SIZE, SLEET_SPEED } from './snow-motion';
 
 export interface SleetAnimationConfig extends BaseAnimationConfig {
     particleCount: number;
 }
 
-/** Pellets alive at once on a 420×230 card at the default snow amount. */
-export const SLEET_POOL_SIZE = 30;
-/** Fall speed range in px/s: much faster than snow, slower than rain. */
-export const SLEET_SPEED: [number, number] = [150, 230];
-/** Share of pellets that settle on the bottom edge. */
-const SLEET_SETTLE_SHARE = 0.3;
 /** Max height of the sleet pile in px. */
 const SLEET_PILE_MAX = 6;
 
@@ -29,6 +27,8 @@ export class SleetAnimation extends BaseAnimation {
 
     protected sleetConfig: SleetAnimationConfig;
     private pool?: ParticlePool;
+    private gpu?: WebGLFrozen;
+    private paused = false;
 
     constructor(
         element: HTMLElement,
@@ -56,16 +56,34 @@ export class SleetAnimation extends BaseAnimation {
         }
 
         const settings = getWeatherSettings(this.cardConfig, this.realWindSpeed);
-        const card = this.element.querySelector('.animated-weather-card') as HTMLElement;
+        const card = this.element.querySelector<HTMLElement>('.animated-weather-card');
+        if (!card) throw new Error('Sleet card not found');
         this.card = card;
-        const count = this.pelletCount();
         const spill = this.cardConfig.spill_particles !== false;
         const wind = snowWindFactor(settings.windSpeed) * 0.5;
 
+        const startDom = () => this.startDom(sleetLayer, card, spill, wind);
+        if (this.cardConfig.use_webgl === true) {
+            this.gpu = mountWebGLParticles(sleetLayer, 'sleet',
+                (canvas, lost) => new WebGLFrozen(canvas, card, {
+                    kind: 'sleet', spill, wind, lost, settle: () => this.addToPile(card),
+                }),
+                renderer => renderer.resizePopulation(this.pelletCount(), true, true),
+                () => { this.gpu = undefined; startDom(); });
+            if (this.gpu) {
+                if (!this.paused) this.gpu.resume();
+                return;
+            }
+        }
+        startDom();
+    }
+
+    private startDom(layer: Element, card: HTMLElement, spill: boolean, wind: number): void {
+        const count = this.pelletCount();
         this.pool = new ParticlePool(
-            sleetLayer,
+            layer,
             () => {
-                const size = between(1.5, 3.5);
+                const size = between(...SLEET_PELLET_SIZE);
                 const pellet = document.createElement('div');
                 pellet.className = 'sleet-particle-gsap';
                 pellet.dataset.size = size.toFixed(2);
@@ -85,6 +103,7 @@ export class SleetAnimation extends BaseAnimation {
             (pellet, next, warm) => this.fall(pellet, card, wind, spill, next, warm),
             pellet => this.removeParticle(pellet),
         );
+        if (this.paused) this.pool.pause();
         this.pool.start(count).forEach(pellet => this.addParticle(pellet));
 
         devLog(this.config.devMode, `Sleet animation started - ${count} pellets`);
@@ -100,34 +119,25 @@ export class SleetAnimation extends BaseAnimation {
 
     /** New amounts while it sleets: pellets join from above the card, or leave at the end of their fall; the slide's hours at once, as snow's */
     protected onAmountsChange(_previous: EngineAmounts | null, quick: boolean): void {
-        this.pool?.resize(this.pelletCount(), 1.5, quick).forEach(pellet => this.addParticle(pellet));
+        const count = this.pelletCount();
+        this.gpu?.resizePopulation(count, quick);
+        this.pool?.resize(count, 1.5, quick).forEach(pellet => this.addParticle(pellet));
     }
 
     /** One constant-speed fall, like snow's but quicker and straighter. */
     private fall(pellet: HTMLElement, card: HTMLElement, wind: number, spill: boolean,
                  next: () => void, warm: boolean): GSAPTimeline {
-        const width = card.offsetWidth;
-        const height = card.offsetHeight;
         const size = parseFloat(pellet.dataset.size || '2');
-        const speed = between(SLEET_SPEED[0], SLEET_SPEED[1]);
-        const settles = Math.random() < SLEET_SETTLE_SHARE;
-        const startY = -size * 2;
-        const endY = settles ? height - size : (spill ? height + between(60, 120) : height + size);
-        const distance = endY - startY;
-        const fallSec = Math.max(0.3, distance / speed);
-        const drift = distance * between(0.03, 0.08) * wind;
-        const x = between(-drift, Math.max(1, width - size));
+        const { startY, endY, fallSec, settles, drift, x, fadeStart, endSec } =
+            sleetFall(size, card.offsetWidth, card.offsetHeight, wind, spill);
 
         window.AnimatedWeatherCardGsap.set(pellet, { x, opacity: between(0.8, 1), rotation: between(0, 360) });
         const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(pellet, { y: startY }, { y: endY, x: x + drift, duration: fallSec, ease: 'none' });
         if (settles) {
             tl.call(() => this.addToPile(card), [], fallSec);
-            tl.to(pellet, { opacity: 0, duration: 0.3, ease: 'power1.out' }, fallSec);
-        } else if (spill) {
-            const edgeSec = Math.min(fallSec, (height - startY) / speed);
-            tl.to(pellet, { opacity: 0, duration: Math.max(0.1, fallSec - edgeSec), ease: 'power1.in' }, edgeSec);
         }
+        if (settles || spill) tl.to(pellet, { opacity: 0, duration: endSec - fadeStart, ease: settles ? 'power1.out' : 'power1.in' }, fadeStart);
         return prewarm(tl, warm);
     }
 
@@ -161,6 +171,9 @@ export class SleetAnimation extends BaseAnimation {
     }
 
     protected async onStop(): Promise<void> {
+        this.gpu?.stop();
+        this.gpu = undefined;
+        this.paused = false;
         this.pool?.stop();
         this.pool = undefined;
 
@@ -177,11 +190,15 @@ export class SleetAnimation extends BaseAnimation {
     }
 
     protected async onPause(): Promise<void> {
+        this.paused = true;
+        this.gpu?.pause();
         this.pool?.pause();
         devLog(this.config.devMode, 'Sleet animation paused');
     }
 
     protected async onResume(): Promise<void> {
+        this.paused = false;
+        this.gpu?.resume();
         this.pool?.resume();
         devLog(this.config.devMode, 'Sleet animation resumed');
     }

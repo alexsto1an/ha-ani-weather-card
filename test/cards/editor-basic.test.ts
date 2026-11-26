@@ -71,6 +71,20 @@ describe('the editor\'s basics', () => {
         expect(shown('outdoor_sensor_entity')).toBe(true);
     });
 
+    it('puts the WebGL switch under the advanced sky and motion settings', async () => {
+        await open({});
+        expect(openSections()).not.toContain('sky');
+        expect(shown('use_webgl')).toBe(false);
+        flip('#all_settings', true);
+        $('[data-drawer="sky"]').click();
+        expect($('[data-sec="sky"] .drw-c').hasAttribute('data-open')).toBe(true);
+        expect($('[data-sec="sky"] [data-row="use_webgl"]').hasAttribute('data-open')).toBe(true);
+        flip('#use_webgl', true);
+        expect(last()).toHaveProperty('use_webgl', true);
+        flip('#use_webgl', false);
+        expect(last()).not.toHaveProperty('use_webgl');
+    });
+
     it('show any setting the card has changed, in its place, and keep it shown when it\'s cleared', async () => {
         await open({ outdoor_sensor_entity: 'sensor.garden', animate: true, show_location: true, auto_pause: false });
         // Defaults the old editor wrote out don't count

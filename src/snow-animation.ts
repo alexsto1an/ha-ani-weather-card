@@ -5,7 +5,8 @@ import { AnimatedWeatherCardConfig, EngineAmounts } from './types';
 import { getWeatherSettings, devLog } from './utils';
 import { ParticlePool, prewarm, between } from './particle-pool';
 import { snowDepth, snowFall, snowPoolSize, snowWindFactor, SNOW_FLAKE_SIZE, SNOW_SWAY_DEG } from './snow-motion';
-import { WebGLSnow } from './snow-webgl';
+import { WebGLFrozen } from './frozen-webgl';
+import { mountWebGLParticles } from './precipitation-webgl';
 import type { GSAPAnimation, GSAPTimeline } from './types';
 
 export { SNOW_POOL_SIZE, SNOW_FLAKE_SIZE, SNOW_SPEED, snowPoolSize, snowWindFactor } from './snow-motion';
@@ -33,7 +34,7 @@ export class SnowAnimation extends BaseAnimation {
     protected snowConfig: SnowAnimationConfig;
     protected accumulationElement?: HTMLElement;
     private pool?: ParticlePool;
-    private gpu?: WebGLSnow;
+    private gpu?: WebGLFrozen;
     private paused = false;
     private swings: GSAPAnimation[] = [];
     /** Each flake's sway, so a flake that leaves takes its own with it */
@@ -89,31 +90,18 @@ export class SnowAnimation extends BaseAnimation {
         }
 
         const startDom = () => this.startDom(snowLayer, card, spill, wind);
-        if (this.cardConfig.gpu_snow === true) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'snow-webgl';
-            snowLayer.appendChild(canvas);
-            try {
-                this.gpu = new WebGLSnow(canvas, card, {
-                    spill,
-                    wind,
+        if (this.cardConfig.use_webgl === true) {
+            this.gpu = mountWebGLParticles(snowLayer, 'snow',
+                (canvas, lost) => new WebGLFrozen(canvas, card, {
+                    kind: 'snow', spill, wind, lost,
                     pile: () => this.snowConfig.accumulation ? this.pileHeight() : undefined,
                     settle: () => this.addToAccumulation(),
-                    lost: () => {
-                        console.warn('Animated Weather Card: WebGL snow context lost; using standard snow.');
-                        this.gpu?.stop();
-                        this.gpu = undefined;
-                        startDom();
-                    },
-                });
-                this.gpu.resizePopulation(this.flakeCount(), true, true);
+                }),
+                renderer => renderer.resizePopulation(this.flakeCount(), true, true),
+                () => { this.gpu = undefined; startDom(); });
+            if (this.gpu) {
                 if (!this.paused) this.gpu.resume();
                 return;
-            } catch (error) {
-                console.warn('Animated Weather Card: WebGL snow could not start; using standard snow.', error);
-                this.gpu?.stop();
-                this.gpu = undefined;
-                canvas.remove();
             }
         }
         startDom();

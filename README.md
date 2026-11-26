@@ -598,7 +598,7 @@ cards:
 | `hold_action` | `none` | What a press of half a second or more does |
 | `double_tap_action` | `none` | What a double tap does |
 
-The weather card's `animate` and `custom_colors` work on it too. With `weather_effects`, so do `spill_particles`, `gpu_snow`, `gpu_rain`, `engine_mode` and `engine_settings`. With `outdoor_sensor_entity` its reading for now comes from your own sensor.
+The weather card's `animate` and `custom_colors` work on it too. With `weather_effects`, so do `spill_particles`, `use_webgl`, `engine_mode` and `engine_settings`. With `outdoor_sensor_entity` its reading for now comes from your own sensor.
 
 In the sections view it asks for 12 × 7, or 12 × 5 with three days or fewer. Without the hours, it asks for as many rows as its days need: five for a week.
 
@@ -837,8 +837,7 @@ sunset_hour: 19
 | --- | --- | --- |
 | `animate` | `true` | Set to `false` for a still sky: the condition's colour and light, no motion. The sun, and a clear night's moon and stars, stay, still |
 | `spill_particles` | `true` | Let rain, snow, sleet and leaves fall out of the card onto the dashboard, and clouds drift a little above its top edge. Turn it off to keep all weather inside the card |
-| `gpu_snow` | `false` | Try experimental hardware WebGL 2 snow. Falls back to standard snow if WebGL is unavailable or the context is lost |
-| `gpu_rain` | `false` | Try experimental hardware WebGL 2 rain, including splashes. Falls back to standard rain if WebGL is unavailable or the context is lost |
+| `use_webgl` | `false` | Try experimental hardware WebGL 2 for rain (including splashes), snow, sleet and hail. Each falls back to its standard effect if WebGL is unavailable or its context is lost. In the editor: **Show all settings → Sky and motion → WebGL (experimental)** |
 | `engine_mode` | `auto` | `auto` lets the weather set how much of it there is: rain and snow from your rain rate sensor or the forecast's hour under way, clouds from cloud cover, fog from visibility, leaves and swooshes from the wind and its gusts, and a clear night's stars thin under cloud. Each value comes from a reading's own sensor first, then the weather entity, then the forecast, and the condition sets the least: pouring always pours, and a cloudy sky keeps its clouds. Dragged through the hours, each hour shows its own. `manual` uses the [weather engine](#weather-engine) settings below instead. A card that already sets `engine_settings` stays manual unless it says `auto` |
 | `disable_lightning_shake` | `false` | Turn off the card's small jolt on lightning strikes |
 | `auto_pause` | `false` | Also pause while the browser window is in the background. Cards always pause while the tab is hidden or the card is off-screen |

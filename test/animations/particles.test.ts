@@ -358,15 +358,16 @@ describe('rain splashes', () => {
 
 describe('GPU precipitation', () => {
     it.each([
-        { kind: 'rain', Animation: RainAnimation, option: 'gpu_rain', particle: '.raindrop', count: 18 },
-        { kind: 'snow', Animation: SnowAnimation, option: 'gpu_snow', particle: '.snowflake', count: 36 },
-    ])('falls back to standard $kind when hardware WebGL is unavailable', async ({ kind, Animation, option, particle, count }) => {
+        { kind: 'rain', Animation: RainAnimation, particle: '.raindrop', count: 18 },
+        { kind: 'snow', Animation: SnowAnimation, particle: '.snowflake', count: 36 },
+        { kind: 'sleet', Animation: SleetAnimation, particle: '.sleet-particle-gsap', count: 30 },
+    ])('falls back to standard $kind when hardware WebGL is unavailable', async ({ kind, Animation, particle, count }) => {
         const host = makeCard();
         const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext')
             .mockReturnValueOnce({} as CanvasRenderingContext2D).mockReturnValueOnce(null);
         vi.stubGlobal('ResizeObserver', class {});
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const animation = new Animation(host, { intensity: 1, scale: 1 }, { entity: 'weather.home', [option]: true });
+        const animation = new Animation(host, { intensity: 1, scale: 1 }, { entity: 'weather.home', use_webgl: true });
         try {
             await animation.start();
             expect(context).toHaveBeenCalledWith('webgl2', expect.objectContaining({ failIfMajorPerformanceCaveat: true }));

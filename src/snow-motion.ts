@@ -8,6 +8,10 @@ export const SNOW_SPEED: [number, number] = [20, 38];
 export const SNOW_SWAY_DEG = 10;
 export const MAX_SNOW_WIND = 2.2;
 export const MAX_SNOW_DRIFT = 0.13;
+export const SLEET_POOL_SIZE = 30;
+export const SLEET_SPEED: [number, number] = [150, 230];
+export const SLEET_PELLET_SIZE: [number, number] = [1.5, 3.5];
+export const MAX_SLEET_DRIFT = 0.08;
 
 export function snowPoolSize(snowAmount: number, width: number, height: number): number {
     return Math.max(6, Math.round(SNOW_POOL_SIZE * snowAmount * areaFactor(width, height)));
@@ -33,5 +37,19 @@ export function snowFall(size: number, width: number, height: number, wind: numb
     const x = between(-drift, Math.max(1, width - size));
     const fadeStart = settles ? fallSec : spill ? Math.min(fallSec, (height - startY) / speed) : fallSec;
     const endSec = settles ? fallSec + 0.6 : spill ? Math.max(fallSec, fadeStart + 0.1) : fallSec;
+    return { startY, endY, fallSec, settles, drift, x, fadeStart, endSec };
+}
+
+export function sleetFall(size: number, width: number, height: number, wind: number, spill: boolean) {
+    const speed = between(...SLEET_SPEED);
+    const settles = Math.random() < 0.3;
+    const startY = -size * 2;
+    const endY = settles ? height - size : spill ? height + between(60, FALLOUT_PX) : height + size;
+    const distance = endY - startY;
+    const fallSec = Math.max(0.3, distance / speed);
+    const drift = distance * between(0.03, MAX_SLEET_DRIFT) * wind;
+    const x = between(-drift, Math.max(1, width - size));
+    const fadeStart = settles ? fallSec : spill ? Math.min(fallSec, (height - startY) / speed) : fallSec;
+    const endSec = settles ? fallSec + 0.3 : spill ? Math.max(fallSec, fadeStart + 0.1) : fallSec;
     return { startY, endY, fallSec, settles, drift, x, fadeStart, endSec };
 }

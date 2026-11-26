@@ -95,8 +95,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
                   row('show_chips', sw('show_chips', 'Buttons under the hours', c.show_chips !== false, 'One for each value, to change what the hours show. Off, they stay on what Hours show says')),
                   row('forecast_graph', select('forecast_graph', 'Graph')),
                   row('weather_effects', sw('weather_effects', 'Weather', !!c.weather_effects, 'Rain, snow, fog, wind and lightning behind the forecast, going to the hour you drag to')),
-                  row('gpu_snow', sw('gpu_snow', 'GPU snow (experimental)', c.gpu_snow === true, 'Draw snow with WebGL when hardware acceleration is available')),
-                  row('gpu_rain', sw('gpu_rain', 'GPU rain (experimental)', c.gpu_rain === true, 'Draw rain and splashes with WebGL when hardware acceleration is available')),
+                  row('use_webgl', sw('use_webgl', 'WebGL (experimental)', c.use_webgl === true, 'Draw supported effects with WebGL when hardware acceleration is available')),
               ].join(''))}
               ${section('sky', ['place', 'Sun and place'], [
                   row('sun_entity', picker('sun-picker', 'Sun', c.sun_entity, 'Sets the sky\'s time of day and the icons\' light. Usually sun.sun')),
@@ -139,8 +138,7 @@ export class AnimatedForecastCardEditor extends HTMLElement {
         onSwitch('show_hours', checked => ({ show_hours: checked ? undefined : false }));
         onSwitch('show_chips', checked => ({ show_chips: checked ? undefined : false }));
         onSwitch('weather_effects', checked => ({ weather_effects: checked || undefined }));
-        onSwitch('gpu_snow', checked => ({ gpu_snow: checked || undefined }));
-        onSwitch('gpu_rain', checked => ({ gpu_rain: checked || undefined }));
+        onSwitch('use_webgl', checked => ({ use_webgl: checked || undefined }));
         onSwitch('dev_mode', checked => ({ dev_mode: checked || undefined }));
         bindSelect(this, 'forecast_metric', METRIC_OPTIONS, c.forecast_metric ?? 'temp', v => this._update({ forecast_metric: v === 'temp' ? undefined : v as ForecastCardConfig['forecast_metric'] }));
         bindSelect(this, 'forecast_graph', GRAPH_OPTIONS, c.forecast_graph ?? 'line', v => this._update({ forecast_graph: v === 'line' ? undefined : v as ForecastCardConfig['forecast_graph'] }));

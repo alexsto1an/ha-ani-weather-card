@@ -333,10 +333,8 @@ export interface AnimatedWeatherCardConfig {
     disable_lightning_shake?: boolean;
     /** Let rain, snow, sleet and leaves fall out of the card (default true). */
     spill_particles?: boolean;
-    /** Try the WebGL 2 snow renderer; use standard snow if unsupported. */
-    gpu_snow?: boolean;
-    /** Try the WebGL 2 rain renderer; use standard rain if unsupported. */
-    gpu_rain?: boolean;
+    /** Try hardware WebGL 2 for supported effects; use standard effects if unavailable. */
+    use_webgl?: boolean;
     color_palette?: 'default' | 'theme';
     custom_colors?: Partial<CustomColorConfig>;
     /** auto: the weather's own values set how much rain, snow, cloud, fog and wind there is; manual: engine_settings do. Auto unless engine_settings tune something */

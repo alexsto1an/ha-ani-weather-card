@@ -5,6 +5,31 @@ const MAX_PIXELS = 1_500_000;
 const SPILL_MARGIN = 8;
 const MAX_SIDE_SPILL = 200;
 
+export function mountWebGLParticles<T extends WebGLParticles>(
+    layer: Element, kind: 'rain' | 'snow' | 'sleet',
+    create: (canvas: HTMLCanvasElement, lost: () => void) => T,
+    initialize: (renderer: T) => void, fallback: () => void,
+): T | undefined {
+    const canvas = document.createElement('canvas');
+    canvas.className = `${kind}-webgl`;
+    layer.appendChild(canvas);
+    let renderer: T | undefined;
+    try {
+        renderer = create(canvas, () => {
+            console.warn(`Animated Weather Card: WebGL ${kind} context lost; using standard ${kind}.`);
+            renderer?.stop();
+            fallback();
+        });
+        initialize(renderer);
+        return renderer;
+    } catch (error) {
+        console.warn(`Animated Weather Card: WebGL ${kind} could not start; using standard ${kind}.`, error);
+        renderer?.stop();
+        canvas.remove();
+        return undefined;
+    }
+}
+
 function compile(gl: WebGL2RenderingContext, kind: number, source: string): WebGLShader {
     const shader = gl.createShader(kind);
     if (!shader) throw new Error('Could not allocate a precipitation shader');
