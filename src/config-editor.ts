@@ -280,6 +280,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
           ${drawer('sky', 'Sky and motion', [
             row('animate', sw('animate', 'Animate the weather', c.animate !== false, 'Off, a still sky in the weather\'s colors')),
             row('spill_particles', sw('spill_particles', 'Let weather spill out', c.spill_particles !== false, 'Rain, snow and leaves fall past the card\'s edges')),
+            row('use_webgl', sw('use_webgl', 'WebGL (experimental)', c.use_webgl === true, 'Draw supported effects with WebGL when hardware acceleration is available')),
             row('lightning', sw('lightning_shake', 'Shake on lightning', !c.disable_lightning_shake, 'A small jolt when lightning strikes')),
             row('auto_pause', sw('auto_pause', 'Pause in the background', !!c.auto_pause, 'Also while this window isn\'t in front. The card always pauses off screen')),
             row('sky_follows', seg('sky_follows', 'Sky follows', [['sun', 'The sun'], ['hours', 'Set hours']], c.enable_day_night_cycle ? 'hours' : 'sun')),
@@ -511,6 +512,7 @@ export class AnimatedWeatherCardEditor extends HTMLElement implements LovelaceCa
         // Sky and motion
         on('#animate', 'change', el => this._set({ animate: el.checked ? undefined : false }));
         on('#spill_particles', 'change', el => this._set({ spill_particles: el.checked ? undefined : false }));
+        on('#use_webgl', 'change', el => this._set({ use_webgl: el.checked || undefined }));
         on('#lightning_shake', 'change', el => this._set({ disable_lightning_shake: el.checked ? undefined : true }));
         // Auto is the default unless engine_settings tune something, so a tuned card says auto to turn it on; manual
         // keeps the tuning, and auto keeps it too, for the day the card goes back

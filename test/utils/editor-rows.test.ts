@@ -178,8 +178,9 @@ describe('the forecast card\'s and the tracker\'s rows', () => {
                 Object.keys(table.rows).filter(id => rowShown(id, config as never, x, pinned, table));
             expect(shown(fresh, basic)).toEqual(basics);
             expect(Object.keys(table.sections).filter(s => sectionShown(table.sections[s], fresh as never, basic, new Set(), table))).toHaveLength(1);
-            const all = shown(fresh, { ...basic, all: true });
-            for (const id of Object.keys(table.rows)) if (id !== 'place_fields') expect(all, id).toContain(id);
+            const configured = name === 'the forecast card' ? { weather_effects: true } : fresh;
+            const all = shown(configured, { ...basic, all: true, place: true });
+            for (const id of Object.keys(table.rows)) expect(all, id).toContain(id);
             // Each option, set to something other than its default, shows its row with the switch off
             for (const key of keysOf(table)) {
                 const d = table.defaults[key];

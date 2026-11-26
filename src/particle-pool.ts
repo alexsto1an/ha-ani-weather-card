@@ -3,6 +3,7 @@
 import type { GSAPAnimation, GSAPTimeline } from './types';
 
 type PoolAnimation = GSAPAnimation | GSAPTimeline;
+export const FALLOUT_PX = 120;
 
 /**
  * Runs one cycle of a particle (one fall, one pass) and calls `next` when

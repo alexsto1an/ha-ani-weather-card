@@ -4,50 +4,16 @@ import { BaseAnimation, BaseAnimationConfig } from './base-animation';
 import { AnimatedWeatherCardConfig, AnimatedWeatherCardElement, EngineAmounts } from './types';
 import { getWeatherSettings, getTimeAwareAnimationColor, devLog } from './utils';
 import { DEFAULT_ENGINE_SETTINGS } from './constants';
-import { ParticlePool, prewarm, between, areaFactor } from './particle-pool';
-import type { GSAPTimeline } from './types';
+import { ParticlePool, prewarm, areaFactor } from './particle-pool';
+import { RAIN_DROP_LENGTH, RAIN_JOIN_STAGGER, RAIN_REBOUNDS, RAIN_SPLASH_DOTS, rainDot, rainDropOpacity, rainDropWidth, rainFall, rainPoolSize, rainRebound } from './rain-motion';
+import { WebGLRain } from './rain-webgl';
+import { mountWebGLParticles } from './precipitation-webgl';
+import type { GSAPTimeline, RainKind } from './types';
 
-import type { RainKind } from './types';
 export type { RainKind };
+export { RAIN_POOL_SIZE, RAIN_SPEED, RAIN_SPLASH_SHARE, RAIN_REBOUND_RISE, quadraticLength, rainPoolSize } from './rain-motion';
 
-/** Drops alive at once on a 420×230 card at the default rain amount. */
-export const RAIN_POOL_SIZE: Record<RainKind, number> = { light: 10, rain: 18, storm: 24, pouring: 32 };
-/** Fall speed range in px/s. Heavier rain falls faster and longer. */
-export const RAIN_SPEED: Record<RainKind, [number, number]> = {
-    light: [300, 380], rain: [420, 520], storm: [520, 620], pouring: [620, 760],
-};
-const RAIN_DROP_LENGTH: Record<RainKind, number> = { light: 16, rain: 24, storm: 34, pouring: 42 };
-/** Share of drops that end in a splash on the card's bottom edge. */
-export const RAIN_SPLASH_SHARE = 0.3;
-const RAIN_SPLASH_DOTS = 16;
-const RAIN_REBOUNDS = 8;
-/** How high a drop springs back off the edge, in px at the default splash bounce. */
-export const RAIN_REBOUND_RISE: [number, number] = [10, 30];
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/** Length of a quadratic Bézier from the origin, by sampling. */
-export function quadraticLength(cx: number, cy: number, ex: number, ey: number): number {
-    let length = 0;
-    let px = 0;
-    let py = 0;
-    for (let i = 1; i <= 16; i++) {
-        const t = i / 16;
-        const x = 2 * (1 - t) * t * cx + t * t * ex;
-        const y = 2 * (1 - t) * t * cy + t * t * ey;
-        length += Math.hypot(x - px, y - py);
-        px = x;
-        py = y;
-    }
-    return length;
-}
-
-/**
- * How many drops a card keeps in the air: the type's base count, scaled by
- * the "Rain amount" setting and the card's area so big cards aren't sparse.
- */
-export function rainPoolSize(kind: RainKind, rainAmount: number, width: number, height: number): number {
-    return Math.max(4, Math.round(RAIN_POOL_SIZE[kind] * rainAmount * areaFactor(width, height)));
-}
 
 /**
  * Rain animation specific configuration
@@ -74,6 +40,8 @@ export class RainAnimation extends BaseAnimation {
     
     protected rainConfig: RainAnimationConfig;
     private pool?: ParticlePool;
+    private gpu?: WebGLRain;
+    private paused = false;
     private splashLayer?: HTMLElement;
     private splashColor = 'white';
     private splashBounce = 1;
@@ -113,29 +81,46 @@ export class RainAnimation extends BaseAnimation {
             throw new Error('GSAP not loaded - cannot start rain animation');
         }
 
-        const rainLayer = this.element.querySelector(this.layerSelector);
+        const rainLayer = this.element.querySelector<HTMLElement>(this.layerSelector);
         if (!rainLayer) {
             throw new Error(`Rain layer not found: ${this.layerSelector}`);
         }
 
 
         const settings = getWeatherSettings(this.cardConfig, this.realWindSpeed);
-        const card = this.element.querySelector('.animated-weather-card') as HTMLElement;
+        const card = this.element.querySelector<HTMLElement>('.animated-weather-card');
+        if (!card) throw new Error('Rain card not found');
         this.card = card;
         // In auto mode the amounts say the rain's kind and how much; in manual, the condition and rainCount
         this.kind = this.amounts?.rain.kind ?? this.rainKind();
-        const count = this.dropCount();
         const color = this.getRainColor((this.element as AnimatedWeatherCardElement).timeOfDayManager);
         const spill = this.cardConfig.spill_particles !== false;
 
-        this.splashLayer = rainLayer as HTMLElement;
-        this.splashColor = color;
         this.splashBounce = settings.splashBounce / DEFAULT_ENGINE_SETTINGS.splashBounce;
+        const startDom = () => this.startDom(rainLayer, card, spill, color);
+        if (this.cardConfig.use_webgl === true) {
+            this.gpu = mountWebGLParticles(rainLayer, 'rain', (canvas, lost) => {
+                canvas.style.color = color;
+                return new WebGLRain(canvas, card, { spill, splash: this.rainConfig.splashEnabled, bounce: this.splashBounce, lost });
+            }, renderer => renderer.resizePopulation(this.kind, this.dropCount(), true),
+            () => { this.gpu = undefined; startDom(); });
+            if (this.gpu) {
+                if (!this.paused) this.gpu.resume();
+                return;
+            }
+        }
+        startDom();
+    }
+
+    private startDom(layer: HTMLElement, card: HTMLElement, spill: boolean, color: string): void {
+        this.splashLayer = layer;
+        this.splashColor = color;
+        const count = this.dropCount();
 
         this.pool = new ParticlePool(
-            rainLayer,
+            layer,
             () => {
-                const width = between(1, this.kind === 'pouring' ? 3 : 2.4);
+                const width = rainDropWidth(this.kind);
                 const length = RAIN_DROP_LENGTH[this.kind];
                 const drop = document.createElement('div');
                 drop.className = 'raindrop';
@@ -156,6 +141,7 @@ export class RainAnimation extends BaseAnimation {
             (drop, next, warm) => this.fall(drop, card, spill, next, warm),
             drop => this.removeParticle(drop),
         );
+        if (this.paused) this.pool.pause();
         this.pool.start(count).forEach(drop => this.addParticle(drop));
 
         devLog(this.config.devMode, `Rain animation started - ${count} drops (${this.kind})`);
@@ -175,9 +161,10 @@ export class RainAnimation extends BaseAnimation {
      * above the card or leave at the end of their fall, so the rain thickens or thins and never jumps.
      */
     protected onAmountsChange(_previous: EngineAmounts | null, _quick: boolean): void {
-        if (!this.pool) return;
         this.kind = this.amounts?.rain.kind ?? this.rainKind();
-        this.pool.resize(this.dropCount(), 0.8).forEach(drop => this.addParticle(drop));
+        const count = this.dropCount();
+        this.gpu?.resizePopulation(this.kind, count);
+        this.pool?.resize(count, RAIN_JOIN_STAGGER).forEach(drop => this.addParticle(drop));
     }
 
     /**
@@ -187,35 +174,26 @@ export class RainAnimation extends BaseAnimation {
      * frame: past the edge, fading, with spill on, or behind it without.
      */
     private fall(drop: HTMLElement, card: HTMLElement, spill: boolean, next: () => void, warm: boolean): GSAPTimeline {
-        const width = card.offsetWidth;
         const height = card.offsetHeight;
         // The rain's kind now: a drop takes a new kind's length as it starts its next fall
         const kind = this.kind;
-        const length = RAIN_DROP_LENGTH[kind];
+        const { length, x, splash, startY, endY, fallSec, fadeStart, endSec } =
+            rainFall(kind, card.offsetWidth, height, spill, this.rainConfig.splashEnabled);
         if (drop.dataset.kind !== kind) {
             drop.style.height = `${length}px`;
             drop.dataset.kind = kind;
         }
-        const [minSpeed, maxSpeed] = RAIN_SPEED[kind];
-        const speed = between(minSpeed, maxSpeed);
-        const x = between(6, Math.max(7, width - 6));
-        const splash = this.rainConfig.splashEnabled && Math.random() < RAIN_SPLASH_SHARE;
-        const startY = -length;
-        const endY = splash ? height - length : (spill ? height + between(60, 120) : height);
-        // A card that isn't laid out yet (height 0) idles instead of spinning
-        const fallSec = Math.max(0.25, (endY - startY) / speed);
         const dropWidth = parseFloat(drop.dataset.width || '2');
 
-        window.AnimatedWeatherCardGsap.set(drop, { x, scaleY: 1, opacity: 0.55 + 0.45 * Math.min(1, dropWidth / 2.4) });
+        window.AnimatedWeatherCardGsap.set(drop, { x, scaleY: 1, opacity: rainDropOpacity(dropWidth) });
         const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(drop, { y: startY }, { y: endY, duration: fallSec, ease: 'none' });
         if (splash) {
             // The streak keeps moving into the edge while the splash starts
             tl.call(() => this.createSplash(x + dropWidth / 2, height), [], fallSec);
-            tl.to(drop, { scaleY: 0, duration: length / speed, ease: 'none' }, fallSec);
+            tl.to(drop, { scaleY: 0, duration: endSec - fallSec, ease: 'none' }, fallSec);
         } else if (spill) {
-            const edgeSec = (height - length - startY) / speed;
-            tl.to(drop, { opacity: 0, duration: fallSec - edgeSec, ease: 'power1.in' }, edgeSec);
+            tl.to(drop, { opacity: 0, duration: endSec - fadeStart, ease: 'power1.in' }, fadeStart);
         }
         return prewarm(tl, warm);
     }
@@ -224,6 +202,9 @@ export class RainAnimation extends BaseAnimation {
      * Stop the rain animation
      */
     protected async onStop(): Promise<void> {
+        this.gpu?.stop();
+        this.gpu = undefined;
+        this.paused = false;
         this.pool?.stop();
         this.pool = undefined;
         this.splashDots.forEach(dot => {
@@ -248,6 +229,8 @@ export class RainAnimation extends BaseAnimation {
      * Pause the rain animation
      */
     protected async onPause(): Promise<void> {
+        this.paused = true;
+        this.gpu?.pause();
         this.pool?.pause();
         devLog(this.config.devMode, `Rain animation paused`);
     }
@@ -256,6 +239,8 @@ export class RainAnimation extends BaseAnimation {
      * Resume the rain animation
      */
     protected async onResume(): Promise<void> {
+        this.paused = false;
+        this.gpu?.resume();
         this.pool?.resume();
         devLog(this.config.devMode, `Rain animation resumed`);
     }
@@ -273,7 +258,7 @@ export class RainAnimation extends BaseAnimation {
      * Splash elements are reused round-robin.
      */
     private createSplash(x: number, y: number): void {
-        if (!window.AnimatedWeatherCardGsap || !this.splashLayer) return;
+        if (this.paused || !window.AnimatedWeatherCardGsap || !this.splashLayer) return;
         this.createRebound(x, y);
         for (const side of [-1, 1]) {
             let dot = this.splashDots[this.nextSplashDot];
@@ -286,9 +271,7 @@ export class RainAnimation extends BaseAnimation {
             }
             this.nextSplashDot = (this.nextSplashDot + 1) % RAIN_SPLASH_DOTS;
 
-            const duration = between(0.22, 0.28);
-            const rise = between(4, 10) * this.splashBounce;
-            const spread = side * between(6, 12) * this.splashBounce;
+            const { duration, rise, spread } = rainDot(side, this.splashBounce);
             window.AnimatedWeatherCardGsap.killTweensOf(dot);
             window.AnimatedWeatherCardGsap.set(dot, { x: x - 1, y: y - 2, opacity: 0.9 });
             const tl = window.AnimatedWeatherCardGsap.timeline();
@@ -320,18 +303,12 @@ export class RainAnimation extends BaseAnimation {
         this.nextRebound = (this.nextRebound + 1) % RAIN_REBOUNDS;
 
         const arc = svg.firstChild as SVGPathElement;
-        const [minRise, maxRise] = RAIN_REBOUND_RISE;
-        const rise = between(minRise, maxRise) * this.splashBounce;
-        const reach = (Math.random() < 0.5 ? -1 : 1) * between(10, 24) * this.splashBounce;
-        const fall = between(6, 18);
+        const { rise, reach, fall, length, streak, duration } = rainRebound(this.splashBounce);
         // A quadratic arc whose control point sits at twice the apex height
         // peaks at about `rise`, then lands `fall` px below the edge.
         arc.setAttribute('d', `M 0,0 Q ${reach.toFixed(1)},${(-2 * rise).toFixed(1)} ${(2 * reach).toFixed(1)},${fall.toFixed(1)}`);
-        const length = quadraticLength(reach, -2 * rise, 2 * reach, fall);
-        const streak = Math.min(length * 0.45, 6 + rise * 0.3);
         arc.style.strokeDasharray = `${streak.toFixed(1)} ${(length + streak).toFixed(1)}`;
 
-        const duration = between(0.42, 0.56);
         window.AnimatedWeatherCardGsap.killTweensOf([svg, arc]);
         window.AnimatedWeatherCardGsap.set(svg, { x, y, opacity: 0.85 });
         window.AnimatedWeatherCardGsap.timeline()

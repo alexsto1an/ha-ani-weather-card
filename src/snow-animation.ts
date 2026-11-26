@@ -3,29 +3,13 @@
 import { BaseAnimation, BaseAnimationConfig, AnimationLifecycleState } from './base-animation';
 import { AnimatedWeatherCardConfig, EngineAmounts } from './types';
 import { getWeatherSettings, devLog } from './utils';
-import { DEFAULT_ENGINE_SETTINGS } from './constants';
-import { ParticlePool, prewarm, between, areaFactor } from './particle-pool';
+import { ParticlePool, prewarm, between } from './particle-pool';
+import { snowDepth, snowFall, snowPoolSize, snowWindFactor, SNOW_FLAKE_SIZE, SNOW_SWAY_DEG } from './snow-motion';
+import { WebGLFrozen } from './frozen-webgl';
+import { mountWebGLParticles } from './precipitation-webgl';
 import type { GSAPAnimation, GSAPTimeline } from './types';
 
-/** Flakes alive at once on a 420×230 card at the default snow amount. */
-export const SNOW_POOL_SIZE = 36;
-/** Flake diameter range in px; the size sets the flake's depth. */
-export const SNOW_FLAKE_SIZE: [number, number] = [2, 6];
-/** Fall speed in px/s for the smallest (farthest) and largest (nearest) flakes. */
-export const SNOW_SPEED: [number, number] = [20, 38];
-/** Pendulum sway either side, in degrees. */
-const SNOW_SWAY_DEG = 10;
-/** Share of flakes that settle on the bottom edge instead of falling out. */
-const SNOW_SETTLE_SHARE = 0.6;
-
-export function snowPoolSize(snowAmount: number, width: number, height: number): number {
-    return Math.max(6, Math.round(SNOW_POOL_SIZE * snowAmount * areaFactor(width, height)));
-}
-
-/** Wind slant multiplier: 1 at the default wind effect and 10 km/h. */
-export function snowWindFactor(windSpeed: number): number {
-    return Math.min(2.2, Math.max(0.3, windSpeed / DEFAULT_ENGINE_SETTINGS.windSpeed));
-}
+export { SNOW_POOL_SIZE, SNOW_FLAKE_SIZE, SNOW_SPEED, snowPoolSize, snowWindFactor } from './snow-motion';
 
 /**
  * Snow animation specific configuration
@@ -50,6 +34,8 @@ export class SnowAnimation extends BaseAnimation {
     protected snowConfig: SnowAnimationConfig;
     protected accumulationElement?: HTMLElement;
     private pool?: ParticlePool;
+    private gpu?: WebGLFrozen;
+    private paused = false;
     private swings: GSAPAnimation[] = [];
     /** Each flake's sway, so a flake that leaves takes its own with it */
     private swingOf = new WeakMap<HTMLElement, GSAPAnimation>();
@@ -93,11 +79,9 @@ export class SnowAnimation extends BaseAnimation {
 
 
         const settings = getWeatherSettings(this.cardConfig, this.realWindSpeed);
-        const card = this.element.querySelector('.animated-weather-card') as HTMLElement;
+        const card = this.element.querySelector<HTMLElement>('.animated-weather-card');
+        if (!card) throw new Error('Snow card not found');
         this.card = card;
-        const count = this.flakeCount();
-        // Fallback only; the card always defines --weather-snow-color
-        const color = '#ffffff';
         const spill = this.cardConfig.spill_particles !== false;
         const wind = snowWindFactor(settings.windSpeed);
 
@@ -105,9 +89,29 @@ export class SnowAnimation extends BaseAnimation {
             this.createSnowAccumulation();
         }
 
+        const startDom = () => this.startDom(snowLayer, card, spill, wind);
+        if (this.cardConfig.use_webgl === true) {
+            this.gpu = mountWebGLParticles(snowLayer, 'snow',
+                (canvas, lost) => new WebGLFrozen(canvas, card, {
+                    kind: 'snow', spill, wind, lost,
+                    pile: () => this.snowConfig.accumulation ? this.pileHeight() : undefined,
+                    settle: () => this.addToAccumulation(),
+                }),
+                renderer => renderer.resizePopulation(this.flakeCount(), true, true),
+                () => { this.gpu = undefined; startDom(); });
+            if (this.gpu) {
+                if (!this.paused) this.gpu.resume();
+                return;
+            }
+        }
+        startDom();
+    }
+
+    private startDom(layer: Element, card: HTMLElement, spill: boolean, wind: number): void {
+        const count = this.flakeCount();
         this.pool = new ParticlePool(
-            snowLayer,
-            () => this.createFlake(color),
+            layer,
+            () => this.createFlake(),
             (flake, next, warm) => this.fall(flake, card, wind, spill, next, warm),
             (flake) => {
                 const swing = this.swingOf.get(flake);
@@ -116,6 +120,7 @@ export class SnowAnimation extends BaseAnimation {
                 this.removeParticle(flake);
             },
         );
+        if (this.paused) this.pool.pause();
         this.pool.start(count).forEach(flake => this.addParticle(flake));
 
         devLog(this.config.devMode, `Snow animation started - ${count} flakes`);
@@ -134,7 +139,9 @@ export class SnowAnimation extends BaseAnimation {
      * slowly, so the slide's hours (quick) show their own at once: flakes join part-way down, and leave unseen.
      */
     protected onAmountsChange(_previous: EngineAmounts | null, quick: boolean): void {
-        this.pool?.resize(this.flakeCount(), 6, quick).forEach(flake => this.addParticle(flake));
+        const count = this.flakeCount();
+        this.gpu?.resizePopulation(count, quick);
+        this.pool?.resize(count, 6, quick).forEach(flake => this.addParticle(flake));
     }
 
     /**
@@ -143,16 +150,16 @@ export class SnowAnimation extends BaseAnimation {
      * they're dimmer and fall slower. The flake sways like a pendulum from
      * a point above it, which keeps the sway off the x axis the drift uses.
      */
-    private createFlake(color: string): HTMLElement {
+    private createFlake(): HTMLElement {
         const size = between(SNOW_FLAKE_SIZE[0], SNOW_FLAKE_SIZE[1]);
-        const depth = (size - SNOW_FLAKE_SIZE[0]) / (SNOW_FLAKE_SIZE[1] - SNOW_FLAKE_SIZE[0]);
+        const depth = snowDepth(size);
         const flake = document.createElement('div');
         flake.className = 'snowflake';
         flake.dataset.size = size.toFixed(2);
         flake.style.cssText = `
             width: ${size.toFixed(2)}px;
             height: ${size.toFixed(2)}px;
-            background: radial-gradient(circle closest-side, var(--weather-snow-color, ${color}) 45%, transparent 100%);
+            background: radial-gradient(circle closest-side, var(--weather-snow-color, #ffffff) 45%, transparent 100%);
             top: 0;
             left: 0;
         `;
@@ -168,7 +175,7 @@ export class SnowAnimation extends BaseAnimation {
         });
         swing.progress(Math.random());
         // A flake that joins while the card is paused holds still with the rest
-        if (this.state === AnimationLifecycleState.PAUSED) swing.pause();
+        if (this.paused) swing.pause();
         this.swings.push(swing);
         this.swingOf.set(flake, swing);
         return flake;
@@ -181,33 +188,18 @@ export class SnowAnimation extends BaseAnimation {
      */
     private fall(flake: HTMLElement, card: HTMLElement, wind: number, spill: boolean,
                  next: () => void, warm: boolean): GSAPTimeline {
-        const width = card.offsetWidth;
-        const height = card.offsetHeight;
         const size = parseFloat(flake.dataset.size || '4');
-        const depth = (size - SNOW_FLAKE_SIZE[0]) / (SNOW_FLAKE_SIZE[1] - SNOW_FLAKE_SIZE[0]);
-        const speed = (SNOW_SPEED[0] + (SNOW_SPEED[1] - SNOW_SPEED[0]) * depth) * between(0.9, 1.1);
-        const settles = this.snowConfig.accumulation && Math.random() < SNOW_SETTLE_SHARE;
-        const startY = -size * 2;
-        const endY = settles
-            ? height - this.pileHeight() - size
-            : (spill ? height + between(60, 120) : height + size);
-        const distance = endY - startY;
-        const fallSec = Math.max(0.5, distance / speed);
-        // Wind slants the fall; start further left so the slanted field
-        // still covers the left side of the card.
-        const drift = distance * between(0.04, 0.13) * wind;
-        const x = between(-drift, Math.max(1, width - size));
+        const { startY, endY, fallSec, settles, drift, x, fadeStart, endSec } = snowFall(
+            size, card.offsetWidth, card.offsetHeight, wind, spill, this.snowConfig.accumulation ? this.pileHeight() : undefined,
+        );
 
         window.AnimatedWeatherCardGsap.set(flake, { x, opacity: parseFloat(flake.dataset.opacity || '0.7') });
         const tl = window.AnimatedWeatherCardGsap.timeline({ onComplete: next });
         tl.fromTo(flake, { y: startY }, { y: endY, x: x + drift, duration: fallSec, ease: 'none' });
         if (settles) {
             tl.call(() => this.addToAccumulation(), [], fallSec);
-            tl.to(flake, { opacity: 0, duration: 0.6, ease: 'power1.out' }, fallSec);
-        } else if (spill) {
-            const edgeSec = Math.min(fallSec, (height - startY) / speed);
-            tl.to(flake, { opacity: 0, duration: Math.max(0.1, fallSec - edgeSec), ease: 'power1.in' }, edgeSec);
         }
+        if (settles || spill) tl.to(flake, { opacity: 0, duration: endSec - fadeStart, ease: settles ? 'power1.out' : 'power1.in' }, fadeStart);
         return prewarm(tl, warm);
     }
 
@@ -215,6 +207,9 @@ export class SnowAnimation extends BaseAnimation {
      * Stop the snow animation
      */
     protected async onStop(): Promise<void> {
+        this.gpu?.stop();
+        this.gpu = undefined;
+        this.paused = false;
         this.swings.forEach(swing => swing.kill());
         this.swings = [];
         this.pool?.stop();
@@ -234,6 +229,8 @@ export class SnowAnimation extends BaseAnimation {
      * Pause the snow animation
      */
     protected async onPause(): Promise<void> {
+        this.paused = true;
+        this.gpu?.pause();
         this.pool?.pause();
         this.swings.forEach(swing => swing.pause());
         devLog(this.config.devMode, `Snow animation paused`);
@@ -243,6 +240,8 @@ export class SnowAnimation extends BaseAnimation {
      * Resume the snow animation
      */
     protected async onResume(): Promise<void> {
+        this.paused = false;
+        this.gpu?.resume();
         this.pool?.resume();
         this.swings.forEach(swing => swing.resume());
         devLog(this.config.devMode, `Snow animation resumed`);

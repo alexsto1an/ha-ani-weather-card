@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Experimental WebGL rendering for rain, snow, sleet and hail (`use_webgl: true`), with the standard effects as fallbacks.
+
 ## [1.4.0] - 2026-11-25
 
 Thank you 🙏 to everyone who installed the card, put it on a dashboard and took the time to say what worked and what didn't, on GitHub and on Reddit. Your feedback is what makes the card flexible enough to fit setups I'd never have thought of, and that's the best part of building it in the open. Keep it coming!

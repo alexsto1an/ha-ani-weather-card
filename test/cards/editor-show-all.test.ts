@@ -86,6 +86,18 @@ describe('the forecast card\'s editor', () => {
         await open('animated-forecast-card-editor', { ...FORECAST, tap_action: { action: 'forecast' } });
         expect(openRows()).not.toContain('actions');
     });
+
+    it('lets weather effects opt into WebGL', async () => {
+        await open('animated-forecast-card-editor', FORECAST);
+        flip('#all_settings', true);
+        expect(openRows()).not.toContain('use_webgl');
+        flip('#weather_effects', true);
+        expect(openRows()).toContain('use_webgl');
+        flip('#use_webgl', true);
+        expect(sent.at(-1)).toMatchObject({ weather_effects: true, use_webgl: true });
+        flip('#use_webgl', false);
+        expect(sent.at(-1)).not.toHaveProperty('use_webgl');
+    });
 });
 
 describe('the sun tracker\'s editor', () => {
